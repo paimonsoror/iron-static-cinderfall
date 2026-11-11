@@ -1,0 +1,39 @@
+=== mode swiftshader_indirect gpu=swiftshader_indirect features=[] start 08:33:28
+Starting tower_phone gpu=swiftshader_indirect (cold boot)...
+  emulator.exe -avd tower_phone -gpu swiftshader_indirect -no-boot-anim -no-audio -no-snapshot
+Emulator emulator-5554 booted in 58s (gpu=swiftshader_indirect). Tip: wait ~20-25s after a COLD boot before launching apps.
+run_emulator exit=0  08:34:33
+settled:  08:38:19 up 4 min,  0 users,  load average: 3.44, 7.66, 3.79  08:38:21
+    isKeyguardShowing=false
+Failed to write while dumping service window: Broken pipe
+--- godot log
+--------- beginning of main
+11-11 08:38:31.645  3731  3764 I godot   : Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+11-11 08:38:32.081  3731  3764 I godot   : Vulkan 1.2.0 - Forward Mobile - Using Device #0: Unknown - SwiftShader Device (LLVM 10.0.0)
+11-11 08:38:46.684  3731  3764 I godot   : 
+11-11 08:38:47.252  3731  3764 E godot   : ERROR: Couldn't present to Vulkan queue (VkResult error 5).
+11-11 08:38:47.252  3731  3764 E godot   :    at: command_queue_execute_and_present (drivers/vulkan/rendering_device_driver_vulkan.cpp:3359)
+11-11 08:38:48.224  3731  3764 I godot   : [Content] content ok enemies=4 waves=5 hash=09244f72d864
+11-11 08:38:48.224  3731  3764 I godot   : [Game] game boot version=0.1.0 renderer=mobile/vulkan
+11-11 08:38:48.224  3731  3764 I godot   : [Game] gpu adapter=SwiftShader Device (LLVM 10.0.0)
+11-11 08:38:48.426  3731  3764 I godot   : [Game] boot ok
+11-11 08:38:50.455  3731  3764 E godot   : ERROR: Couldn't present to Vulkan queue (VkResult error 5).
+11-11 08:38:50.455  3731  3764 E godot   :    at: command_queue_execute_and_present (drivers/vulkan/rendering_device_driver_vulkan.cpp:3359)
+11-11 08:38:50.477  3731  3764 E godot   : ERROR: Couldn't present to Vulkan queue (VkResult error 5).
+11-11 08:38:50.477  3731  3764 E godot   :    at: command_queue_execute_and_present (drivers/vulkan/rendering_device_driver_vulkan.cpp:3359)
+pid=3731
+  mCurrentFocus=null
+  mCurrentFocus=Window{cd3ec89 u0 Application Not Responding: com.android.systemui}
+screenshot=/c/dev/tower-two-wt/W1-H/build/shots/mode_swiftshader_indirect.png bytes=44943
+--- emulator gpu lines
+INFO         | emuglConfig_init: vulkan_mode_selected:swiftshader gles_mode_selected:swiftshader
+INFO         | Selecting Vulkan device: SwiftShader Device (LLVM 10.0.0), Version: 1.2.0
+INFO         |     useVulkanComposition: false
+INFO         |     useVulkanNativeSwapchain: false
+INFO         |     guestVulkanOnly: false
+INFO         |     guestVulkanMaxApiVersion: 1.3.0
+INFO         | Graphics Adapter Vendor Google (Google Inc.)
+INFO         | Graphics Adapter Android Emulator OpenGL ES Translator (Google SwiftShader)
+INFO         | Graphics API Version OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+RESULT=FAIL present_error=yes
+=== end 08:39:23

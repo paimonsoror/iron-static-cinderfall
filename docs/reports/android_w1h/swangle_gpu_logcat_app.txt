@@ -1,0 +1,71 @@
+--------- beginning of main
+11-11 08:07:15.595  4022  4022 I .cinderfall.dev: Late-enabling -Xcheck:jni
+11-11 08:07:15.926  4022  4022 I .cinderfall.dev: Using CollectorTypeCMC GC.
+11-11 08:07:15.929  4022  4022 W .cinderfall.dev: Unexpected CPU variant for x86: x86_64.
+11-11 08:07:15.929  4022  4022 W .cinderfall.dev: Known variants: atom, sandybridge, silvermont, goldmont, goldmont-plus, goldmont-without-sha-xsaves, tremont, kabylake, default
+11-11 08:07:16.209  4022  4022 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+11-11 08:07:16.886  4022  4022 W ziparchive: Unable to open '/data/app/~~0EqUsyeeXm3tFKcCcll9Aw==/com.normalexception.games.cinderfall.dev-ly1K9B2tgIRm0tPAIdqVJg==/base.dm': No such file or directory
+11-11 08:07:16.887  4022  4022 W ziparchive: Unable to open '/data/app/~~0EqUsyeeXm3tFKcCcll9Aw==/com.normalexception.games.cinderfall.dev-ly1K9B2tgIRm0tPAIdqVJg==/base.dm': No such file or directory
+11-11 08:07:17.503  4022  4022 D nativeloader: Configuring clns-7 for other apk /data/app/~~0EqUsyeeXm3tFKcCcll9Aw==/com.normalexception.games.cinderfall.dev-ly1K9B2tgIRm0tPAIdqVJg==/base.apk. target_sdk_version=36, uses_libraries=, library_path=/data/app/~~0EqUsyeeXm3tFKcCcll9Aw==/com.normalexception.games.cinderfall.dev-ly1K9B2tgIRm0tPAIdqVJg==/lib/x86_64:/data/app/~~0EqUsyeeXm3tFKcCcll9Aw==/com.normalexception.games.cinderfall.dev-ly1K9B2tgIRm0tPAIdqVJg==/base.apk!/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/com.normalexception.games.cinderfall.dev
+11-11 08:07:17.571  4022  4022 V GraphicsEnvironment: Currently set values for:
+11-11 08:07:17.571  4022  4022 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+11-11 08:07:17.572  4022  4022 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+11-11 08:07:17.572  4022  4022 V GraphicsEnvironment: Global.Settings values are invalid: number of packages: 0, number of values: 0
+11-11 08:07:17.572  4022  4022 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+11-11 08:07:18.363  4022  4022 D GodotActivity: Project command line parameters: [--xr_mode_regular, --xr-mode, off, --fullscreen, --background_color, #000000]
+11-11 08:07:18.410  4022  4022 D GodotActivity: Launch intent Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10200000 cmp=com.normalexception.games.cinderfall.dev/com.godot.game.GodotAppLauncher } with parameters []
+11-11 08:07:18.954  4022  4022 V GodotActivity: Creating new Godot fragment instance.
+11-11 08:07:19.251  4022  4022 V Godot   : Initializing Godot plugin registry
+11-11 08:07:19.605  4022  4022 I GodotPluginRegistry: Registering runtime plugin AndroidRuntime
+11-11 08:07:19.606  4022  4022 V Godot   : InitEngine with params: [--xr_mode_regular, --xr-mode, off, --fullscreen, --background_color, #000000]
+11-11 08:07:20.268  4022  4022 D nativeloader: Load /data/app/~~0EqUsyeeXm3tFKcCcll9Aw==/com.normalexception.games.cinderfall.dev-ly1K9B2tgIRm0tPAIdqVJg==/lib/x86_64/libgodot_android.so using ns clns-7 from class loader (caller=/data/app/~~0EqUsyeeXm3tFKcCcll9Aw==/com.normalexception.games.cinderfall.dev-ly1K9B2tgIRm0tPAIdqVJg==/base.apk!classes7.dex): ok
+11-11 08:07:20.287  4022  4022 V Godot   : Godot native layer initialization completed: true
+11-11 08:07:20.287  4022  4022 V Godot   : Setting up native layer with params: [--xr-mode, off, --fullscreen]
+11-11 08:07:20.912  4022  4022 V Godot   : Godot native layer setup completed
+11-11 08:07:20.913  4022  4022 V Godot   : OnInitRenderView: GodotFragment{8849f22} (9986a9cf-732c-4439-b3a4-e8193be6b3c2 id=0x7f07002c)
+11-11 08:07:21.086  4022  4022 D Godot   : Render view should be transparent: false
+11-11 08:07:21.191  4022  4022 E platform: Failed to open rendernode: No such file or directory
+11-11 08:07:21.270  4022  4022 D vulkan  : searching for layers in '/data/app/~~0EqUsyeeXm3tFKcCcll9Aw==/com.normalexception.games.cinderfall.dev-ly1K9B2tgIRm0tPAIdqVJg==/lib/x86_64'
+11-11 08:07:21.271  4022  4022 D vulkan  : searching for layers in '/data/app/~~0EqUsyeeXm3tFKcCcll9Aw==/com.normalexception.games.cinderfall.dev-ly1K9B2tgIRm0tPAIdqVJg==/base.apk!/lib/x86_64'
+11-11 08:07:21.329  4022  4022 D Godot   : renderingDevice: vulkan (ProjectSettings)
+11-11 08:07:21.329  4022  4022 D Godot   : 			renderer: mobile (ProjectSettings)
+11-11 08:07:21.532  4022  4022 W WindowOnBackDispatcher: OnBackInvokedCallback is not enabled for the application.
+11-11 08:07:21.532  4022  4022 W WindowOnBackDispatcher: Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+11-11 08:07:21.673  4022  4022 V Godot   : OnStart: GodotFragment{8849f22} (9986a9cf-732c-4439-b3a4-e8193be6b3c2 id=0x7f07002c)
+11-11 08:07:21.698  4022  4022 V Godot   : OnResume: GodotFragment{8849f22} (9986a9cf-732c-4439-b3a4-e8193be6b3c2 id=0x7f07002c)
+11-11 08:07:21.705  4022  4065 V VkRenderer: Renderer resumed
+11-11 08:07:21.719  4022  4022 W HWUI    : Unknown dataspace 0
+11-11 08:07:22.004  4022  4044 I EGL_emulation: Opening libGLESv1_CM_emulation.so
+11-11 08:07:22.007  4022  4044 I EGL_emulation: Opening libGLESv2_emulation.so
+11-11 08:07:22.020  4022  4022 V VkSurfaceView: On surface created
+11-11 08:07:22.020  4022  4022 V VkSurfaceView: On surface changed [4]: 1080 x 2400
+11-11 08:07:22.028  4022  4065 V VkRenderer: Initializing renderer...
+11-11 08:07:22.029  4022  4065 I godot   : Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+11-11 08:07:22.053  4022  4044 W HWUI    : Failed to initialize 101010-2 format, error = EGL_SUCCESS
+11-11 08:07:22.229  4022  4044 I Gralloc4: mapper 4.x is not supported
+11-11 08:07:22.602  4022  4029 I .cinderfall.dev: Compiler allocated 4219KB to compile void android.widget.TextView.<init>(android.content.Context, android.util.AttributeSet, int, int)
+11-11 08:07:22.624  4022  4022 I Choreographer: Skipped 50 frames!  The application may be doing too much work on its main thread.
+11-11 08:07:22.718  4022  4042 I HWUI    : Davey! duration=886ms; Flags=1, FrameTimelineVsyncId=15904, IntendedVsync=435432285218, Vsync=435465618550, InputEventId=0, HandleInputStart=435474696100, AnimationStart=435474843700, PerformTraversalsStart=435475000900, DrawStart=435968845200, FrameDeadline=435448951884, FrameInterval=435474509700, FrameStartTime=16666666, SyncQueued=435977352300, SyncStart=435978119600, IssueDrawCommandsStart=435981407500, SwapBuffers=436025087000, FrameCompleted=436319777900, DequeueBufferDuration=2702600, QueueBufferDuration=1918700, GpuCompleted=436316761000, SwapBuffersCompleted=436319777900, DisplayPresentTime=0, CommandSubmissionCompleted=436025087000, 
+11-11 08:07:23.381  4022  4022 W InteractionJankMonitor: Initializing without READ_DEVICE_CONFIG permission. enabled=false, interval=1, missedFrameThreshold=3, frameTimeThreshold=64, package=com.normalexception.games.cinderfall.dev
+11-11 08:07:23.783  4022  4065 I godot   : Vulkan 1.2.0 - Forward Mobile - Using Device #0: Unknown - SwiftShader Device (LLVM 10.0.0)
+11-11 08:07:35.689  4022  4029 I .cinderfall.dev: Compiler allocated 5174KB to compile void android.view.ViewRootImpl.performTraversals()
+11-11 08:07:43.257  4022  4065 D .cinderfall.dev: PlayerBase::PlayerBase()
+11-11 08:07:43.258  4022  4065 D .cinderfall.dev: TrackPlayerBase::TrackPlayerBase()
+11-11 08:07:43.258  4022  4065 I libOpenSLES: Emulating old channel mask behavior (ignoring positional mask 0x3, using default mask 0x3 based on channel count of 2)
+11-11 08:07:43.476  4022  4065 I godot   : 
+11-11 08:07:44.952  4022  4065 I SwappyDisplayManager: Using internal com/google/androidgamesdk/SwappyDisplayManager class from dex bytes.
+11-11 08:07:45.000  4022  4097 I SwappyDisplayManager: Starting looper thread
+11-11 08:07:45.112  4022  4065 E godot   : ERROR: Couldn't present to Vulkan queue (VkResult error 5).
+11-11 08:07:45.112  4022  4065 E godot   :    at: command_queue_execute_and_present (drivers/vulkan/rendering_device_driver_vulkan.cpp:3359)
+11-11 08:07:46.673  4022  4030 I .cinderfall.dev: Background concurrent mark compact GC freed 5034KB AllocSpace bytes, 3(60KB) LOS objects, 49% free, 2683KB/5366KB, paused 3.907ms,5.331ms total 81.038ms
+11-11 08:07:47.023  4022  4030 I .cinderfall.dev: Background concurrent mark compact GC freed 2187KB AllocSpace bytes, 4(212KB) LOS objects, 49% free, 2746KB/5493KB, paused 3.780ms,5.365ms total 54.989ms
+11-11 08:07:47.210  4022  4065 V Godot   : OnGodotSetupCompleted
+11-11 08:07:47.230  4022  4065 I godot   : [Content] content ok enemies=4 waves=5 hash=09244f72d864
+11-11 08:07:47.231  4022  4065 I godot   : [Game] game boot version=0.1.0 renderer=mobile/vulkan
+11-11 08:07:47.231  4022  4065 I godot   : [Game] gpu adapter=SwiftShader Device (LLVM 10.0.0)
+11-11 08:07:47.696  4022  4065 I godot   : [Game] boot ok
+11-11 08:07:47.696  4022  4065 V Godot   : OnGodotMainLoopStarted
+11-11 08:07:50.302  4022  4065 E godot   : ERROR: Couldn't present to Vulkan queue (VkResult error 5).
+11-11 08:07:50.302  4022  4065 E godot   :    at: command_queue_execute_and_present (drivers/vulkan/rendering_device_driver_vulkan.cpp:3359)
+11-11 08:07:50.352  4022  4065 E godot   : ERROR: Couldn't present to Vulkan queue (VkResult error 5).
+11-11 08:07:50.352  4022  4065 E godot   :    at: command_queue_execute_and_present (drivers/vulkan/rendering_device_driver_vulkan.cpp:3359)
