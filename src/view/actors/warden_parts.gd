@@ -8,8 +8,10 @@ extends RefCounted
 
 ## Extra parts: name, ActorMeshes part id, pivot in torso space.
 const EXTRAS: Array = [
-	["ArmR", &"arm_r", LookDevWarden.SHOULDER_R],
-	["ArmL", &"arm_l", LookDevWarden.SHOULDER_L],
+	["ArmRU", &"arm_ru", LookDevWarden.SHOULDER_R],
+	["ArmRF", &"arm_rf", Vector3(0.43, 0.38, -0.12)],
+	["ArmLU", &"arm_lu", LookDevWarden.SHOULDER_L],
+	["ArmLF", &"arm_lf", Vector3(-0.43, 0.38, -0.12)],
 	["Pack", &"pack", LookDevWarden.PACK_PIVOT],
 	["Antenna", &"antenna", LookDevWarden.ANTENNA_PIVOT],
 	["Cable", &"cable", LookDevWarden.CABLE_PIVOT],
@@ -21,6 +23,14 @@ var weapons: Array[MeshInstance3D] = []  ## pistol, smg (their Muzzle markers ar
 var extras: Array[MeshInstance3D] = []  ## in EXTRAS order
 var look: int = LookDevStyle.Look.CURRENT
 var tier: int = VisualQuality.Tier.HIGH
+
+
+## Index in `extras` of a part by its ActorMeshes id (-1 when unknown).
+static func index_of(part: StringName) -> int:
+	for i: int in EXTRAS.size():
+		if EXTRAS[i][1] == part:
+			return i
+	return -1
 
 
 ## Creates the extra part nodes under `body` (hidden) and remembers the always-present ones.

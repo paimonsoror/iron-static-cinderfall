@@ -2,8 +2,8 @@ class_name WardenMotion
 extends RefCounted
 ## Procedural life of the hard-surface Warden (W3-C), Warden only, no allocation per frame: damped springs for the
 ## recoil, the pack, the antenna and the cable (a shot kicks them, turning drags them), idle breathing of the chest,
-## the support arm that follows the weapon, and a reload pose that reads: the weapon drops to the hip and rolls toward
-## the support hand, which comes to the magazine, a small tap seats the new one, the visor dims and flashes back.
+## both arms solved to the weapon, and a reload pose that reads: the weapon is pulled in toward the chest, tilted and rolled
+## toward the support hand, which comes to the magazine; a small tap seats the new one, the visor dims and flashes back.
 ## Pure math on the nodes it is given; the WardenView decides when to call it (never in the CURRENT look).
 
 const STEP_MAX_S: float = 1.0 / 30.0
@@ -18,7 +18,17 @@ const CHANNELS: int = 7
 ## Stiffness and damping per channel (stable for a step of 1/30 s).
 const STIFF: Array[float] = [170.0, 230.0, 80.0, 80.0, 55.0, 55.0, 380.0]
 const DAMP: Array[float] = [9.0, 11.0, 4.2, 4.2, 3.0, 3.0, 19.0]
-const HAND_R_REST: Vector3 = HeroMeshes.WARDEN_HAND
+const HAND_R_REST: Vector3 = HeroMeshes.WARDEN_HAND  ## the CURRENT look's mount (rest() restores it)
+## Indices in WardenParts.extras.
+const ARM_RU: int = 0
+const ARM_RF: int = 1
+const ARM_LU: int = 2
+const ARM_LF: int = 3
+const PACK: int = 4
+const ANTENNA: int = 5
+const CABLE: int = 6
+## How far the glove center is past the wrist.
+const HAND_BEYOND: float = 0.05
 
 var _x: PackedFloat32Array = PackedFloat32Array()
 var _v: PackedFloat32Array = PackedFloat32Array()
@@ -80,38 +90,55 @@ func step(delta: float, yaw: float) -> void:
 		_x[i] += _v[i] * dt
 
 
-## Writes the pose of this frame: `reload` 0..1 is the blend into the reload pose, `progress` 0..1 how far the reload is.
+## Writes the pose of this frame: `reload` 0..1 is the blend into the reload pose, `progress` 0..1 how far the reload is,
+## `weapon` 0 pistol or 1 SMG (it decides where the hands hold it). Both arms are solved by LookDevIk to wrist targets
+## that move with the weapon node, so the grips follow every recoil kick and the support hand reaches the magazine.
 func pose(
-	t: float, reload: float, progress: float, body: Node3D, hand: Node3D, parts: WardenParts
+	t: float, reload: float, progress: float, weapon: int, body: Node3D, hand: Node3D, parts: WardenParts
 ) -> void:
 	var breath: float = sin(t * 1.9)
 	var k: float = _x[KICK]
 	var tap: float = 0.0
 	if reload > 0.5:
 		tap = sin(clampf((progress - 0.5) / 0.18, 0.0, 1.0) * PI)
-	body.position = Vector3(0.0, breath * 0.005, 0.045 * k + 0.05 * reload)
-	body.rotation = Vector3(-0.1 * reload - 0.015 * k, 0.05 * reload, sin(t * 1.3) * 0.012)
-	hand.position = HAND_R_REST + Vector3(-0.1 * reload, -0.13 * reload - 0.025 * tap, 0.04 * k + 0.11 * reload)
-	hand.rotation = Vector3(0.13 * k - 0.85 * reload, 0.0, 0.5 * reload)
+	body.position = Vector3(0.0, breath * 0.005, 0.04 * k + 0.04 * reload)
+	body.rotation = Vector3(-0.08 * reload - 0.015 * k, 0.05 * reload, sin(t * 1.3) * 0.012)
+	hand.position = LookDevWarden.HAND_R + Vector3(-0.1 * reload, -0.02 * reload - 0.02 * tap, 0.035 * k + 0.1 * reload)
+	hand.rotation = Vector3(0.12 * k - 0.5 * reload, 0.0, 0.4 * reload)
 	var lift: float = 1.0 + 0.012 * breath
 	parts.torso.scale = Vector3(1.0 + 0.006 * breath, lift, 1.0 + 0.008 * breath)
 	parts.torso.rotation = Vector3(-0.02 * k, 0.0, 0.0)
-	var arm_r: MeshInstance3D = parts.extras[0]
-	var arm_l: MeshInstance3D = parts.extras[1]
-	var pack: MeshInstance3D = parts.extras[2]
-	var antenna: MeshInstance3D = parts.extras[3]
-	var cable: MeshInstance3D = parts.extras[4]
-	arm_r.position = LookDevWarden.SHOULDER_R * Vector3(1.0, lift, 1.0)
-	arm_l.position = LookDevWarden.SHOULDER_L * Vector3(1.0, lift, 1.0)
-	_point(arm_r, LookDevWarden.SHOULDER_R, HAND_R_REST, hand.position)
-	var rest_l: Vector3 = LookDevWarden.HAND_L_REST + Vector3(0.0, 0.0, 0.04 * k)
-	var mag: Vector3 = hand.position + Vector3(0.0, -0.05 + 0.03 * tap, 0.04)
-	_point(arm_l, LookDevWarden.SHOULDER_L, LookDevWarden.HAND_L_REST, rest_l.lerp(mag, reload))
+	var weapon_xf: Transform3D = Transform3D(Basis.from_euler(hand.rotation), hand.position)
+	var grip_r: Vector3 = weapon_xf * LookDevGear.grip_r(weapon)
+	var grip_l: Vector3 = weapon_xf * LookDevGear.grip_l(weapon).lerp(LookDevGear.mag_point(weapon), reload)
+	var shoulder_r: Vector3 = LookDevWarden.SHOULDER_R * Vector3(1.0, lift, 1.0)
+	var shoulder_l: Vector3 = LookDevWarden.SHOULDER_L * Vector3(1.0, lift, 1.0)
+	var upper_r: MeshInstance3D = parts.extras[ARM_RU]
+	var fore_r: MeshInstance3D = parts.extras[ARM_RF]
+	var upper_l: MeshInstance3D = parts.extras[ARM_LU]
+	var fore_l: MeshInstance3D = parts.extras[ARM_LF]
+	LookDevIk.pose_arm(
+		upper_r, fore_r, shoulder_r, wrist_target(shoulder_r, grip_r), LookDevWarden.ARM_UPPER, LookDevWarden.ARM_FORE,
+		LookDevWarden.POLE_R
+	)
+	LookDevIk.pose_arm(
+		upper_l, fore_l, shoulder_l, wrist_target(shoulder_l, grip_l), LookDevWarden.ARM_UPPER, LookDevWarden.ARM_FORE,
+		LookDevWarden.POLE_L
+	)
+	var pack: MeshInstance3D = parts.extras[PACK]
+	var antenna: MeshInstance3D = parts.extras[ANTENNA]
+	var cable: MeshInstance3D = parts.extras[CABLE]
 	pack.position = LookDevWarden.PACK_PIVOT + Vector3(0.0, breath * 0.004 + _x[PACK_LIFT], 0.0)
 	pack.rotation = Vector3(_x[PACK_PITCH], 0.0, 0.0)
 	antenna.position = LookDevWarden.ANTENNA_PIVOT * Vector3(1.0, lift, 1.0)
 	antenna.rotation = Vector3(_x[ANT_X], 0.0, _x[ANT_Z])
 	cable.rotation = Vector3(_x[CABLE_X], 0.0, _x[CABLE_Z])
+
+
+## The wrist target for a hand that holds `grip` (the hand center sits HAND_BEYOND past the wrist along the arm).
+static func wrist_target(shoulder: Vector3, grip: Vector3) -> Vector3:
+	var dir: Vector3 = (grip - shoulder).normalized()
+	return grip - dir * HAND_BEYOND
 
 
 ## Resets the parts to their rest transforms (switching back to a look without this motion).
@@ -128,10 +155,3 @@ static func rest(body: Node3D, hand: Node3D, parts: WardenParts) -> void:
 	body.rotation = Vector3.ZERO
 	hand.position = HAND_R_REST
 	hand.rotation = Vector3.ZERO
-
-
-## Rotates `arm` about its shoulder so that the hand that rests at `rest_hand` reaches `hand_now`.
-static func _point(arm: Node3D, shoulder: Vector3, rest_hand: Vector3, hand_now: Vector3) -> void:
-	var a: Vector3 = (rest_hand - shoulder).normalized()
-	var b: Vector3 = (hand_now - shoulder).normalized()
-	arm.basis = Basis(Quaternion(a, b))

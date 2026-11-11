@@ -35,7 +35,7 @@ func _surface_materials(mi: MeshInstance3D) -> Array[Material]:
 func test_each_body_part_is_exactly_one_mesh_instance_in_every_look() -> void:
 	var layer: ActorLayer = _bound()[1]
 	var warden: WardenView = layer.warden
-	var expected: Array[String] = ["Legs", "Torso", "Pistol", "Smg", "ArmR", "ArmL", "Pack", "Antenna", "Cable"]
+	var expected: Array[String] = ["Legs", "Torso", "Pistol", "Smg", "ArmRU", "ArmRF", "ArmLU", "ArmLF", "Pack", "Antenna", "Cable"]
 	for look: int in 3:
 		layer.set_look(look)
 		var seen: Dictionary[String, int] = {}
@@ -84,7 +84,9 @@ func test_low_tier_has_vertex_colours_only_no_shader_no_rim_no_light() -> void:
 	var torso: MeshInstance3D = layer.warden.parts().torso
 	var ceramic: StandardMaterial3D = _surface_materials(torso)[0] as StandardMaterial3D
 	assert_bool(ceramic.vertex_color_use_as_albedo or (_surface_materials(torso)[1] as StandardMaterial3D).vertex_color_use_as_albedo).is_true()
-	assert_float(layer.warden.parts().accent_material().emission_energy_multiplier).is_equal(1.0)
+	var low_accent: StandardMaterial3D = layer.warden.parts().accent_material()
+	assert_bool(low_accent.emission_enabled).is_false()
+	assert_float(low_accent.albedo_color.g).is_between(0.5, 1.0)
 	w.warden.aim_x = w.warden.x + 5.0
 	Events.shot_fired.emit(DamageSource.Id.WARDEN, 1)
 	layer.render(0.5, 0.016)
@@ -155,7 +157,7 @@ func test_look_can_be_set_before_the_view_exists_and_follows_the_process_wide_ch
 	LookDevStyle.set_current(LookDevStyle.Look.STYLISED)
 	var layer: ActorLayer = _bound()[1]
 	assert_int(layer.warden.look()).is_equal(LookDevStyle.Look.STYLISED)
-	assert_bool(layer.warden.parts().extras[2].visible).is_true()
+	assert_bool(layer.warden.parts().extras[WardenParts.index_of(&"pack")].visible).is_true()
 	layer.set_look(LookDevStyle.Look.CURRENT)
 	assert_int(LookDevStyle.current()).is_equal(LookDevStyle.Look.CURRENT)
 
@@ -167,8 +169,9 @@ func test_the_accent_material_is_the_palette_cyan_and_nothing_on_the_warden_is_r
 	for look: int in [LookDevStyle.Look.STYLISED, LookDevStyle.Look.STYLISED_PLUS]:
 		layer.set_look(look)
 		var accent: StandardMaterial3D = layer.warden.parts().accent_material()
-		assert_that(accent.albedo_color).is_equal(cyan)
-		assert_that(accent.emission).is_equal(cyan)
+		assert_bool(accent.emission_enabled).is_false()
+		assert_float(accent.albedo_color.g).is_greater(cyan.g * 0.9)  # the palette cyan, lifted toward white and scaled by the energy
+		assert_float(accent.albedo_color.g).is_greater(accent.albedo_color.r)
 		for mi: MeshInstance3D in layer.warden.parts().visible_parts():
 			for m: Material in _surface_materials(mi):
 				var std: StandardMaterial3D = m as StandardMaterial3D
@@ -185,8 +188,8 @@ func test_styled_recoil_kicks_the_springs_and_settles_while_current_keeps_the_ol
 	var layer: ActorLayer = pair[1]
 	layer.set_look(LookDevStyle.Look.STYLISED)
 	layer.render(0.5, 0.016)
-	var antenna: MeshInstance3D = layer.warden.parts().extras[3]
-	var pack: MeshInstance3D = layer.warden.parts().extras[2]
+	var antenna: MeshInstance3D = layer.warden.parts().extras[WardenParts.index_of(&"antenna")]
+	var pack: MeshInstance3D = layer.warden.parts().extras[WardenParts.index_of(&"pack")]
 	var rest_pack: float = pack.rotation.x
 	Events.shot_fired.emit(DamageSource.Id.WARDEN, 1)
 	var peak: float = 0.0
@@ -205,23 +208,23 @@ func test_styled_recoil_kicks_the_springs_and_settles_while_current_keeps_the_ol
 	assert_float(layer.warden.parts().torso.scale.y).is_equal(1.0)
 
 
-func test_styled_reload_pose_drops_the_weapon_and_brings_the_support_hand() -> void:
+func test_styled_reload_pose_pulls_the_weapon_in_and_brings_the_support_hand() -> void:
 	var layer: ActorLayer = _bound()[1]
 	layer.set_look(LookDevStyle.Look.STYLISED)
 	var hand: Node3D = layer.warden.get_node("Upper/Body/Hand") as Node3D
-	var arm_l: MeshInstance3D = layer.warden.parts().extras[1]
+	var arm_l: MeshInstance3D = layer.warden.parts().extras[WardenParts.index_of(&"arm_lf")]
 	layer.render(0.5, 0.016)
 	var rest_pos: Vector3 = hand.position
 	var rest_basis: Basis = arm_l.basis
 	Events.reload_started.emit(75)
 	layer.render(0.5, 0.5)
 	assert_float(layer.warden.reload_amount()).is_greater(0.9)
-	assert_float(hand.position.y).is_less(rest_pos.y - 0.08)
-	assert_float(hand.rotation.x).is_less(-0.5)
+	assert_float(hand.position.x).is_less(rest_pos.x - 0.05)  # pulled in toward the chest
+	assert_float(hand.rotation.x).is_less(-0.35)  # muzzle tilted down
 	assert_bool(arm_l.basis.is_equal_approx(rest_basis)).is_false()  # the support arm reaches for the magazine
 	Events.reload_finished.emit()
 	layer.render(0.5, 0.5)
-	assert_float(hand.position.y).is_equal_approx(rest_pos.y, 0.01)
+	assert_float(hand.position.x).is_equal_approx(rest_pos.x, 0.01)
 
 
 func test_styled_aiming_and_muzzle_still_follow_the_sim() -> void:

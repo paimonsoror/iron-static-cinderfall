@@ -22,6 +22,17 @@ const MUZZLE_LIGHT_TIER: int = VisualQuality.Tier.HIGH
 ## Look-dev measurement only (`--glow=0|1`): -1 = by look and tier, 0 = never, 1 = always (any look, any tier).
 static var glow_override: int = -1
 
+## MSAA samples per tier for the hard-surface looks (see docs/reports/lookdev/README.md, round 3: measured on an iGPU).
+const MSAA_LOW: int = 0
+const MSAA_MID: int = 2
+const MSAA_HIGH: int = 4
+const ACCENT_STYLISED: float = 0.97
+const ACCENT_PLUS: float = 1.5
+
+## Anti-aliasing investigation (sandbox `--msaa=0|2|4`, `--fxaa=0|1`): -1 = by look and tier.
+static var msaa_override: int = -1
+static var fxaa_override: int = -1
+
 static var _current: int = Look.CURRENT
 
 
@@ -81,18 +92,68 @@ static func secondary_motion_enabled(look: int, _tier: int) -> bool:
 	return look != Look.CURRENT
 
 
-## Brightness of the emissive accents (visor, belt, lights): above 1 only where bloom may pick it up.
+## Brightness of the emissive accents (visor, belt, lights, back panel; the albedo of an unshaded material is its colour):
+## above 1 only where bloom may pick it up. STYLISED stays just under the clip point (the cyan reads as light, not as a
+## white blob).
 static func accent_energy(look: int, tier: int) -> float:
-	if look == Look.CURRENT or tier < SHADED_MIN_TIER:
+	if look == Look.CURRENT:
 		return 1.0
-	if look == Look.STYLISED_PLUS:
-		return 2.2
-	return 1.5
+	if look == Look.STYLISED_PLUS and tier >= SHADED_MIN_TIER:
+		return ACCENT_PLUS
+	return ACCENT_STYLISED
+
+
+## Value gain of the plate and suit materials (round 3): vertex colours are 8 bit and cannot go above 1, so the steel is
+## lifted here and the vertex tints only say lighter or darker. `bone` is the ceramic (bone) plates.
+static func value_gain(look: int, bone: bool) -> float:
+	if look == Look.CURRENT:
+		return 1.0
+	return 1.0 if bone else 2.4
+
+
+## MSAA samples (0, 2 or 4) of the 3D viewport for a look at a tier. CURRENT keeps the project default (none): the hard-
+## surface looks are where the jagged silhouettes of rounded armour show. `project.godot` stays untouched.
+static func msaa_samples(look: int, tier: int) -> int:
+	if msaa_override >= 0:
+		return msaa_override
+	if look == Look.CURRENT:
+		return 0
+	if tier >= VisualQuality.Tier.HIGH:
+		return MSAA_HIGH
+	if tier >= VisualQuality.Tier.MID:
+		return MSAA_MID
+	return MSAA_LOW
+
+
+## FXAA (a post pass on the resolved image) for a look at a tier: only by the investigation flag so far.
+static func fxaa_enabled(_look: int, _tier: int) -> bool:
+	return fxaa_override == 1
+
+
+## Sets the anti-aliasing of `viewport` for a look and tier (ArenaView calls it when the tier or the look changes).
+static func apply_aa(viewport: Viewport, look: int, tier: int) -> void:
+	if viewport == null:
+		return
+	match msaa_samples(look, tier):
+		4:
+			viewport.msaa_3d = Viewport.MSAA_4X
+		2:
+			viewport.msaa_3d = Viewport.MSAA_2X
+		_:
+			viewport.msaa_3d = Viewport.MSAA_DISABLED
+	viewport.screen_space_aa = (
+		Viewport.SCREEN_SPACE_AA_FXAA if fxaa_enabled(look, tier) else Viewport.SCREEN_SPACE_AA_DISABLED
+	)
+
+
+## Strength of the camera-side fill of the plate shader (round 3, MID and HIGH).
+static func fill_strength(look: int) -> float:
+	return 0.0 if look == Look.CURRENT else 0.6
 
 
 static func rim_strength(look: int) -> float:
 	if look == Look.STYLISED_PLUS:
-		return 0.8
+		return 1.15
 	if look == Look.STYLISED:
-		return 0.4
+		return 0.95
 	return 0.0

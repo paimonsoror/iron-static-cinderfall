@@ -5,12 +5,15 @@ extends RefCounted
 ##  ceramic / gunmetal / dark_frame  on MID and HIGH a ShaderMaterial (look_dev_actor.gdshader: soft ramp, cyan fresnel rim,
 ##                                   edge wear, optional detail texture); on LOW a StandardMaterial3D that only shows
 ##                                   the baked vertex colours (no rim, no ramp, no detail)
-##  emit_cyan                        a StandardMaterial3D, unshaded, HDR above 1 where bloom may pick it up
+##  emit_cyan                        a StandardMaterial3D, unshaded (an unshaded material outputs its albedo only: the emission
+##                                   is ignored), so the glow is the albedo times `LookDevStyle.accent_energy`, above 1 (HDR)
+##                                   only in STYLISED_PLUS where bloom may pick it up
 ## Anything else is returned as the plain MatLib material. Palette colors come from MatLib (so the tokens stay the
 ## single source); `refresh` repaints after `MatLib.configure`.
 
 const SHADER_PATH: String = "res://src/view/kit/look_dev_actor.gdshader"
 const FRAME_ROLES: Array[StringName] = [&"ceramic", &"gunmetal", &"dark_frame"]
+const ACCENT_LIFT: float = 0.3
 
 ## Look-dev tuning: shader parameter overrides applied after the defaults (sandbox flag `--tune=name:value,...`).
 static var overrides: Dictionary[StringName, float] = {}
@@ -45,6 +48,13 @@ static func refresh() -> void:
 		_paint(m, StringName(parts[0]), parts[1].to_int(), VisualQuality.Tier.MID if parts[2] == "1" else VisualQuality.Tier.LOW)
 
 
+## The colour of the cyan accents at brightness `energy` (the WardenView dims and flashes it): the palette cyan lifted toward
+## white by `ACCENT_LIFT`, so a lit panel reads brighter than the floor rings without a channel reaching 255.
+static func accent_color(energy: float) -> Color:
+	var c: Color = MatLib.mat(&"emit_cyan").albedo_color.lerp(Color.WHITE, ACCENT_LIFT)
+	return Color(c.r * energy, c.g * energy, c.b * energy, 1.0)
+
+
 static func cached_count() -> int:
 	return _cache.size()
 
@@ -61,7 +71,6 @@ static func _build(base_id: StringName, look: int, shaded: bool, is_accent: bool
 		var e: StandardMaterial3D = StandardMaterial3D.new()
 		e.resource_name = name_text
 		e.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		e.emission_enabled = true
 		return e
 	if shaded:
 		var sm: ShaderMaterial = ShaderMaterial.new()
@@ -84,13 +93,12 @@ static func _paint(m: Material, base_id: StringName, look: int, tier: int) -> vo
 		return
 	var std: StandardMaterial3D = m as StandardMaterial3D
 	if base_id == &"emit_cyan":
-		std.albedo_color = color
-		std.emission = color
-		std.emission_energy_multiplier = LookDevStyle.accent_energy(look, tier)
+		std.albedo_color = accent_color(LookDevStyle.accent_energy(look, tier))
 		return
-	std.albedo_color = color
+	var gain: float = LookDevStyle.value_gain(look, base_id == &"ceramic")
+	std.albedo_color = Color(color.r * gain, color.g * gain, color.b * gain, 1.0)
 	std.roughness = plain.roughness
-	std.metallic = plain.metallic
+	std.metallic = 0.0  # no reflections on LOW: a metallic term would only darken the baked colors
 
 
 static func _paint_shader(sm: ShaderMaterial, base_id: StringName, look: int, tier: int, color: Color) -> void:
@@ -98,11 +106,13 @@ static func _paint_shader(sm: ShaderMaterial, base_id: StringName, look: int, ti
 	var metal: bool = base_id != &"ceramic"
 	var cyan: Color = MatLib.mat(&"emit_cyan").albedo_color
 	sm.set_shader_parameter(&"albedo_tint", color)
-	sm.set_shader_parameter(&"roughness", 0.4 if metal else 0.62)
-	sm.set_shader_parameter(&"spec_strength", (0.8 if metal else 0.22) * (1.4 if plus else 1.0))
+	sm.set_shader_parameter(&"value_gain", LookDevStyle.value_gain(look, not metal))
+	sm.set_shader_parameter(&"fill_strength", LookDevStyle.fill_strength(look) * (1.0 if metal else 0.4))
+	sm.set_shader_parameter(&"roughness", 0.55 if metal else 0.72)
+	sm.set_shader_parameter(&"spec_strength", (0.26 if metal else 0.1) * (1.4 if plus else 1.0))
 	sm.set_shader_parameter(&"rim_color", cyan)
 	var rim: float = LookDevStyle.rim_strength(look) if LookDevStyle.rim_enabled(look, tier) else 0.0
-	sm.set_shader_parameter(&"rim_strength", rim * (0.75 if metal else 1.0))
+	sm.set_shader_parameter(&"rim_strength", rim * (0.9 if metal else 0.4))
 	sm.set_shader_parameter(&"wear_color", Color(0.74, 0.77, 0.8) if metal else Color(0.93, 0.92, 0.88))
 	sm.set_shader_parameter(&"wear_strength", (0.75 if metal else 0.55) if LookDevStyle.wear_enabled(look, tier) else 0.0)
 	var detail: bool = LookDevStyle.detail_enabled(look, tier)

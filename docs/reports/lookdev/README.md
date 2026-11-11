@@ -127,7 +127,7 @@ What the images show:
 - **Front, side and three-quarter (compare_3).** This is where the gain is large. CURRENT is brown and black cubes with a flat cyan belt.
   STYLISED is a bone-armoured soldier with a cyan visor slit, layered pauldrons, a power pack with exhausts and an antenna, knee and shin
   guards, a detailed SMG, and soft baked darkening in the creases. PLUS adds visible panel seams and rivets (detail texture), a warm
-  muzzle light on the chest and arm, and a bloom halo on the helmet highlight and the muzzle.
+  muzzle light on the chest and arm, and a bloom glow on the helmet highlight and the muzzle.
 - **Reload pose (compare_4).** The weapon drops to the hip, pitches down and rolls, the support arm reaches for the magazine; CURRENT only
   tilts the same boxes.
 - **Tiers (compare_5).** LOW keeps the new geometry and the baked vertex colours only: a warm bone and dark figure with cyan accents, no
@@ -173,3 +173,263 @@ What the images show:
   (high contrast needs variants of the new materials), and the environment later (the same kit bakes vertex AO into props). Hit flash
   (`material_override`) already works over the shader materials.
 - Phone measurement of bloom and of the custom shader (Adreno, Mali, PowerVR), thermals, and a 50-enemy run with the Warden in the new look.
+
+## Round 2: the v2 Warden (the STYLISED and STYLISED_PLUS geometry is replaced)
+
+The owner chose "iterate on the Warden first" and "keep current scale". Camera, sim and scale are untouched; `CURRENT` is still
+byte-identical (hash test green). The v1 files above are kept for comparison; the v2 images were pruned from the repository to keep it small (the v3 sheets carry a v2 column).
+
+What changed against the coordinator's critique:
+
+1. **Toy robot read.** The base is a dark charcoal suit (vertex value 0.46) with mid steel plates, and bone on only a few plates: the
+   chest plate, the two pauldron lames (the right one brighter), the shin guards, the helmet crest and the pack top plate. The plates and
+   the suit are tinted a little warm so the arena's cyan light lands on neutral grey, the shader desaturates the incoming light
+   (`light_sat` 0.15), the shaded side is deep blue-black (`shade_floor` 0.12, cool `shade_tint`) with a warm bounce from the amber pad on
+   the lower and sideways faces (`bounce_*`), and specular and rim on the bone are toned down. Nothing is near white any more.
+2. **Faceting.** Round parts (helmet, shoulder caps, cheek pods, knee caps, limbs, elbow caps) have smooth normals; only plates are
+   chamfered. The helmet shell is 12 sides x 6 bands. The notches and spikes of v1 were the open corners of `closed=false` bevel boxes;
+   plates now use a new 30 triangle `plate` shell (no bottom face, side faces run to the bottom edge) and every box has closed corners.
+3. **Helmet.** Shell, curved cyan visor under a brow plate, smooth cheek pods, a bone dorsal crest, a comm unit and the antenna.
+4. **Proportions.** Chest with a V taper (top 1.5 x the bottom width), pauldron caps out to about 0.62 m, thighs 0.15 m radius, shins
+   0.113 to 0.082 m and shorter, chunky 0.21 x 0.4 m boots, a belt with a pouch.
+5. **Arms.** Two parts each (upper arm with an elbow cap, forearm with a glove; the weapon arm wears a gauntlet). `LookDevIk` solves both
+   arms analytically (shoulder, wrist target, pole) every frame; the targets are points of the weapon node, so the grips follow every
+   recoil kick, and in the reload pose the support wrist reaches the magazine. `look_dev_arms_test.gd` asserts that the wrists sit within
+   5 mm of their targets while firing (both weapons, with recoil kicks) and within 3 cm of the magazine in the reload pose (v1 missed by
+   several cm). The styled weapon hand mount moved closer to the chest (`LookDevWarden.HAND_R`) so the support arm can reach.
+6. **Top-down read.** The budget went to the helmet top (crest, comm unit, antenna), the pauldrons with long cyan bars, and the pack with
+   two stacks, glowing rings, a glowing vent strip and two wide cyan back bars.
+7. **Shading** as in point 1; baked AO and edge wear kept.
+8. **STYLISED_PLUS** still works (gates and tests green); no PLUS-only work. Accent energy of STYLISED is now 1.8, its rim 0.55, and the
+   LOW-tier vertex-colour material no longer has a metallic term (it only darkened the baked colours).
+
+Part count: the Warden is now 11 mesh instances (legs, torso, four arm segments, pack, antenna, cable, pistol, SMG); the part-count test in
+`look_dev_view_test.gd` was updated deliberately (`ArmR`/`ArmL` became `ArmRU`, `ArmRF`, `ArmLU`, `ArmLF`). Triangles: 1,835 with the pistol
+and 1,889 with the SMG (v1: 1,867 and 1,927; budget 2,000). New tests: `look_dev_arms_test.gd` (8 tests: solver lengths, clamping, pole, node
+posing, firing and reload reach, elbow bend, gauntlet) and plate, smooth-normal and colour-plan tests in `look_dev_meshes_test.gd` (bone at
+most 15 percent of the triangles; the metal averages below 0.8).
+
+### v2 measurements
+
+Same setup as above: 50 enemies, 1080x1920 SubViewport, vsync off, `Engine.max_fps = 0`; desktop Intel Iris Plus iGPU, not a phone.
+
+| Tier | CURRENT frame_ms | v2 STYLISED frame_ms | delta | draws | primitives |
+|---|---|---|---|---|---|
+| LOW (one run) | 4.81 | 4.80 | -0.01 | 92 -> 99 | 26.6k -> 28.1k |
+| MID (3 runs) | 9.69 (9.69, 9.67, 9.72) | 9.64 (9.57, 9.68, 9.68) | -0.05 | 92 -> 99 | 26.7k -> 28.2k |
+| HIGH (3 runs) | 12.38 (12.84, 12.09, 12.21) | 12.29 (12.51, 12.18, 12.17) | -0.09 | 98 -> 105 | 38.6k -> 40.1k |
+
+All rows are within noise (the three HIGH runs of the same configuration spread by 0.75 ms on this machine today): the cost of v2 is not
+measurable on this GPU. It adds 7 draw calls (4 -> 11 mesh instances) and 1.5k primitives on every tier. Rows are in `measurements.csv`
+(run `v2`). These runs were taken before the last colour-only tuning (the bone lames, crest and pack plate, steel value 1.15 -> 1.3, warm
+bone); geometry, draws and triangles did not change.
+
+### v2 images
+
+The round-2 images were pruned from the repository; every one was opened and looked at when it was made; the captures went through `tools/capture.ps1` (`CAPTURE OK`, `renderer=mobile/vulkan`).
+`v2_1_game_camera_1x.jpg` (real camera, 700x900 crop), `v2_2_warden_x3.jpg` (the Warden region enlarged 3x), `v2_3_closeup_3x.jpg` (3x zoom,
+firing), `v2_4_three_quarter.jpg`, `v2_5_front.jpg`, `v2_6_side.jpg`, `v2_7_back.jpg` (solo views), `v2_8_reload.jpg`, `v2_9_four_angles.jpg`
+(v2 alone), `game_v2.jpg` and `close3x_v2.jpg` (full 1080x2400 captures).
+
+### v2 vs v1 vs CURRENT (honest)
+
+- **Improved.** v2 reads as a person in a suit, not a toy: a dark suit with armour plates over it, a rounded helmet with a visor, brow,
+  cheek pods and crest, broad V-shaped shoulders with pauldron lames, a real elbow, a belt with a pouch, chunky boots and a power pack
+  with glowing bars. Round things are round (no spikes, no notches). The arms hold the weapon with both hands and follow it. Nothing
+  clips to white. In the solo views (v2_4 to v2_9) it is clearly the best of the three.
+- **Did not improve, or got worse.** At the real camera (v2_1, v2_2) the Warden is a dark grey-blue figure about 55 px wide. It reads as an
+  armoured figure with cyan lights, more soldier than v1, but it is less bright and less legible than v1 and it is no longer the brightest
+  thing on the field: the bone plates are small and read cream, and the pad glow, the cyan ring and the enemies' pale plates outshine it.
+  At 3x (v2_3) the helmet crest, the two pauldrons with cyan bars and the pack are readable. Honest verdict: it reads as a soldier at 3x
+  and only just at 1x; it does not yet stand out at 1x the way the owner asked.
+- **Still weak.** The legs are still straight columns (no calf or thigh shaping; the stilt look is reduced, not gone); the knee caps are
+  blobby; the helmet front reads like a round mask with a visor band (an astronaut more than a combat helmet); the shin plates read copper
+  next to the pad (bone plus warm bounce); the chest plate looks grey from the front; the arms are tubes with caps; the reload pose reads as
+  "weapon tilted, hand underneath" more than as a reload (no magazine moves).
+- **Best ideas, cheapest first.** (1) At 1x only silhouette, value and the few bright accents survive; the figure has about 1,850 triangles,
+  most of them below pixel size, so an 800 triangle version would look the same at the real camera. Spend the effort on value: raise the
+  steel and the chest and back plates until the Warden is the brightest mass, and give the pack a large cyan back panel (the biggest lit
+  shape the camera sees). (2) A thin always-on cyan fresnel seen from above (a rim that survives the pad glow), or a small warm key light on
+  the Warden only, is cheaper than geometry. (3) Reshape the legs (calf bulge, tapered ankle, a visible knee hinge) and the helmet (a jaw
+  guard and a flatter front). (4) A larger on-screen Warden (camera or scale) is the one lever that would make the triangles matter; the
+  owner said no to that for now. (5) Authored models remain the way to concept-art detail.
+
+## Round 3: Warden v3 (a heavy-armour trooper archetype; legibility at the real camera first)
+
+The owner reviewed v2 and wanted two things: legibility at the real camera as the acceptance criterion, and a heavier "heavy-armour
+trooper" read with softer edges. v3 replaces the STYLISED and STYLISED_PLUS geometry again (CURRENT is untouched and still byte-identical:
+the hash test is green). Scale, camera and sim are unchanged. The design is original and procedural: no reference images, nothing from any
+franchise. Images are in `v3/` (sheets are CURRENT | v2 | v3).
+
+### 1. Legibility at the real camera (measured)
+
+`--hide-warden` (sandbox flag) draws the same deterministic frame without the Warden. `src/debug/look_dev_legibility.gd` (headless, Image
+API) takes the capture with and without it: the Warden pixels are the pixels that differ (biggest blob after a 1 px opening, which drops the
+rain, the muzzle-flash spikes and the tracer); the ring is the background 3 to 9 px outside the silhouette, taken from the capture without the
+Warden. Luma is Rec. 709 on the sRGB values. `contrast` = |mean luma of the Warden - mean luma of the ring|; `pixel contrast` = the mean over
+the Warden pixels of |luma - ring luma| (robust when a figure is half dark and half bright); `clipped` = share of Warden pixels with any
+channel at 250/255 or more (this includes saturated cyan); `white` = share with all channels at 240/255 or more. 1080x2400, scenario hold28,
+frame 240, `--msaa=0` on both halves of every pair (anti-aliasing would put edge pixels on the pad rings into the mask). Command:
+`Godot --headless --script res://src/debug/look_dev_legibility.gd -- --without=<png> --with=LABEL|<png> ...`.
+
+| Tier | Look | Warden px | mean luma | ring luma | contrast | pixel contrast | p10 / p90 | clipped | white |
+|---|---|---|---|---|---|---|---|---|---|
+| HIGH | CURRENT | 2816 | 0.594 | 0.519 | 0.075 | 0.203 | 0.32 / 0.92 | 8.9% | 0.0% |
+| HIGH | v1 | 2236 | 0.688 | 0.507 | 0.180 | 0.275 | 0.30 / 0.95 | 10.0% | 2.0% |
+| HIGH | v2 | 2084 | 0.552 | 0.514 | 0.038 | 0.158 | 0.30 / 0.79 | 1.4% | 0.5% |
+| HIGH | **v3** | 2317 | 0.628 | 0.514 | **0.114** | **0.205** | 0.30 / 0.84 | **3.3%** | 1.1% |
+| MID | CURRENT | 2681 | 0.600 | 0.514 | 0.085 | 0.202 | 0.32 / 0.92 | 9.4% | 0.0% |
+| MID | **v3** | 2317 | 0.627 | 0.496 | **0.131** | **0.213** | 0.30 / 0.84 | **3.3%** | 1.1% |
+| LOW | CURRENT | 2926 | 0.543 | 0.516 | 0.027 | 0.156 | 0.33 / 0.74 | 0.0% | 0.0% |
+| LOW | **v3** | 2483 | 0.562 | 0.512 | **0.049** | **0.184** | 0.28 / 0.81 | **1.6%** | 0.0% |
+
+(v1 and v2 are the round 1 and 2 captures re-scored against the new background: the pair differs by 0.5 percent of the pixels outside the
+box, which is rain. The v1 and v2 rows are HIGH only. The CURRENT and v3 rows are re-captured with the final code.)
+
+**Target: v3 contrast at least CURRENT, at most 5 percent clipped Warden pixels. Met on all three tiers** (mean-luma contrast 0.114 vs 0.075,
+0.131 vs 0.085 and 0.049 vs 0.027; clipped 3.3, 3.3 and 1.6 percent against CURRENT's 8.9, 9.4 and 0.0). Honest reading: the pixel contrast,
+the measure that does not cancel when a figure is half dark and half bright, is **at parity with CURRENT on HIGH (0.205 vs 0.203) and
+slightly above on MID and LOW**. v2 was far worse (0.158) and v1, the whitest, was better than everything (0.275, at 2 percent blown
+white). So v3 is no longer a dim figure sinking into the floor, and it is not clipped like CURRENT's cyan blocks, but at 1x it is **not
+clearly more legible than CURRENT and not the brightest mass on the field**: the enemies' pale plates and the pad's cyan ring are as bright.
+How v3 got here, in order of effect: the plate material gain 2.4 (vertex colours cannot exceed 1), a camera-side fill in the shader, the dark
+lower body (thighs, boots, suit) against the light upper body (helmet, pauldrons, pack top) so the figure is bimodal instead of mid grey (mid
+grey was v2's problem: its mean luma 0.55 equals the pad's 0.51), the large cyan back panel and top strip, cyan shoulder inlays and a cyan helmet
+fin, the desaturated specular, and cyan at 0.97 energy so no channel reaches 250. The dump `--dump=<dir>` of the scorer writes the mask and the
+clipped pixels (the helmet top was the first clipping source; it was darkened).
+
+
+
+### 2. The v3 design
+
+A heavy-armour trooper archetype drawn from scratch, procedurally (no reference images, nothing from any franchise): charcoal and
+gunmetal armour, a few bone plates, cyan lights. Scale, camera and sim are unchanged; the figure is the same 1.93 m tall and its footprint
+is inside the old one (torso mesh 1.24 m wide, legs 0.92 m wide, boots at the same depth); the mass went into the helmet, the shoulders
+and the chest.
+
+- **Helmet** (about a fifth of the height: 0.36 of 1.93 m): a big rounded block with a flat front and a top that leans back (no
+  forehead dome), a horizontal visor slot with angled corners (a flat hexagon in cyan over a dark bezel), a vent jaw guard with two
+  slots, cheek plates, a sensor pod on the right side only, a dorsal fin with a cyan stripe that the top-down camera sees, and the
+  antenna on the rear right.
+- **Shoulders**: two stacked smooth domes per side, the right one bigger than the left (0.20 vs 0.18 m radius), bone on the right
+  upper layer, steel on the left, a cyan inlay on each top layer. The torso mesh is 1.24 m wide against a 0.53 m belt.
+- **Chest**: a rounded V block (top 1.6 x the bottom width) with a rounded bone plate and a cyan hexagon power core, a steel yoke.
+- **Pack**: a big rounded body, two stacks with cyan caps, a cyan strip across the top and the large back panel (two tall cyan cells, a
+  spine and two dark slats): 0.14 m2 of lit surface facing the camera.
+- **Legs**: a wide planted stance, thighs as steel cylinders with rounded ends over the suit, small bevelled knee guards with a visible
+  hinge cap on the outer side (no balls), a calf that bulges and tapers to a narrow ankle, neutral steel greaves with a cyan trim, chunky
+  rounded boots.
+- **Arms**: cylindrical steel vambraces with rounded ends over the suit, chunky gloves, the weapon arm with a cyan stripe. Same solver.
+- **Colours**: dark suit (vertex value 0.12), steel (0.2 to 1.0, lifted by a material gain of 2.4 because vertex colours are 8 bit and
+  clamp at 1), bone (gain 1.0), cyan lifted 30 percent toward white at energy 0.97 so that no channel reaches 250. The steel is neutral
+  (no warm cast); the specular uses the same desaturated light as the diffuse, which removed the copper highlights of v2; the warm
+  bounce is 0.12 instead of 0.3.
+- **Legibility levers** in the shader (MID and HIGH): `value_gain`, a camera-side fill (`fill_strength` 0.6: a headlight toward the
+  game camera, proportional to the albedo, so what the camera sees is lifted and the dark parts stay dark), a thin cyan rim (strength
+  0.95, power 3). LOW has the gain on the material albedo and the cyan lights in the mesh (unshaded surface), but no fill and no rim.
+
+### 3. Edges: geometry and aliasing
+
+The owner still saw hard edges. There were two causes.
+
+**Geometry.** v2 used one 45 degree chamfer strip per edge with normals leaned toward the neighbour face (a visible shading crease at the
+strip border) and flat corners. v3: a new kit shape `LookDevRound.rounded_box` (`src/view/kit/look_dev_round.gd`: every edge a quarter
+cylinder in two 45 degree facets, every corner an eighth of a sphere, analytic normals, so light rolls over the edge; 108 triangles; used
+for the chest, the pack, the helmet block, the chest plate and the boots), `bevel_box` now defaults to `soft` 0 (the strip carries the
+normals of the two faces at its borders: zero crease), plates are wider-bevelled, limbs have 10 sides and rounded ends where they end in
+the open (thighs, vambraces), pauldrons are smooth domes. Numeric bounds are in `look_dev_edges_test.gd` (edge statistics by welding
+vertices: facet angle between neighbouring triangles and shading crease at the shared vertices): a rounded box has no vertex on a bare
+corner, shading crease below 1 degree and facet angles below 56 degrees untapered (the corner triangles; a taper adds its slope); the
+whole figure has facet angles below 65 degrees on smooth-shaded edges and 10 percent hard edges (the flat caps of tubes, the thin glowing
+panels and the weapon edges), bound 14 percent. The measured values are printed by the test (`EDGES` lines).
+
+**Aliasing.** `project.godot` has `anti_aliasing/quality/msaa_3d=0` and the captures forced `MSAA_DISABLED`, so every silhouette in every
+screenshot was jagged. New: `--msaa=0|2|4` and `--fxaa=0|1` sandbox flags (investigation) and a per-tier switch behind the look:
+`LookDevStyle.msaa_samples(look, tier)` / `apply_aa(viewport, look, tier)`, called by `ArenaView.set_quality` and `set_look` (two lines each).
+CURRENT always gets 0 (the project default); `project.godot` is untouched. Frame cost, vsync off, 50 enemies, 1080x1920 SubViewport, same
+setup as the other measurements (desktop Intel Iris Plus iGPU, 2 runs per cell; rows `aa_*` in `measurements.csv`):
+
+| Tier | off | MSAA 2x | MSAA 4x | FXAA |
+|---|---|---|---|---|
+| LOW (1 run) | 5.32 ms | 6.11 (+0.8) | not measured | not measured |
+| MID | 10.60 (10.53, 10.66) | 12.73 (+2.1) | 13.99 (+3.4) | 11.65 (+1.05) |
+| HIGH | 12.77 (12.22, 13.32) | 15.66 (+2.9) | 17.01 (+4.2) | 14.51 (+1.7) |
+
+What the images show (`v3/v3_11_msaa_high_1x.jpg`, `v3_12_msaa_high_3x.jpg`, `v3_13_msaa_mid_1x.jpg`): off is stair-stepped on every
+dome and on the ring decals; 2x removes most of it and leaves a little crawl on near-horizontal edges; 4x is clean; FXAA smooths the large
+silhouettes about like 2x but blurs slightly more than MSAA (it also softens the world text a little) and does nothing for
+sub-pixel features. **Recommendation** (implemented as constants `LookDevStyle.MSAA_LOW/MID/HIGH` = 0 / 2 / 4): LOW off, MID 2x, HIGH 4x.
+Caveat: on this desktop iGPU HIGH with 4x is 17.0 ms, over the 16.7 ms budget, and even 2x costs 2.9 ms; the iGPU resolves MSAA through
+shared memory. Tile-based phone GPUs (Adreno, Mali) resolve on-tile and are much cheaper, but that is a guess until it is measured on a
+phone: **this needs a phone check before it ships**. If a phone shows more than about 1 ms for 4x, change `MSAA_HIGH` to 2 (and `MSAA_MID` to
+0 or use FXAA there, +1.05 ms here). No `project.godot` change is needed or recommended (the setting is per look and per tier, so CURRENT
+cannot be affected).
+
+
+### 4. Cost
+
+Same setup as the other measurements (50 enemies, 1080x1920 SubViewport, vsync off, `Engine.max_fps = 0`, desktop Intel Iris Plus iGPU, not a
+phone), both looks with `--msaa=0`, two interleaved runs per cell (rows `v3_cur_*` and `v3_sty_*` in `measurements.csv`). The shader gained
+a gain, a fill (one dot product) and a cheaper specular; there is no new draw, light or pass beyond v2.
+
+| Tier | CURRENT frame_ms | v3 STYLISED frame_ms | delta | draws | primitives |
+|---|---|---|---|---|---|
+| LOW | 5.46 (5.43, 5.49) | 5.60 (5.41, 5.79) | +0.14 | 92 -> 99 | 26.6k -> 28.7k |
+| MID | 10.26 (10.41, 10.11) | 10.39 (10.47, 10.31) | +0.13 | 92 -> 99 | 26.7k -> 28.7k |
+| HIGH | 13.12 (13.37, 12.86) | 13.40 (13.57, 13.23) | +0.28 | 98 -> 105 | 38.6k -> 40.7k |
+
+All inside the run-to-run spread of this machine (the two runs of one cell differ by 0.2 to 0.5 ms). Triangles: 2,448 with the pistol and
+2,472 with the SMG (v2: 1,835 and 1,889; budget 2,500 now, `ActorMeshes.TRI_BUDGET`: **the "2,000" in ARCH 8 and WORK_PLAN 6 is stale, docs are
+not mine**), 11 mesh instances as in v2, at most 3 surfaces per mesh. The anti-aliasing costs above are on top of this.
+
+### 5. Images
+
+All in `v3/` (CURRENT | v2 | v3 unless noted), all captures through `tools/capture.ps1` (`CAPTURE OK`, `renderer=mobile/vulkan`), every one opened
+and looked at. The v3 images use the shipped per-tier anti-aliasing (HIGH: MSAA 4x); CURRENT and v2 have none, which is part of the difference you see.
+`v3_1_game_camera_1x.jpg` (the real camera, 700x900 crop), `v3_2_warden_x3.jpg` (the figure enlarged 3x), `v3_3_closeup_3x.jpg` (3x zoom, firing),
+`v3_4_three_quarter.jpg`, `v3_5_front.jpg`, `v3_6_side.jpg`, `v3_7_back.jpg` (solo views), `v3_8_reload.jpg`, `v3_9_four_angles.jpg` (v3 alone),
+`v3_10_legibility_1x.jpg` (CURRENT | v1 | v2 | v3, the figure at 5x, no anti-aliasing: what the score measures; v3 is a 4x-MSAA capture there),
+`v3_11_msaa_high_1x.jpg`, `v3_12_msaa_high_3x.jpg`, `v3_13_msaa_mid_1x.jpg` (off, 2x, 4x, FXAA), `v3_14_vs_turret.jpg` and `v3_15_vs_hulk.jpg` (CURRENT | v3
+next to the turret and the Hulk), `v3_16_plus_bloom.jpg` (STYLISED | STYLISED_PLUS at 3x), (the full-frame captures `game_v3.jpg` and `close3x_v3.jpg` were pruned from the repository; regenerate them with `tools/capture.ps1`). Total under 4 MB.
+
+What I saw: **v3_1 / v3_2 (1x)**: a silver-blue figure with two round pauldrons, a boxy helmet top with a cyan fin, a lit cyan pack panel and dark legs on
+the amber pad: clearly a heavy figure, clearly a different silhouette from CURRENT's cyan blocks, similar overall brightness to CURRENT, clearly brighter than
+v2, and the lit panel is the first thing the eye lands on. **v3_4 to v3_9**: a big squared helmet with a flat front and a hexagonal cyan visor slot, a vent jaw guard,
+side plates and a sensor pod on the right, wide stacked pauldrons (the right one bigger, bone-topped), a thick chest with a bone plate, a big rounded pack with the lit
+panel, thick black thighs, small knee guards with a hinge cap, neutral steel greaves with a cyan trim, chunky rounded boots. Silhouettes are smooth (rounded, MSAA 4x)
+where v2's were faceted and jagged. **v3_14 / v3_15**: next to the turret (a hexagon base with one barrel, dark) and the Hulk (three times the size, red markings) the
+Warden is clearly its own thing (round shoulders, a pack panel, the pad rings), but all three are pale silver-cyan; the Warden is distinguished by shape and the pad, not by
+colour.
+
+### 6. v3 vs v2 vs CURRENT (honest)
+
+- **Better.** Legibility is back to CURRENT's level and the clipping is gone (above); the figure reads as a heavy armoured soldier in every solo view, with
+  the helmet a fifth of the height, shoulders twice the waist, a wide stance, cylindrical thighs, a real knee guard with a visible hinge instead of a ball, a tapered calf
+  and ankle, neutral steel greaves (no copper), a flat-fronted helmet with a jaw guard, cheek plates and a dorsal fin instead of a bowl-hat crest. Round things are smooth
+  and the silhouette is anti-aliased on HIGH and MID.
+- **Not better, or worse.** At 1x the pixel contrast is only at parity with CURRENT, so the owner's acceptance point ("the Warden should stand out at the real camera") is
+  met in the numbers but not in the eye: it is as readable as CURRENT, not more. The lower body is black, so at 1x the legs are two dark posts and the figure reads
+  as head, shoulders and pack. LOW (no shader) reads a little darker and flatter than MID and HIGH.
+- **STYLISED_PLUS** works again and now really blooms: the cyan accents were never HDR before, because an unshaded material ignores its emission (v2 and v1 set
+  an emission energy that did nothing); the accent brightness is now the albedo, 1.5 times the cyan in PLUS (2.2 white-outs the pack panel), and the pack, shoulders and
+  visor glow with a soft bloom (`v3_16`). PLUS got no other work.
+- **Known defects.** (1) The thighs are black inflated capsules: heavy, but they read as padded trousers more than as armour; the owner may want steel with panel lines.
+  (2) The helmet is a rounded box with ear plates and a pod: it reads "trooper helmet" in profile and "robot head" from the front; a sloped brow and a narrower jaw would
+  help, at the price of a few hundred triangles of shaping. (3) The bone chest plate is a flat slab from the front. (4) The steel has white specular blobs on the pauldrons at 3x
+  (the specular strength is 0.26; a rougher metal would calm it). (5) The cyan back panel is flat unshaded colour, a lit billboard; the dark slats help only at 3x. (6) The right
+  pauldron's bone top reads tan next to the cool steel. (7) The reload pose is "weapon tilted, support hand on it", no magazine moves. (8) The muzzle flash overlaps the helmet in
+  the capture frame, so the mask includes a few flash pixels (the same for every look). (9) The turret and Hulk are still the old look: the Warden is smooth and the enemies are
+  boxy and unaliased (CURRENT never gets MSAA), which the owner will see as a style mismatch until the rollout.
+- **If the Warden still must stand out at 1x, the next lever and its cost.** (a) Make the steel brighter (value gain 3 and a whiter bone): the first sweep (gain 3.0 with fill 1.0)
+  reached pixel contrast 0.24 at no cost in draws, but 13 to 19 percent of the pixels clipped and the plates went white, which is v1's toy look. (b) A thin screen-space
+  outline or an inverted-hull outline (one extra draw per part, about 11 draws, or one post pass) separates the figure from any floor; this is the strongest legibility lever
+  that does not touch the palette, and it costs 11 draws on the Warden only. (c) A larger on-screen Warden (the owner said no). (d) A small additive cyan floor light under the
+  Warden (one draw) to lift the legs against the pad.
+
+### 7. Tests, commands
+
+`tools/test.ps1 -Path res://tests/unit/view`: 208 tests, 0 failures (new: `look_dev_edges_test.gd` with the numeric edge bounds, `look_dev_v3_test.gd` with the
+cyan panel and lights, the gains, the clip bound, the proportions, the footprint, the flags and the per-tier anti-aliasing; updated: budget 2,500, accent materials,
+style gates, and the emission tests, because an unshaded material ignores its emission: the v2 "emission energy" of the accents never did anything, the accent
+brightness is now the albedo). `CURRENT` meshes remain byte-identical (hash test). The legibility scorer is a tool (`src/debug/look_dev_legibility.gd`), not
+unit-tested; its pairs and the table above are reproducible with the commands in section 1.

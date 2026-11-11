@@ -58,6 +58,9 @@ func test_current_look_switches_nothing_on_at_any_tier() -> void:
 		assert_bool(LookDevStyle.muzzle_light_enabled(c, tier)).is_false()
 		assert_bool(LookDevStyle.secondary_motion_enabled(c, tier)).is_false()
 		assert_float(LookDevStyle.accent_energy(c, tier)).is_equal(1.0)
+		assert_float(LookDevStyle.value_gain(c, false)).is_equal(1.0)
+		assert_float(LookDevStyle.fill_strength(c)).is_equal(0.0)
+		assert_int(LookDevStyle.msaa_samples(c, tier)).is_equal(0)  # CURRENT keeps the project default
 
 
 func test_low_tier_keeps_only_the_baked_vertex_colours() -> void:
@@ -70,7 +73,8 @@ func test_low_tier_keeps_only_the_baked_vertex_colours() -> void:
 		assert_bool(LookDevStyle.detail_enabled(look, low)).is_false()
 		assert_bool(LookDevStyle.glow_enabled(look, low)).is_false()
 		assert_bool(LookDevStyle.muzzle_light_enabled(look, low)).is_false()
-		assert_float(LookDevStyle.accent_energy(look, low)).is_equal(1.0)
+		assert_float(LookDevStyle.accent_energy(look, low)).is_equal(LookDevStyle.ACCENT_STYLISED)  # no HDR without the shader tiers
+		assert_int(LookDevStyle.msaa_samples(look, low)).is_equal(0)
 
 
 func test_mid_and_high_gates_follow_the_look() -> void:
@@ -163,7 +167,9 @@ func test_low_tier_materials_are_standard_vertex_color_materials_without_shader(
 			assert_bool(std.vertex_color_use_as_albedo).is_true()
 			assert_bool(std.rim_enabled).is_false()
 		var accent: StandardMaterial3D = LookDevMat.surface(&"emit_cyan", look, VisualQuality.Tier.LOW) as StandardMaterial3D
-		assert_float(accent.emission_energy_multiplier).is_equal(1.0)
+		assert_int(accent.shading_mode).is_equal(BaseMaterial3D.SHADING_MODE_UNSHADED)
+		assert_bool(accent.emission_enabled).is_false()  # an unshaded material outputs its albedo only
+		assert_that(accent.albedo_color).is_equal(LookDevMat.accent_color(LookDevStyle.ACCENT_STYLISED))
 
 
 func test_mid_and_high_materials_use_the_shader_with_a_cyan_rim_and_the_palette() -> void:
@@ -181,8 +187,9 @@ func test_mid_and_high_materials_use_the_shader_with_a_cyan_rim_and_the_palette(
 	assert_float(plus.get_shader_parameter(&"detail_strength")).is_greater(0.0)
 	assert_object(plus.get_shader_parameter(&"detail_tex")).is_same(LookDevTex.texture())
 	var accent: StandardMaterial3D = LookDevMat.surface(&"emit_cyan", LookDevStyle.Look.STYLISED_PLUS, VisualQuality.Tier.HIGH) as StandardMaterial3D
-	assert_float(accent.emission_energy_multiplier).is_greater(1.0)
-	assert_that(accent.emission).is_equal(cyan)
+	assert_float(maxf(accent.albedo_color.g, accent.albedo_color.b)).is_greater(1.0)  # HDR: bloom picks it up
+	assert_that(accent.albedo_color).is_equal(LookDevMat.accent_color(LookDevStyle.accent_energy(LookDevStyle.Look.STYLISED_PLUS, VisualQuality.Tier.HIGH)))
+	assert_that(cyan).is_not_equal(Color.BLACK)
 
 
 func test_configure_repaints_the_look_materials() -> void:

@@ -153,7 +153,7 @@ func render(_alpha: float, delta: float) -> void:
 	if LookDevStyle.secondary_motion_enabled(_look, _tier):
 		_motion.step(delta, _yaw)
 		var progress: float = clampf(1.0 - _reload_left / _reload_total, 0.0, 1.0)
-		_motion.pose(_t, _reload_amt, progress, _body, _hand, _parts)
+		_motion.pose(_t, _reload_amt, progress, _weapon, _body, _hand, _parts)
 		_drive_accents()
 		_drive_muzzle_light()
 		return
@@ -245,10 +245,10 @@ func _drive_accents() -> void:
 	var accent: StandardMaterial3D = _parts.accent_material()
 	if accent == null:
 		return
-	var energy: float = LookDevStyle.accent_energy(_look, _tier) * (1.0 + 0.7 * _flash - 0.55 * _reload_amt)
+	var energy: float = LookDevStyle.accent_energy(_look, _tier) * (1.0 + 0.1 * _flash - 0.55 * _reload_amt)
 	if absf(energy - _accent_energy) > 0.02:
 		_accent_energy = energy
-		accent.emission_energy_multiplier = energy
+		accent.albedo_color = LookDevMat.accent_color(energy)
 
 
 func _drive_muzzle_light() -> void:

@@ -2,8 +2,9 @@ class_name ActorMeshes
 extends RefCounted
 ## Single entry point for the procedural actor meshes (WORK_PLAN 6). Every mesh is built once and cached; an
 ## authored asset replaces a placeholder by changing the function that returns it (`enemy`, `warden_*`, `turret*`).
-## Budgets: skitter 300, hollow warden 400, rusher 400, hulk 900, warden 2000 (every body part plus the weapon in
-## hand; W3-C raised it from 700 because the Warden is a single instance), turret 300 triangles, each mesh at most
+## Budgets: skitter 300, hollow warden 400, rusher 400, hulk 900, warden 2500 (every body part plus the weapon in
+## hand; W3-C raised it from 700 to 2000 because the Warden is a single instance, and to 2500 in v3 for the smooth rounded
+## silhouette), turret 300 triangles, each mesh at most
 ## 3 surfaces. The CURRENT look of the Warden (legs + torso, 312 triangles) is unchanged.
 
 const TRI_BUDGET: Dictionary[StringName, int] = {
@@ -11,12 +12,14 @@ const TRI_BUDGET: Dictionary[StringName, int] = {
 	&"hollow_warden": 400,
 	&"rusher": 400,
 	&"siege_hulk": 900,
-	&"warden": 2000,
+	&"warden": 2500,
 	&"turret": 300,
 }
 const MAX_SURFACES: int = 3
 ## The body parts of the Warden (one MeshInstance3D each) and the weapons.
-const WARDEN_BODY_PARTS: Array[StringName] = [&"legs", &"torso", &"arm_r", &"arm_l", &"pack", &"antenna", &"cable"]
+const WARDEN_BODY_PARTS: Array[StringName] = [
+	&"legs", &"torso", &"arm_ru", &"arm_rf", &"arm_lu", &"arm_lf", &"pack", &"antenna", &"cable"
+]
 const WARDEN_WEAPONS: Array[StringName] = [&"pistol", &"smg"]
 
 static var _cache: Dictionary[StringName, ArrayMesh] = {}
@@ -71,10 +74,14 @@ static func warden_part(part: StringName, look: int) -> ArrayMesh:
 			return _cached(key, LookDevWarden.legs)
 		&"torso":
 			return _cached(key, LookDevWarden.torso)
-		&"arm_r":
-			return _cached(key, LookDevGear.arm.bind(1.0))
-		&"arm_l":
-			return _cached(key, LookDevGear.arm.bind(-1.0))
+		&"arm_ru":
+			return _cached(key, LookDevGear.arm_upper.bind(1.0))
+		&"arm_rf":
+			return _cached(key, LookDevGear.arm_fore.bind(1.0))
+		&"arm_lu":
+			return _cached(key, LookDevGear.arm_upper.bind(-1.0))
+		&"arm_lf":
+			return _cached(key, LookDevGear.arm_fore.bind(-1.0))
 		&"pack":
 			return _cached(key, LookDevGear.pack)
 		&"antenna":

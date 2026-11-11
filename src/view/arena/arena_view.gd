@@ -97,12 +97,15 @@ func set_quality(tier_value: int) -> void:
 	_apply_glow()
 	if is_inside_tree():
 		VisualQuality.apply_render_scale(get_viewport(), _tier)
+		LookDevStyle.apply_aa(get_viewport(), _look, _tier)
 
 
 ## Character look (LookDevStyle.Look, W3-C look-dev): only STYLISED_PLUS turns bloom on, on MID and HIGH.
 func set_look(look: int) -> void:
 	_look = clampi(look, LookDevStyle.Look.CURRENT, LookDevStyle.Look.STYLISED_PLUS)
 	_apply_glow()
+	if is_inside_tree():
+		LookDevStyle.apply_aa(get_viewport(), _look, _tier)
 
 
 func current_look() -> int:
@@ -113,7 +116,7 @@ func glow_active() -> bool:
 	return environment_node != null and environment_node.environment.glow_enabled
 
 
-## Bloom for HDR emissives: three small mip levels (1/4, 1/8, 1/16 of the screen) so the halo stays tight and the
+## Bloom for HDR emissives: three small mip levels (1/4, 1/8, 1/16 of the screen) so the glow stays tight and the
 ## chain short, added on top, only above the HDR threshold (an emissive material with energy above 1).
 func _apply_glow() -> void:
 	if environment_node == null:

@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## W3-C hard-surface Warden meshes: the 2000 triangle budget, at most 3 surfaces per mesh, CURRENT byte-identical to the
+## W3-C hard-surface Warden meshes: the 2500 triangle budget (v3), at most 3 surfaces per mesh, CURRENT byte-identical to the
 ## pre-change meshes, baked vertex colours in range, palette roles, the new kit shapes.
 
 const STYLISED_LOOKS: Array[int] = [LookDevStyle.Look.STYLISED, LookDevStyle.Look.STYLISED_PLUS]
@@ -75,20 +75,20 @@ func test_current_parts_resolve_to_the_old_meshes_and_have_no_extras() -> void:
 	assert_object(ActorMeshes.warden_part(&"torso", c)).is_same(ActorMeshes.warden_torso())
 	assert_object(ActorMeshes.warden_part(&"pistol", c)).is_same(ActorMeshes.pistol())
 	assert_object(ActorMeshes.warden_part(&"smg", c)).is_same(ActorMeshes.smg())
-	for part: StringName in [&"arm_r", &"arm_l", &"pack", &"antenna", &"cable"]:
+	for part: StringName in [&"arm_ru", &"arm_rf", &"arm_lu", &"arm_lf", &"pack", &"antenna", &"cable"]:
 		assert_object(ActorMeshes.warden_part(part, c)).is_null()
 	assert_int(ActorMeshes.warden_triangles(c, 0)).is_equal(120 + 192 + 48)
 
 
-func test_the_warden_budget_is_two_thousand_and_every_styled_loadout_fits() -> void:
-	assert_int(ActorMeshes.TRI_BUDGET[&"warden"]).is_equal(2000)
+func test_the_warden_budget_is_twenty_five_hundred_and_every_styled_loadout_fits() -> void:
+	assert_int(ActorMeshes.TRI_BUDGET[&"warden"]).is_equal(2500)
 	for part: StringName in ActorMeshes.WARDEN_BODY_PARTS + ActorMeshes.WARDEN_WEAPONS:
 		print("WARDEN_PART %s tris=%d" % [part, ActorMeshes.triangle_count(ActorMeshes.warden_part(part, LookDevStyle.Look.STYLISED))])
 	for look: int in STYLISED_LOOKS:
 		for weapon: int in 2:
 			var n: int = ActorMeshes.warden_triangles(look, weapon)
 			print("WARDEN_TRIS look=%s weapon=%d tris=%d" % [LookDevStyle.name_of(look), weapon, n])
-			assert_int(n).is_between(1200, ActorMeshes.TRI_BUDGET[&"warden"])
+			assert_int(n).is_between(1500, ActorMeshes.TRI_BUDGET[&"warden"])
 	# the other actors keep their budgets
 	assert_int(ActorMeshes.TRI_BUDGET[&"skitter"]).is_equal(300)
 	assert_int(ActorMeshes.TRI_BUDGET[&"siege_hulk"]).is_equal(900)
@@ -243,3 +243,64 @@ func test_gradient_stays_in_range_and_follows_height() -> void:
 		var want: float = lerpf(0.4, 1.0, clampf(s.verts[i].y, 0.0, 1.0))
 		assert_float(s.cols[i].r).is_equal_approx(want, 0.001)
 		assert_float(s.cols[i].r).is_between(0.0, 1.0)
+
+
+func test_bevel_plate_is_a_thirty_triangle_shell_without_a_bottom() -> void:
+	var mb: MeshBuilder = MeshKit.begin()
+	LookDevShapes.bevel_box(mb, Vector3(0.3, 0.05, 0.2), Transform3D.IDENTITY, &"ceramic", 0.015, Vector2.ONE, 0.55, true, true)
+	assert_int(mb.triangle_count()).is_equal(30)
+	var s: MeshBuilder.Surf = mb.surface_of(&"ceramic")
+	for i: int in s.verts.size():
+		assert_float(s.norms[i].y).is_greater(-0.01)  # nothing faces down: the plate sits on the body
+		assert_float(s.norms[i].length()).is_equal_approx(1.0, 0.001)
+
+
+func test_round_parts_have_smooth_normals_and_plates_keep_hard_ones() -> void:
+	var round: MeshBuilder = MeshKit.begin()
+	LookDevShapes.ellipsoid(round, Vector3(0.15, 0.16, 0.18), 12, 3, Transform3D.IDENTITY, &"gunmetal")
+	LookDevShapes.limb(round, Vector3.ZERO, Vector3(0.0, 0.4, 0.0), 0.1, 0.08, 10, &"gunmetal")
+	var seen: Dictionary[Vector3i, Vector3] = {}
+	var s: MeshBuilder.Surf = round.surface_of(&"gunmetal")
+	var smooth: int = 0
+	for i: int in s.verts.size():
+		var key: Vector3i = Vector3i(roundi(s.verts[i].x * 1000.0), roundi(s.verts[i].y * 1000.0), roundi(s.verts[i].z * 1000.0))
+		if seen.has(key):
+			var other: Vector3 = seen[key]
+			if absf(s.verts[i].y) < 0.1499 and absf(absf(s.verts[i].y) - 0.0) > 0.0 and s.norms[i].dot(other) > 0.999:
+				smooth += 1
+		else:
+			seen[key] = s.norms[i]
+	assert_int(smooth).is_greater(100)  # shared vertices carry one normal: no facets
+	var plate: MeshBuilder = MeshKit.begin()
+	LookDevShapes.bevel_box(plate, Vector3(0.3, 0.05, 0.2), Transform3D.IDENTITY, &"ceramic", 0.015, Vector2.ONE, 0.55, true, true)
+	var ps: MeshBuilder.Surf = plate.surface_of(&"ceramic")
+	var flat_up: int = 0
+	for n: Vector3 in ps.norms:
+		if n.is_equal_approx(Vector3.UP):
+			flat_up += 1
+	assert_int(flat_up).is_equal(6)  # the top face is one flat quad
+
+
+func test_the_suit_is_dark_and_bone_is_limited_to_a_few_plates() -> void:
+	var total: int = 0
+	var bone: int = 0
+	var dark_sum: float = 0.0
+	var dark_n: int = 0
+	for look: int in STYLISED_LOOKS:
+		for part: StringName in ActorMeshes.WARDEN_BODY_PARTS:
+			var m: ArrayMesh = ActorMeshes.warden_part(part, look)
+			for s: int in m.get_surface_count():
+				var arrays: Array = m.surface_get_arrays(s)
+				var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+				var cols: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+				var tris: int = floori(float(idx.size()) / 3.0)
+				var role: StringName = StringName(m.surface_get_material(s).resource_name)
+				total += tris
+				if role == &"ceramic":
+					bone += tris
+				elif role == &"gunmetal":
+					for c: Color in cols:
+						dark_sum += (c.r + c.g + c.b) / 3.0
+						dark_n += 1
+	assert_float(float(bone) / float(total)).is_less(0.15)  # bone only on the chest, one pauldron, the shins, the pack top, the crest
+	assert_float(dark_sum / float(dark_n)).is_less(0.8)  # the metal is a dark suit and mid steel, nothing near white

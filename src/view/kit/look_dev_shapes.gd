@@ -13,13 +13,17 @@ static var _corners: Array = []  ## [vertex, face 1, face 2, face 3] x 8
 
 
 ## A chamfered box: 6 face quads, 12 chamfer strips and 8 corner triangles (44 triangles). `bevel` is the chamfer width
-## in meters (clamped to 45 percent of the smallest side), `taper` scales the +Y face in X and Z (a frustum), `soft`
-## (0..1) rolls the normals across the chamfer so the highlight slides over the edge instead of snapping. With
+## in meters (clamped to 45 percent of the smallest side), `taper` scales the +Y face in X and Z (a frustum). `soft` 0 (the
+## default since round 3) gives the chamfer strip the normals of the two faces at its two borders, so there is no shading
+## crease at all and the highlight rolls across the strip; larger values lean the strip toward the neighbour face (a
+## visible crease at the border, the round 1 look). With
 ## `closed` false the 8 corner triangles are left out (36 triangles): the pinholes are smaller than a centimeter, for
-## small parts that are never seen up close.
+## small parts that are never seen up close (the open corners show as dark notches: prefer `plate`). With `plate` true
+## the -Y face is left out, together with its four chamfers and corners, and the side faces run down to the bottom
+## edge: a shell that sits on the body (30 triangles).
 static func bevel_box(
 	mb: MeshBuilder, size: Vector3, xform: Transform3D, mat_id: StringName, bevel: float = 0.02,
-	taper: Vector2 = Vector2.ONE, soft: float = 0.55, closed: bool = true
+	taper: Vector2 = Vector2.ONE, soft: float = 0.0, closed: bool = true, plate: bool = false
 ) -> void:
 	_topology()
 	var _part: int = mb.begin_part()
@@ -51,8 +55,14 @@ static func bevel_box(
 		for k: int in 4:
 			var prev: Vector3 = q[(k + 3) % 4]
 			var next: Vector3 = q[(k + 1) % 4]
-			pts.append(q[k] + b * ((prev - q[k]).normalized() + (next - q[k]).normalized()))
+			var inset: Vector3 = q[k] + b * ((prev - q[k]).normalized() + (next - q[k]).normalized())
+			var vk: int = loop[k]
+			if plate and f != 2 and f != 3 and (vk & 2) == 0:
+				inset.y = q[k].y  # a plate's side faces run down to the bottom edge
+			pts.append(inset)
 		ins.append(pts)
+		if plate and f == 2:
+			continue
 		mb.add_tri(mat_id, xform, pts[0], pts[1], pts[2], n, n, n)
 		mb.add_tri(mat_id, xform, pts[0], pts[2], pts[3], n, n, n)
 	var wear: Vector3 = Vector3.ONE
@@ -61,6 +71,8 @@ static func bevel_box(
 		var vb: int = rec[1]
 		var f: int = rec[2]
 		var g: int = rec[3]
+		if plate and (f == 2 or g == 2):
+			continue
 		var fa: Vector3 = ins[f][_slot(f, va)]
 		var fb: Vector3 = ins[f][_slot(f, vb)]
 		var gb: Vector3 = ins[g][_slot(g, vb)]
@@ -73,6 +85,8 @@ static func bevel_box(
 		if not closed:
 			break
 		var vid: int = rec[0]
+		if plate and (vid & 2) == 0:
+			continue
 		var pts3: Array[Vector3] = []
 		var ns: Array[Vector3] = []
 		var sum: Vector3 = Vector3.ZERO
@@ -232,11 +246,14 @@ static func curved_plate(
 
 
 ## A frame whose -Z axis runs from `a` to `b` (so a box of depth |ab| lies along the segment), centered at the segment
-## point `t` (0..1) and shifted by `offset` in that frame (+Y is "up" for a horizontal segment, "forward" for a leg).
-static func frame_along(a: Vector3, b: Vector3, t: float = 0.5, offset: Vector3 = Vector3.ZERO) -> Transform3D:
+## point `t` (0..1) and shifted by `offset` in that frame. +Y is `up` made perpendicular to the segment ("up" for a horizontal
+## segment; pass Vector3.FORWARD for a leg so that +Y is the front of the limb whichever way the knee is bent).
+static func frame_along(
+	a: Vector3, b: Vector3, t: float = 0.5, offset: Vector3 = Vector3.ZERO, up: Vector3 = Vector3.UP
+) -> Transform3D:
 	var d: Vector3 = b - a
 	var dir: Vector3 = d.normalized() if d.length() > 0.0001 else Vector3.FORWARD
-	var up_hint: Vector3 = Vector3.UP if absf(dir.y) < 0.95 else Vector3.RIGHT
+	var up_hint: Vector3 = up if absf(dir.dot(up.normalized())) < 0.95 else Vector3.RIGHT
 	var basis: Basis = Basis.looking_at(dir, up_hint)
 	return Transform3D(basis, a.lerp(b, t) + basis * offset)
 

@@ -28,8 +28,11 @@ var zoom: float = 1.0
 var view: String = ""
 var solo: bool = false
 var reload_pose: bool = false
+var hide_warden: bool = false  ## --hide-warden: draw the scene without the Warden (the background half of a legibility pair)
 var measure_s: float = 0.0
 var render_size: Vector2i = Vector2i.ZERO  ## --render-size=1080x1920: render the sandbox in a SubViewport of that size (live runs)
+var msaa: int = -1  ## --msaa=0|2|4: force the 3D viewport's MSAA (-1 = by look and tier, see LookDevStyle.msaa_samples)
+var fxaa: int = -1  ## --fxaa=0|1: force FXAA off or on
 var glow: int = -1  ## --glow=0|1: force bloom off or on for the cost measurement (-1 = by look and tier)
 var tune: String = ""  ## --tune=name:value,name:value  shader parameter overrides of the stylised materials (look-dev)
 
@@ -116,10 +119,18 @@ static func parse(args: PackedStringArray) -> DebugArgs:
 			"--glow":
 				if value == "0" or value == "1":
 					a.glow = value.to_int()
+			"--msaa":
+				if value == "0" or value == "2" or value == "4":
+					a.msaa = value.to_int()
+			"--fxaa":
+				if value == "0" or value == "1":
+					a.fxaa = value.to_int()
 			"--tune":
 				a.tune = value
 			"--solo":
 				a.solo = true
+			"--hide-warden":
+				a.hide_warden = true
 			"--reload-pose":
 				a.reload_pose = true
 			"--measure":

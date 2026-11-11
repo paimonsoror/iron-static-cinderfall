@@ -9,9 +9,11 @@ extends Node
 ##                                           follow the Warden's yaw; add --solo to hide the enemies)
 ##   --solo                                  hide the enemies, their blob shadows and health bars
 ##   --reload-pose                           hold the Warden's reload pose
+##   --hide-warden                           draw everything but the Warden (pair with a normal capture: look_dev_legibility.gd)
 ##   --scenario=hold10|hold28|hold50|boss    crowd (default hold28)   --seed=<n>
 ##   --render-size=1080x1920                 live runs: render in a SubViewport of that size (a desktop window cannot be taller
 ##                                           than the screen), so the GPU cost is that of a phone-sized frame
+##   --msaa=0|2|4  --fxaa=0|1                force the anti-aliasing of the 3D viewport (default: by look and tier)
 ##   --glow=0|1                              force bloom off or on (cost measurement)   --tune=name:value,...  shader overrides
 ##   --debug-perf  --measure=<seconds>       PerfHud `[PERF]` lines every 5 s, quit after N seconds (live runs lift the fps cap)
 ## Keys: F8 cycles the look, F5 the quality tier, F9 the camera, F7 the perf overlay.
@@ -38,6 +40,7 @@ var _zoom: float = 1.0
 var _mode: String = "game"
 var _solo: bool = false
 var _reload_pose: bool = false
+var _hide_warden: bool = false
 var _measure_s: float = 0.0
 var _elapsed: float = 0.0
 var _extra_cam: Camera3D
@@ -88,12 +91,15 @@ func _ready() -> void:
 		_zoom = 3.0
 	_solo = args.solo
 	_reload_pose = args.reload_pose
+	_hide_warden = args.hide_warden
 	_measure_s = args.measure_s
 	for pair: String in args.tune.split(",", false):
 		var kv: PackedStringArray = pair.split(":")
 		if kv.size() == 2 and kv[1].is_valid_float():
 			LookDevMat.overrides[StringName(kv[0])] = kv[1].to_float()
 	LookDevStyle.glow_override = args.glow
+	LookDevStyle.msaa_override = args.msaa
+	LookDevStyle.fxaa_override = args.fxaa
 	var started: int = Time.get_ticks_usec()
 	_set_look(args.look if args.look >= 0 else LookDevStyle.current())
 	Log.info("lookdev", "first set_look took %.1f ms (meshes and materials built)" % (float(Time.get_ticks_usec() - started) / 1000.0))
@@ -117,6 +123,8 @@ func _process(delta: float) -> void:
 	var warden: WardenView = _view.actor_layer.warden
 	if _reload_pose:
 		warden.debug_hold_reload(true)
+	if _hide_warden:
+		warden.visible = false  # the Warden still moves and fires, so the effects around it stay identical
 	if _solo:
 		_hide_enemies()
 	_update_camera(warden)
