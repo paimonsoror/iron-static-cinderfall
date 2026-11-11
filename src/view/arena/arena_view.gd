@@ -51,7 +51,7 @@ func setup(arena: ArenaDef, tokens: VisualTokens) -> void:
 	_build_rain()
 	_build_lights()
 	set_quality(VisualQuality.Tier.MID)
-	var center: Vector3 = Vector3((arena.min_x + arena.max_x) * 0.5, 0.25, (arena.min_z + arena.max_z) * 0.5)
+	var center: Vector3 = Vector3((arena.min_x + arena.max_x) * 0.5, -0.4, (arena.min_z + arena.max_z) * 0.5)
 	var extra: Array[Material] = [_ground_mat]
 	ShaderWarmup.attach(self, center, extra)
 	set_process(true)
@@ -89,9 +89,20 @@ func set_quality(tier_value: int) -> void:
 	for i: int in omnis.size():
 		omnis[i].visible = i < budget
 	if _rain != null:
-		_rain.visible = _tier == VisualQuality.Tier.HIGH
+		_rain.visible = VisualQuality.rain_enabled(_tier)
 	if _ground_mat != null:
 		GroundMaterial.set_quality(_ground_mat, _tier)
+	RenderingServer.directional_shadow_atlas_set_size(VisualQuality.shadow_atlas_size(_tier), true)
+	if is_inside_tree():
+		VisualQuality.apply_render_scale(get_viewport(), _tier)
+
+
+func _enter_tree() -> void:
+	VisualQuality.apply_render_scale(get_viewport(), _tier)
+
+
+func _exit_tree() -> void:
+	VisualQuality.apply_render_scale(get_viewport(), VisualQuality.Tier.MID)  # the next owner of the viewport starts clean
 
 
 ## Flicker (core, lamps) gets slower and shallower for players who asked for reduced flashing.

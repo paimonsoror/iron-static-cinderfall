@@ -1,35 +1,90 @@
 class_name SimPuppet
 extends Node
-## Builds a real SimWorld, then drives its stores and Events directly (ARCH 11): spawns N enemies of mixed
-## types, walks them toward the core on straight lines, fires fake shots and kills, and keeps N alive. Lets
-## the view be built and captured before the simulation systems exist. The puppet is the only writer here.
+## A live, fake battle for the view sandbox (ARCH 11). It builds a real SimWorld and runs the REAL tick systems
+## (commands, abilities, movement with attack slots and stuck recovery, weapon, turrets, core attacks) in the same order
+## as `SimWorld.step`, but replaces the spawn schedule and the phases with a scenario: it holds N enemies alive, buys
+## the SMG and both turrets and fires the three abilities through the real command queue. Every sim event is forwarded
+## to `Events` (PuppetEvents), so the view reacts exactly as it will in a run: shots, enemy damage and kills, core
+## hits, reloads, shield, overdrive, EMP stun, turret deploys, weapon swap, stuck enemies.
+## Scenarios: `hold10`, `hold28`, `hold50` (50 and wave 5 add a Siege Hulk) and `boss` (the Hulk and a small escort,
+## low core). The puppet changes sim state only through public sim calls, commands and the few debug writes marked below.
 
 const TICK_DT: float = 1.0 / 60.0
+const PREROLL_TICKS: int = 180
+const SPAWN_EVERY_TICKS: int = 5
+const DAMAGE_MULT: float = 0.3  ## the crowd must survive long enough to be looked at
+const BOSS_ESCORT: int = 14
+const MIX: Array[int] = [0, 0, 0, 1, 0, 2, 0, 0, 1, 2]  ## six skitters, two hollow wardens, two rushers
+## Seconds after the start: when each action first happens (abilities repeat whenever they are ready again).
+const T_TURRET_0: float = 0.5
+const T_TURRET_1: float = 1.0
+const T_SMG: float = 1.5
+const T_STUCK: float = 1.2
+const T_ABILITY: Array[float] = [8.0, 2.0, 3.0]  ## EMP, shield, overdrive (Ids.AB_*)
+const RETRY_TICKS: int = 180
 
 var world: SimWorld
+var events: PuppetEvents
+var scenario: String = "hold50"
+var hold: int = 50
+var boss_mode: bool = false
+var tick_usec_avg: float = 0.0  ## moving average of one puppet tick (the sim systems), for the perf line
+var tick_sink: Callable = Callable()  ## called with the microseconds of every tick (PerfHud.record_tick_usec)
+
 var _content: ContentSet
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
-var _hold: int = 50
 var _acc: float = 0.0
-var _goals: Dictionary = {}  ## enemy id -> Vector2 (x, z) of its attack slot
-var _kinds: Dictionary = {}  ## enemy id -> type index
-var _mix: Array[int] = [0, 0, 0, 1, 0, 2, 0, 0, 1, 2]
+var _clock: int = 0
+var _next_command: int = 1
+var _spawned_n: int = 0
+var _next_try: PackedInt32Array = PackedInt32Array([0, 0, 0])
+var _stuck_done: bool = false
+var _scripting: bool = false
+var _core_floor: float = 0.25
+var _core_refill: float = 1.0
 
 
-## count = how many enemies to hold alive. `boss_only` builds a single Siege Hulk with a few escorts.
-func setup(content: ContentSet, count: int = 50, puppet_seed: int = 1, boss_only: bool = false) -> void:
+## `scenario_name`: `hold<N>` (N clamped to the enemy cap) or `boss`; anything else is hold50. Returns {hold, boss}.
+static func parse(scenario_name: String, enemy_cap: int) -> Dictionary[String, Variant]:
+	var out: Dictionary[String, Variant] = {"hold": 50, "boss": false}
+	if scenario_name == "boss":
+		out["hold"] = BOSS_ESCORT + 1
+		out["boss"] = true
+	elif scenario_name.begins_with("hold") and scenario_name.substr(4).is_valid_int():
+		out["hold"] = clampi(scenario_name.substr(4).to_int(), 1, enemy_cap)
+	return out
+
+
+func setup(content: ContentSet, scenario_name: String = "hold50", puppet_seed: int = 1) -> void:
 	_content = content
-	_hold = clampi(count, 1, content.mission.enemy_cap)
+	scenario = scenario_name
+	var spec: Dictionary[String, Variant] = parse(scenario_name, content.mission.enemy_cap)
+	hold = spec["hold"]
+	boss_mode = spec["boss"]
 	_rng.seed = puppet_seed
-	world = SimWorld.new(SimConfig.create(content, puppet_seed))
-	world.config.debug_invulnerable_core = true
-	if boss_only or _hold >= 40:
-		_spawn(Ids.EN_HULK, 0.55)  # the boss is never killed by the puppet
-	for i: int in _hold:
-		if world.alive_count() >= _hold:
-			break
-		_spawn(_next_type(i), _rng.randf_range(0.05, 1.0))
-	_flush_events()
+	var cfg: SimConfig = SimConfig.create(content, puppet_seed)
+	cfg.debug_damage_mult = DAMAGE_MULT
+	cfg.debug_start_scrap = 5000
+	world = SimWorld.new(cfg)
+	world.phase = GameState.Id.SPAWNING  # debug write: abilities and purchases are legal in this phase
+	world.wave = 5 if (boss_mode or hold >= 40) else 3  # debug write: unlocks the SMG (min_wave 2)
+	events = PuppetEvents.new(content)
+	if boss_mode:
+		_core_floor = 0.08
+		_core_refill = 0.3
+		world.set_core_hp(world.core_max_hp * 0.3)
+	if boss_mode or hold >= 40:
+		var boss: int = _spawn_along_path(Ids.EN_HULK, 0.55)
+		if boss >= 0:
+			_spawned_n += 1
+	while world.alive_count() < hold:
+		var _i: int = _spawn_along_path(MIX[_spawned_n % MIX.size()], _rng.randf_range(0.05, 1.0))
+		_spawned_n += 1
+	for _t: int in PREROLL_TICKS:
+		_tick()
+	_flush()
+	_clock = 0  # the script (turrets, SMG, abilities) starts when the view does, so its effects are seen live
+	_scripting = true
 
 
 ## Advances the puppet by `delta` seconds in 60 Hz steps; returns the interpolation alpha for rendering.
@@ -38,87 +93,132 @@ func advance(delta: float) -> float:
 	while _acc >= TICK_DT:
 		_acc -= TICK_DT
 		_tick()
+	_flush()
 	return _acc / TICK_DT
 
 
+## One fixed tick, in the order of SimWorld.step minus spawning and phases.
+func step_once() -> void:
+	_tick()
+	_flush()
+
+
+func clock_seconds() -> float:
+	return float(_clock) * TICK_DT
+
+
 func _tick() -> void:
+	var started: int = Time.get_ticks_usec()
+	_clock += 1
+	_script()
 	world.tick += 1
 	world.events.current_tick = world.tick
+	CommandSystem.apply_queued(world)
+	AbilitySystem.step(world)
+	MovementSystem.step(world)
+	WeaponSystem.step(world)
+	TurretSystem.step(world)
+	CoreAttackSystem.step(world)
+	_guard_boss()
+	_repair_core()
+	_top_up()
+	var spent: float = float(Time.get_ticks_usec() - started)
+	tick_usec_avg = lerpf(tick_usec_avg, spent, 0.05) if tick_usec_avg > 0.0 else spent
+	if tick_sink.is_valid():
+		tick_sink.call(spent)
+
+
+func _flush() -> void:
+	var _n: int = events.forward(world.events.drain())
+
+
+# ---------------------------------------------------------------- scenario script
+
+
+## Commands go through the real queue; the timeline is the puppet's clock, not the sim's.
+func _script() -> void:
+	if not _scripting:
+		return
+	var seconds: float = float(_clock) * TICK_DT
+	if _clock == roundi(T_TURRET_0 / TICK_DT) or _clock == roundi(T_TURRET_1 / TICK_DT):
+		_command(SimCommand.purchase(_cmd_id(), Ids.UP_AUTO_TURRET))
+	if _clock == roundi(T_SMG / TICK_DT):
+		_command(SimCommand.purchase(_cmd_id(), Ids.UP_SMG))
+	if not _stuck_done and seconds >= T_STUCK:
+		_stuck_done = true
+		_mark_stuck(2)
+	for a: int in Ids.ABILITIES.size():
+		if seconds >= T_ABILITY[a] and _clock >= _next_try[a] and world.abilities.is_ready(a):
+			_next_try[a] = _clock + RETRY_TICKS
+			_command(SimCommand.ability(_cmd_id(), a))
+
+
+func _command(cmd: SimCommand) -> void:
+	world.submit(cmd)
+
+
+func _cmd_id() -> int:
+	_next_command += 1
+	return _next_command - 1
+
+
+## Debug writes to the nav trackers (the fields StuckRecovery owns): two moving enemies look stuck, `stuck_ref` is set
+## so the real recovery then force-moves them after the grace period (a teleport the view must not slide over).
+func _mark_stuck(count: int) -> void:
 	var st: EnemyStore = world.enemies
-	var first_attacker: int = -1
+	var nav: NavState = world.nav
+	var marked: int = 0
 	for i: int in st.high_water:
-		if st.alive[i] == 0:
+		if marked >= count:
+			break
+		if st.alive[i] == 0 or st.state[i] != EnemyStore.ST_MOVING or st.type[i] == Ids.EN_HULK:
 			continue
-		st.prev_x[i] = st.x[i]
-		st.prev_z[i] = st.z[i]
-		if st.state[i] == EnemyStore.ST_ATTACKING:
-			var killable: bool = st.type[i] != Ids.EN_HULK
-			if killable and (first_attacker < 0 or st.id[i] < st.id[first_attacker]):
-				first_attacker = i
+		if nav.track_id[i] != st.id[i]:
 			continue
-		var goal: Vector2 = _goals.get(st.id[i], Vector2(world.content.arena.core_x, world.content.arena.core_z))
-		var dx: float = goal.x - st.x[i]
-		var dz: float = goal.y - st.z[i]
-		var dist: float = sqrt(dx * dx + dz * dz)
-		var step: float = world.content.enemies[st.type[i]].speed_mps * TICK_DT
-		if dist <= maxf(step, 0.05):
-			st.x[i] = goal.x
-			st.z[i] = goal.y
-			st.state[i] = EnemyStore.ST_ATTACKING
-		else:
-			st.x[i] += dx / dist * step
-			st.z[i] += dz / dist * step
-			st.face_x[i] = dx / dist
-			st.face_z[i] = dz / dist
-	if first_attacker >= 0 and world.tick % 24 == 0:
-		_shoot_and_kill(first_attacker)
-	while world.alive_count() < _hold:
-		_spawn(_next_type(world.next_enemy_id), 0.0)
-	_flush_events()
+		nav.recoveries[i] += 1
+		nav.sep_off[i] = StuckRecovery.GRACE_TICKS
+		nav.grace[i] = 1
+		nav.stuck_ref[i] = st.path_dist[i] - 30.0
+		world.events.push(SimEventKind.Id.ENEMY_STUCK, st.id[i], nav.recoveries[i])
+		marked += 1
 
 
-func _shoot_and_kill(i: int) -> void:
-	var st: EnemyStore = world.enemies
-	world.warden.aim_x = st.x[i]
-	world.warden.aim_z = st.z[i]
-	world.events.push(SimEventKind.Id.SHOT_FIRED, DamageSource.Id.WARDEN, st.id[i])
-	world.kill_enemy(i, DamageSource.Id.WARDEN)
+## The boss is never killed by the puppet; its hp floors at a quarter.
+func _guard_boss() -> void:
+	var i: int = world.boss_store_index()
+	if i >= 0 and world.enemies.hp[i] < world.enemies.max_hp[i] * 0.25:
+		world.enemies.hp[i] = world.enemies.max_hp[i] * 0.25
 
 
-func _next_type(n: int) -> int:
-	return _mix[n % _mix.size()]
+## The core is repaired when the puppet's enemies would have destroyed it, so the sandbox runs on.
+func _repair_core() -> void:
+	if world.core_hp < world.core_max_hp * _core_floor:
+		world.set_core_hp(world.core_max_hp * _core_refill)
 
 
-## progress 0 = at the spawn region, 1 = at the attack slot.
-func _spawn(type_index: int, progress: float) -> void:
+## Keeps `hold` enemies alive: a replacement walks in from a spawn region every few ticks.
+func _top_up() -> void:
+	if world.alive_count() >= hold or _clock % SPAWN_EVERY_TICKS != 0:
+		return
+	var kind: int = MIX[_spawned_n % MIX.size()]
+	_spawned_n += 1
+	var _i: int = _spawn_along_path(kind, 0.0)
+
+
+## Spawns an enemy in a spawn region, then walks it `travel` (0..1) of the way to the core along the flow field.
+func _spawn_along_path(type_index: int, travel: float) -> int:
 	var arena: ArenaDef = _content.arena
 	var region: SpawnRegionDef = arena.spawn_regions[_rng.randi() % arena.spawn_regions.size()]
 	var t: float = _rng.randf()
-	var sx: float = lerpf(region.x0, region.x1, t)
-	var sz: float = lerpf(region.z0, region.z1, t)
-	var goal: Vector2 = arena.slot_positions[_rng.randi() % arena.slot_positions.size()]
-	var i: int = world.spawn_enemy(type_index, lerpf(sx, goal.x, progress), lerpf(sz, goal.y, progress))
-	if i < 0:
-		return
-	_goals[world.enemies.id[i]] = goal
-	_kinds[world.enemies.id[i]] = type_index
-	if progress >= 0.999:
-		world.enemies.state[i] = EnemyStore.ST_ATTACKING
-
-
-## Drains the sim's events and re-emits the ones the view and HUD care about on the Events bus.
-func _flush_events() -> void:
-	for e: SimEvent in world.events.drain():
-		match e.kind:
-			SimEventKind.Id.ENEMY_SPAWNED:
-				Events.enemy_spawned.emit(e.a, Ids.ENEMIES[e.b])
-			SimEventKind.Id.BOSS_SPAWNED:
-				Events.boss_spawned.emit(e.a, Ids.ENEMIES[e.b])
-			SimEventKind.Id.SHOT_FIRED:
-				Events.shot_fired.emit(e.a, e.b)
-			SimEventKind.Id.ENEMY_KILLED:
-				Events.enemy_killed.emit(e.a, e.b)
-				var type_index: int = _kinds.get(e.a, 0)
-				Events.enemy_died_at.emit(e.a, Ids.ENEMIES[type_index], e.f, e.g, _content.enemies[type_index].scrap)
-				_goals.erase(e.a)
-				_kinds.erase(e.a)
+	var p: Vector2 = Vector2(lerpf(region.x0, region.x1, t), lerpf(region.z0, region.z1, t))
+	var flow: FlowField = world.nav.flow
+	var remaining: float = flow.sample_cost(p.x, p.y) * travel
+	if is_inf(remaining):
+		remaining = 0.0
+	while remaining > 0.0:
+		var dir: Vector2 = flow.sample_dir(p.x, p.y)
+		if dir == Vector2.ZERO:
+			break
+		p += dir * 0.5
+		remaining -= 0.5
+	return world.spawn_enemy(type_index, p.x, p.y)

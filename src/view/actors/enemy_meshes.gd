@@ -3,6 +3,8 @@ extends RefCounted
 ## Procedural merged meshes of the four CHORUS machines (WORK_PLAN 6). Forward is -Z, feet at y = 0.
 ## Three surfaces each: gunmetal frame, bone-ceramic plates, one emissive red optic bar (GDD 2.4: a single
 ## optic, never a pair of eyes, never a skull). The optic wraps over the top of the head so it reads from above.
+## W2-E: the optics of the three small machines are about 35 percent larger than in the first pass (a skitter's is
+## 0.30 by 0.20 m): at 45 px per meter on a phone the red mark is what lets a player count 50 of them.
 
 const G: StringName = &"gunmetal"
 const C: StringName = &"ceramic"
@@ -28,7 +30,7 @@ static func skitter() -> ArrayMesh:
 		ActorPrims.strut(mb, elbow, claw, 0.06, G)
 		ActorPrims.blade(mb, claw + Vector3(0.0, 0.1, 0.1), claw + Vector3(0.0, -0.05, -0.1), 0.07, 0.12, C)
 	mb.box(Vector3(0.26, 0.17, 0.24), ActorPrims.at(Vector3(0.0, 0.52, -0.48)), C)
-	mb.box(Vector3(0.22, 0.06, 0.14), ActorPrims.at(Vector3(0.0, 0.62, -0.52)), R)
+	mb.box(Vector3(0.3, 0.08, 0.2), ActorPrims.at(Vector3(0.0, 0.62, -0.52)), R)
 	mb.box(Vector3(0.24, 0.16, 0.3), ActorPrims.at(Vector3(0.0, 0.42, 0.46)), G)
 	for k: int in 3:
 		ActorPrims.blade(mb, Vector3(0.0, 0.68, -0.1 + 0.16 * float(k)), Vector3(0.0, 0.72, 0.0 + 0.16 * float(k)), 0.08, 0.1, C)
@@ -53,7 +55,7 @@ static func hollow_warden() -> ArrayMesh:
 	mb.box(Vector3(0.2, 0.12, 0.2), ActorPrims.at(Vector3(0.0, 1.45, 0.0)), G)
 	mb.box(Vector3(0.62, 0.06, 0.36), ActorPrims.at(Vector3(0.0, 1.0, 0.0)), C)
 	mb.box(Vector3(0.28, 0.24, 0.28), ActorPrims.at(Vector3(0.0, 1.57, -0.02)), C)
-	mb.box(Vector3(0.3, 0.06, 0.16), ActorPrims.at(Vector3(0.0, 1.69, -0.08)), R)
+	mb.box(Vector3(0.36, 0.08, 0.2), ActorPrims.at(Vector3(0.0, 1.69, -0.08)), R)
 	return mb.build()
 
 
@@ -79,7 +81,7 @@ static func rusher() -> ArrayMesh:
 	ActorPrims.box_in(mb, Vector3(0.36, 0.5, 0.26), Vector3(0.0, 0.3, 0.0), G, frame)
 	ActorPrims.box_in(mb, Vector3(0.38, 0.32, 0.08), Vector3(0.0, 0.36, -0.16), C, frame)
 	ActorPrims.box_in(mb, Vector3(0.2, 0.18, 0.22), Vector3(0.0, 0.62, -0.1), C, frame)
-	ActorPrims.box_in(mb, Vector3(0.24, 0.06, 0.12), Vector3(0.0, 0.72, -0.14), R, frame)
+	ActorPrims.box_in(mb, Vector3(0.3, 0.08, 0.17), Vector3(0.0, 0.72, -0.14), R, frame)
 	for k: int in 3:
 		var y: float = 0.2 + 0.18 * float(k)
 		ActorPrims.blade(mb, Vector3(0.0, y, 0.12), Vector3(0.0, y + 0.1, 0.46), 0.14, 0.2, G, frame)

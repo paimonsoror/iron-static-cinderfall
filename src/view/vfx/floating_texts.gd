@@ -29,19 +29,25 @@ func setup() -> void:
 	for i: int in CAPACITY:
 		var l: Label3D = Label3D.new()
 		l.name = "Text%02d" % i
-		l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		l.shaded = false
-		l.double_sided = true
-		l.no_depth_test = true
-		l.fixed_size = false
-		l.pixel_size = 0.0085
-		l.font_size = 64
-		l.outline_size = 14
-		l.render_priority = 8
-		l.outline_render_priority = 7
+		configure_label(l)
 		l.visible = false
 		add_child(l)
 		_labels.append(l)
+
+
+## The one look of every floating text. ShaderWarmup draws a label configured the same way, so the first real "+20"
+## does not compile the Label3D pipeline or build the glyph atlas in the middle of a fight.
+static func configure_label(l: Label3D) -> void:
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.shaded = false
+	l.double_sided = true
+	l.no_depth_test = true
+	l.fixed_size = false
+	l.pixel_size = 0.0085
+	l.font_size = 64
+	l.outline_size = 14
+	l.render_priority = 8
+	l.outline_render_priority = 7
 
 
 ## Limits how many texts may be alive at once (quality tiers); at most CAPACITY.

@@ -9,14 +9,20 @@ extends Node3D
 ## A heavy footfall (Siege Hulk): world position of the feet and a weight (1 = hulk). VfxLayer turns it into dust.
 signal footfall(world_pos: Vector3, weight: float)
 
+## An enemy that moved farther than this in ONE tick was forced to move (stuck recovery): it is drawn at its new place
+## at once instead of sliding there. The fastest walker covers 0.06 m per tick.
+const TELEPORT_M: float = 1.0
+
 var warden: WardenView
 var turrets: Array[TurretView] = []
+var boss_marker: BossMarker
 
 var _sim: SimWorld
 var _pool: EnemyPool
 var _decals: ActorDecals
 var _quality: int = VisualQuality.Tier.HIGH
-var _high_contrast: bool = false  ## set by set_high_contrast; W2-E applies it to optics and rims
+var _high_contrast: bool = false
+var _boss_id: int = 0
 var _frame: int = 0
 
 
@@ -33,6 +39,11 @@ func setup(content: ContentSet) -> void:
 		t.setup(p)
 		add_child(t)
 		turrets.append(t)
+	boss_marker = BossMarker.new()
+	boss_marker.setup(content.arena.pitch_down_deg, content.arena.yaw_deg)
+	add_child(boss_marker)
+	if _high_contrast:
+		_pool.set_contrast(true)
 
 
 ## Resets the pools, adopts every enemy already alive in the store and starts listening to Events.
@@ -42,10 +53,13 @@ func bind(sim: SimWorld) -> void:
 	Events.enemy_spawned.connect(_on_enemy_spawned)
 	Events.enemy_killed.connect(_on_enemy_killed)
 	Events.enemy_damaged.connect(_on_enemy_damaged)
+	Events.boss_spawned.connect(_on_boss_spawned)
 	var st: EnemyStore = sim.enemies
 	for i: int in st.high_water:
 		if st.alive[i] == 1:
 			_adopt(i)
+			if st.type[i] == Ids.EN_HULK:
+				_boss_id = st.id[i]
 	warden.bind(sim)
 	for t: TurretView in turrets:
 		t.bind(sim)
@@ -60,10 +74,14 @@ func unbind() -> void:
 		Events.enemy_killed.disconnect(_on_enemy_killed)
 	if Events.enemy_damaged.is_connected(_on_enemy_damaged):
 		Events.enemy_damaged.disconnect(_on_enemy_damaged)
+	if Events.boss_spawned.is_connected(_on_boss_spawned):
+		Events.boss_spawned.disconnect(_on_boss_spawned)
 	_sim = null
+	_boss_id = 0
 	if _pool != null:
 		_pool.release_all()
 		_decals.clear()
+		boss_marker.track(Vector3.INF, 0.0)
 		warden.unbind()
 		for t: TurretView in turrets:
 			t.unbind()
@@ -93,8 +111,13 @@ func render(alpha: float, delta: float) -> void:
 			_adopt(i)
 		var actor: EnemyActor = _pool.by_id[eid]
 		seen += 1
-		var px: float = lerpf(st.prev_x[i], st.x[i], a)
-		var pz: float = lerpf(st.prev_z[i], st.z[i], a)
+		var a_i: float = a
+		var jump_x: float = st.x[i] - st.prev_x[i]
+		var jump_z: float = st.z[i] - st.prev_z[i]
+		if jump_x * jump_x + jump_z * jump_z > TELEPORT_M * TELEPORT_M:
+			a_i = 1.0  # forced move: prev is still last tick's spot, so interpolating would slide across the yard
+		var px: float = lerpf(st.prev_x[i], st.x[i], a_i)
+		var pz: float = lerpf(st.prev_z[i], st.z[i], a_i)
 		var mode: int = ActorMotion.Mode.MOVE
 		if st.stun_ticks[i] > 0:
 			mode = ActorMotion.Mode.STUN
@@ -115,6 +138,7 @@ func render(alpha: float, delta: float) -> void:
 		var k: float = 1.0 - d.dying_progress() * 0.6
 		_decals.add_shadow(d.root.position.x, d.root.position.z, d.shadow_radius * k)
 	_render_friends(a, delta)
+	_render_boss_marker(delta)
 	_decals.end_frame()
 
 
@@ -126,10 +150,17 @@ func quality() -> int:
 	return _quality
 
 
-## High-contrast setting (GDD 10.3): brighter enemy optics and a rim. Coordinator stub so that Game can wire the
-## setting in Wave 2; the body is W2-E's.  # TODO(W2-E)
+## High-contrast setting (GDD 10.3): brighter enemy optics and rim lit plates (ActorContrast). Safe before `setup`.
 func set_high_contrast(on: bool) -> void:
 	_high_contrast = on
+	if on:
+		ActorContrast.rebuild()
+	if _pool != null:
+		_pool.set_contrast(on)
+
+
+func is_high_contrast() -> bool:
+	return _high_contrast
 
 
 ## World position of a live enemy's feet, or Vector3.INF if unknown.
@@ -206,6 +237,17 @@ func _release_stale() -> void:
 			var _gone: bool = _pool.release_id(k)
 
 
+func _render_boss_marker(delta: float) -> void:
+	var at: Vector3 = Vector3.INF
+	if _boss_id != 0:
+		at = enemy_world_position(_boss_id)
+	boss_marker.track(at, delta)
+
+
+func _on_boss_spawned(enemy_id: int, _kind: StringName) -> void:
+	_boss_id = enemy_id
+
+
 func _on_enemy_spawned(enemy_id: int, kind: StringName) -> void:
 	if _sim == null or Ids.enemy_index(kind) < 0 or _pool.by_id.has(enemy_id):
 		return
@@ -218,6 +260,8 @@ func _on_enemy_killed(enemy_id: int, _source: int) -> void:
 	if _pool == null or not _pool.by_id.has(enemy_id):
 		return
 	var actor: EnemyActor = _pool.by_id[enemy_id]
+	if enemy_id == _boss_id:
+		_boss_id = 0
 	if actor.kind == Ids.EN_HULK:
 		var _started: bool = _pool.begin_dying(enemy_id)
 	else:

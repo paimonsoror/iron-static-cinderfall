@@ -35,3 +35,31 @@ static func omni_light_budget(tier: int) -> int:
 ## Directional shadows for static props only on HIGH.
 static func shadows_enabled(tier: int) -> bool:
 	return tier == Tier.HIGH
+
+
+## Size of the directional shadow atlas in pixels. The engine default (4096, 16 bit) costs 32 MB of video memory on HIGH
+## (measured: vid_mb 58.8 on MID, 100.5 on HIGH); one orthogonal light over a 28 m yard needs a quarter of that.
+static func shadow_atlas_size(tier: int) -> int:
+	if tier == Tier.HIGH:
+		return 2048
+	return 1024
+
+
+## Rain streaks only on HIGH.
+static func rain_enabled(tier: int) -> bool:
+	return tier == Tier.HIGH
+
+
+## 3D render scale (the UI stays at full resolution): the 30 FPS fallback tier draws fewer pixels.
+static func render_scale(tier: int) -> float:
+	if tier == Tier.LOW:
+		return 0.75
+	return 1.0
+
+
+## Applies the render scale to a viewport. Never touches the tick rate or any outcome.
+static func apply_render_scale(viewport: Viewport, tier: int) -> void:
+	if viewport == null:
+		return
+	viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+	viewport.scaling_3d_scale = render_scale(tier)
