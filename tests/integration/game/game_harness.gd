@@ -17,12 +17,14 @@ var content: ContentSet
 var events_log: GameSignalLog
 
 var _saved_max_fps: int = 0
+var _saved_look: int = LookDevStyle.Look.CURRENT  ## `Game.boot` sets the shipped look; `dispose` puts the old one back
 
 
 ## `arg_list` are the user arguments after `--`. `content_tweak` (optional) may change the baseline content first.
 static func create(suite: GdUnitTestSuite, arg_list: PackedStringArray = PackedStringArray(), content_tweak: Callable = Callable()) -> GameHarness:
 	var h: GameHarness = GameHarness.new()
 	h._saved_max_fps = Engine.max_fps
+	h._saved_look = LookDevStyle.current()
 	h.fs = GameRunKit.fresh_save()
 	h.content = TestContent.baseline()
 	if content_tweak.is_valid():
@@ -56,6 +58,7 @@ func dispose() -> void:
 	GameRunKit.reset_save()
 	Sfx.disabled = false
 	Engine.max_fps = _saved_max_fps
+	LookDevStyle.set_current(_saved_look)
 
 
 # --- typed access to the Game instance ---

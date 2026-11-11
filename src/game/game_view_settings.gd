@@ -6,6 +6,15 @@ extends RefCounted
 
 ## Settings keys that have to be re-applied when `Events.settings_changed` names them.
 const VIEW_KEYS: Array[StringName] = [&"quality", &"reduced_flash", &"high_contrast"]
+## The character look of the shipped game (owner pick after the W3-C Warden look-dev, v4). `--look=` overrides it.
+const SHIPPED_LOOK: int = LookDevStyle.Look.STYLISED
+
+
+## Sets the process-wide character look (`--look=current|stylised|stylised_plus`, else the shipped one). `Game.boot` calls
+## it before any BattleView exists, because ActorLayer and ArenaView read the look when they are constructed. Returns it.
+static func apply_look(args: DebugArgs) -> int:
+	LookDevStyle.set_current(args.look if args != null and args.look >= 0 else SHIPPED_LOOK)
+	return LookDevStyle.current()
 
 
 ## The tier to show: `--quality` when forced, otherwise the saved setting (clamped to 0..2).
