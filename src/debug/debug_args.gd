@@ -16,15 +16,36 @@ var capture_scene: String = ""
 var capture_out: String = ""
 var capture_size: Vector2i = Vector2i(1080, 1920)
 var capture_frames: int = 90
+var debug_overlay: String = ""  ## "", "all" or a comma list of flow, slots, stuck, spawns (sandbox and Game debug root)
+var high_contrast: bool = false
+var reduced_flash: bool = false
+var hud_step: int = -1  ## --hud-step=<n>: pin the HUD sandbox to one state instead of cycling
 
 
+## The user arguments after `--`, plus the words of the environment variable CINDERFALL_ARGS (desktop only). The
+## variable is how a wrapper that cannot forward flags (tools/capture.ps1) still selects a scenario or a quality tier:
+## `CINDERFALL_ARGS="--scenario=boss --quality=2" capture.ps1 ...`.
 static func from_os() -> DebugArgs:
-	return parse(OS.get_cmdline_user_args())
+	var all: PackedStringArray = OS.get_cmdline_user_args()
+	all.append_array(OS.get_environment("CINDERFALL_ARGS").split(" ", false))
+	return parse(all)
+
+
+## A single argument that carries several flags (`--capture-scene=res://x.tscn --scenario=boss`, which is what a
+## `-Scene "<path> <flags>"` of capture.ps1 delivers) is split at its whitespace.
+static func expand(args: PackedStringArray) -> PackedStringArray:
+	var out: PackedStringArray = PackedStringArray()
+	for raw: String in args:
+		if raw.begins_with("--") and raw.contains(" --"):
+			out.append_array(raw.split(" ", false))
+		else:
+			out.append(raw)
+	return out
 
 
 static func parse(args: PackedStringArray) -> DebugArgs:
 	var a: DebugArgs = DebugArgs.new()
-	for raw: String in args:
+	for raw: String in expand(args):
 		var key: String = raw
 		var value: String = ""
 		var eq: int = raw.find("=")
@@ -61,6 +82,15 @@ static func parse(args: PackedStringArray) -> DebugArgs:
 				var parts: PackedStringArray = value.split("x")
 				if parts.size() == 2 and parts[0].is_valid_int() and parts[1].is_valid_int():
 					a.capture_size = Vector2i(parts[0].to_int(), parts[1].to_int())
+			"--debug-overlay":
+				a.debug_overlay = "all" if value == "" else value
+			"--high-contrast":
+				a.high_contrast = true
+			"--reduced-flash":
+				a.reduced_flash = true
+			"--hud-step":
+				if value.is_valid_int():
+					a.hud_step = maxi(0, value.to_int())
 			"--capture-frames":
 				if value.is_valid_int():
 					a.capture_frames = maxi(1, value.to_int())

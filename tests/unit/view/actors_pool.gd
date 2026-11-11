@@ -65,21 +65,22 @@ func test_interpolation_gives_prev_mid_and_current_at_alpha_0_half_1() -> void:
 	var layer: ActorLayer = ActorsTestKit.actor_layer(self, w)
 	auto_free(layer)
 	layer.bind(w)
+	# one tick of a fast walker (0.06 m); a jump of more than ActorLayer.TELEPORT_M is a forced move and is not interpolated
 	w.enemies.prev_x[i] = 2.0
 	w.enemies.prev_z[i] = 4.0
-	w.enemies.x[i] = 4.0
-	w.enemies.z[i] = 8.0
+	w.enemies.x[i] = 2.04
+	w.enemies.z[i] = 4.08
 	layer.render(0.0, 0.016)
 	assert_float(layer.enemy_world_position(enemy_id).x).is_equal_approx(2.0, 0.0001)
 	assert_float(layer.enemy_world_position(enemy_id).z).is_equal_approx(4.0, 0.0001)
 	layer.render(0.5, 0.016)
-	assert_float(layer.enemy_world_position(enemy_id).x).is_equal_approx(3.0, 0.0001)
-	assert_float(layer.enemy_world_position(enemy_id).z).is_equal_approx(6.0, 0.0001)
+	assert_float(layer.enemy_world_position(enemy_id).x).is_equal_approx(2.02, 0.0001)
+	assert_float(layer.enemy_world_position(enemy_id).z).is_equal_approx(4.04, 0.0001)
 	layer.render(1.0, 0.016)
-	assert_float(layer.enemy_world_position(enemy_id).x).is_equal_approx(4.0, 0.0001)
-	assert_float(layer.enemy_world_position(enemy_id).z).is_equal_approx(8.0, 0.0001)
+	assert_float(layer.enemy_world_position(enemy_id).x).is_equal_approx(2.04, 0.0001)
+	assert_float(layer.enemy_world_position(enemy_id).z).is_equal_approx(4.08, 0.0001)
 	layer.render(7.0, 0.016)  # never extrapolates
-	assert_float(layer.enemy_world_position(enemy_id).x).is_equal_approx(4.0, 0.0001)
+	assert_float(layer.enemy_world_position(enemy_id).x).is_equal_approx(2.04, 0.0001)
 
 
 func test_unknown_id_in_enemy_killed_is_ignored() -> void:

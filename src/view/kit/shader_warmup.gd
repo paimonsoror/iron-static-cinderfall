@@ -3,14 +3,20 @@ extends MeshInstance3D
 ## Draws every material variant once so the first shot of a run does not hitch while the GPU compiles pipelines
 ## (ARCH 8). One tiny quad per material, nearly invisible (alpha 0.02) for 2 frames, then the node frees itself.
 ## Attach it where the camera sees it, during the boot screen. `extra` adds materials outside MatLib (the ground
-## shader). A single MeshInstance3D, so it costs one node.
+## shader). Besides the quads it draws one floating-text `Label3D` (the glyphs of "+Scrap", same settings as
+## FloatingTexts) and flashes the `ScreenFlash` CanvasLayer once at alpha 0.02, so those pipelines are warm too.
+## The Mobile renderer ignores `GeometryInstance3D.transparency`, so callers hide the quads by placing the node just
+## under the opaque ground: they are still submitted (pipelines compile), the depth test rejects every pixel.
 
 const ALPHA: float = 0.02
 const FRAMES: int = 2
 const QUAD: float = 0.05
 const SPACING: float = 0.08
+const LABEL_TEXT: String = "+0123456789"
 
 var frames_left: int = FRAMES
+var label: Label3D
+var flash: ScreenFlash
 
 
 ## Creates the warm-up node under `parent` at world point `at` and returns it.
@@ -18,10 +24,22 @@ static func attach(parent: Node3D, at: Vector3, extra: Array[Material] = []) -> 
 	var w: ShaderWarmup = ShaderWarmup.new()
 	w.name = "ShaderWarmup"
 	w.mesh = build_mesh(extra)
-	w.transparency = 1.0 - ALPHA
+	w.transparency = 1.0 - ALPHA  # honored by Compatibility and Forward+ only; Mobile hides the quads by depth
 	w.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(w)
 	w.position = at
+	w.label = Label3D.new()
+	w.label.name = "WarmupLabel"
+	FloatingTexts.configure_label(w.label)
+	w.label.pixel_size = 0.002  # small: the pipeline does not care about size
+	w.label.text = LABEL_TEXT
+	w.label.modulate = Color(1.0, 1.0, 1.0, ALPHA)
+	w.label.outline_modulate = Color(0.0, 0.0, 0.0, ALPHA)
+	w.add_child(w.label)
+	w.flash = ScreenFlash.new()
+	w.flash.setup()
+	w.add_child(w.flash)
+	w.flash.trigger(Color(1.0, 1.0, 1.0), ALPHA, 0.05)
 	return w
 
 

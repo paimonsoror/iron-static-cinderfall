@@ -93,6 +93,15 @@ func release_all() -> void:
 			kp.free.append(actor)
 
 
+## High Contrast look for every pooled view, free ones included (they carry it on into their next life).
+func set_contrast(on: bool) -> void:
+	for kp: KindPool in _kinds:
+		for actor: EnemyActor in kp.free:
+			actor.set_contrast(on)
+		for actor: EnemyActor in kp.used:
+			actor.set_contrast(on)
+
+
 ## Visible (acquired) actors, dying ones included.
 func visible_count() -> int:
 	var n: int = 0

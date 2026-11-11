@@ -6,6 +6,8 @@ extends Node3D
 ## Node tree: TurretView (pad) / Rise / Base, Head (yaw pivot) / HeadMesh (recoil), Muzzle.
 
 const DEPLOY_S: float = 0.7
+## Height of the top of the hex pad that ArenaView builds (a 0.12 m slab); the turret stands on it, at the pad's x and z.
+const PAD_TOP_Y: float = 0.12
 const AIM_RATE: float = 12.0
 const RECOIL_DECAY: float = 18.0
 
@@ -56,7 +58,7 @@ func bind(sim: SimWorld) -> void:
 	_fresh = true
 	_recoil = 0.0
 	_deployed = false
-	position = Vector3(sim.turrets.x[pad], 0.0, sim.turrets.z[pad])
+	position = Vector3(sim.turrets.x[pad], PAD_TOP_Y, sim.turrets.z[pad])
 	if sim.turrets.active[pad] == 1:
 		_start_deploy(DEPLOY_S)
 	Events.turret_deployed.connect(_on_turret_deployed)
@@ -78,7 +80,7 @@ func render(_alpha: float, delta: float) -> void:
 	if _sim == null:
 		return
 	var ts: TurretStore = _sim.turrets
-	position = Vector3(ts.x[pad], 0.0, ts.z[pad])
+	position = Vector3(ts.x[pad], PAD_TOP_Y, ts.z[pad])
 	if ts.active[pad] == 1 and not _deployed:
 		_start_deploy(0.0)
 	elif ts.active[pad] == 0 and _deployed:

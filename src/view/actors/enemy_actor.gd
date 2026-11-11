@@ -73,6 +73,16 @@ func is_flashing() -> bool:
 	return mesh.material_override != null
 
 
+## High Contrast: brighter optic, rim lit plates and frame, as surface overrides (ActorContrast). Off clears them.
+func set_contrast(on: bool) -> void:
+	var m: ArrayMesh = mesh.mesh as ArrayMesh
+	for s: int in m.get_surface_count():
+		var variant: Material = null
+		if on:
+			variant = ActorContrast.variant_of(m.surface_get_material(s))
+		mesh.set_surface_override_material(s, variant)
+
+
 func world_position() -> Vector3:
 	return root.position
 
