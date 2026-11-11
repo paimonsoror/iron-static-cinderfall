@@ -24,13 +24,21 @@ static func block_reason(world: SimWorld, upgrade_index: int) -> int:
 		return Reason.Id.MAX_LEVEL
 	if def.kind == UpgradeDef.Kind.TURRET and _free_pad(world) < 0:
 		return Reason.Id.MAX_LEVEL
-	# world.wave is 0 while PREPARING; that phase counts as "about to start wave 1", so a min_wave 1 upgrade is not
-	# locked by it. Everything with min_wave >= 2 stays locked until that wave has started.
-	if maxi(world.wave, 1) < def.min_wave:
+	if effective_wave(world) < def.min_wave:
 		return Reason.Id.PREREQ_NOT_MET
 	if world.scrap < world.upgrade_cost(upgrade_index):
 		return Reason.Id.INSUFFICIENT_SCRAP
 	return Reason.Id.OK
+
+
+## The wave `min_wave` is compared with (GDD A1: the SMG is "purchasable from wave 2, first intermission onward").
+## `world.wave` stays n through wave n's CLEARING and the INTERMISSION after it, so the rule is: PREPARING counts as
+## wave 1 (world.wave is still 0), SPAWNING and CLEARING as the current wave, and INTERMISSION as the wave that is
+## about to start (`world.wave + 1`).
+static func effective_wave(world: SimWorld) -> int:
+	if world.phase == GameState.Id.INTERMISSION:
+		return world.wave + 1
+	return maxi(world.wave, 1)
 
 
 ## -1 at max level. SimWorld.upgrade_cost already implements this; W1-C keeps the delegation.

@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "note": "Initial schedules. Tune with deterministic simulation to achieve peak targets and 4.5\u20136 min duration. Cap 50 living enemies; queue excess rather than drop.",
+  "note": "Tuned in W2-D with deterministic balance runs toward GDD 8.4; every change and its before/after numbers are in docs/reports/BALANCE_REPORT.md. The untouched baseline stays in docs/handoff/03_DATA/. Cap 50 living enemies; queue excess rather than drop.",
   "waves": [
     {
       "index": 1,
@@ -8,9 +8,9 @@
       "groups": [
         {
           "enemy": "skitter",
-          "count": 16,
-          "start_s": 0,
-          "interval_s": 1.7,
+          "count": 28,
+          "start_s": 0.5,
+          "interval_s": 0.75,
           "region": "right"
         }
       ]
@@ -23,14 +23,14 @@
           "enemy": "skitter",
           "count": 30,
           "start_s": 0,
-          "interval_s": 1.1,
+          "interval_s": 0.52,
           "region": "right"
         },
         {
           "enemy": "hollow_warden",
           "count": 6,
-          "start_s": 8,
-          "interval_s": 4,
+          "start_s": 21.5,
+          "interval_s": 5.08,
           "region": "upper_right"
         }
       ]
@@ -41,16 +41,16 @@
       "groups": [
         {
           "enemy": "skitter",
-          "count": 42,
+          "count": 71,
           "start_s": 0,
-          "interval_s": 0.85,
+          "interval_s": 0.3,
           "region": "right"
         },
         {
           "enemy": "hollow_warden",
-          "count": 12,
-          "start_s": 5,
-          "interval_s": 2.6,
+          "count": 24,
+          "start_s": 8.5,
+          "interval_s": 1.8,
           "region": "upper_right"
         }
       ]
@@ -61,16 +61,16 @@
       "groups": [
         {
           "enemy": "skitter",
-          "count": 58,
+          "count": 64,
           "start_s": 0,
-          "interval_s": 0.68,
+          "interval_s": 0.12,
           "region": "right"
         },
         {
           "enemy": "rusher",
-          "count": 18,
-          "start_s": 7,
-          "interval_s": 1.8,
+          "count": 32,
+          "start_s": 6,
+          "interval_s": 1.7,
           "region": "upper_right"
         }
       ]
@@ -81,29 +81,29 @@
       "groups": [
         {
           "enemy": "skitter",
-          "count": 72,
+          "count": 90,
           "start_s": 0,
-          "interval_s": 0.55,
+          "interval_s": 0.1,
           "region": "right"
         },
         {
           "enemy": "rusher",
-          "count": 20,
-          "start_s": 10,
-          "interval_s": 1.65,
+          "count": 24,
+          "start_s": 8,
+          "interval_s": 1.8,
           "region": "upper_right"
         },
         {
           "enemy": "hollow_warden",
-          "count": 10,
-          "start_s": 14,
-          "interval_s": 3,
+          "count": 14,
+          "start_s": 5,
+          "interval_s": 2.6,
           "region": "right"
         },
         {
           "enemy": "siege_hulk",
           "count": 1,
-          "start_s": 18,
+          "start_s": 45,
           "interval_s": 1,
           "region": "upper_right"
         }

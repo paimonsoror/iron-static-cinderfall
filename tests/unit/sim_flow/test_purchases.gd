@@ -103,6 +103,8 @@ func test_min_wave_locks_the_smg_until_wave_two() -> void:
 
 
 func test_preparing_counts_as_wave_one_for_min_wave() -> void:
+	# W2-D: an INTERMISSION counts as the wave that is about to start (GDD A1), so the SMG opens in the first one.
+	# The full matrix is in test_smg_availability.gd.
 	var w: SimWorld = FlowKit.in_phase(GameState.Id.PREPARING)
 	w.add_scrap(1000)
 	assert_int(w.wave).is_equal(0)
@@ -111,7 +113,7 @@ func test_preparing_counts_as_wave_one_for_min_wave() -> void:
 	assert_int(EconomySystem.block_reason(w, Ids.UP_SMG)).is_equal(Reason.Id.PREREQ_NOT_MET)
 	var rested: SimWorld = FlowKit.in_phase(GameState.Id.INTERMISSION, 1)
 	rested.add_scrap(1000)
-	assert_int(EconomySystem.block_reason(rested, Ids.UP_SMG)).is_equal(Reason.Id.PREREQ_NOT_MET)
+	assert_int(EconomySystem.block_reason(rested, Ids.UP_SMG)).is_equal(Reason.Id.OK)
 	rested.wave = 2
 	assert_int(EconomySystem.block_reason(rested, Ids.UP_SMG)).is_equal(Reason.Id.OK)
 
