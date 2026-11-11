@@ -5,6 +5,7 @@ Prints the emulator serial when Android reports sys.boot_completed=1. Safe to ca
 (it just waits for it). Works with a physical phone attached too: the wait is done against the emulator's own serial.
 Exit 0 = booted, 1 = timeout or the emulator process died.
 .PARAMETER Avd        AVD name (default tower_phone: Pixel 6 profile, 1080x2400, x86_64, android-35 google_apis_playstore).
+                      tower_phone_36 has the same hardware on android-36 (BUILD_INSTRUCTIONS 5.1); neither renders Vulkan yet.
 .PARAMETER Gpu        Emulator -gpu mode (default host). host | swangle_indirect | angle_indirect | swiftshader_indirect | lavapipe | auto.
                       Changing it needs a stopped emulator (adb emu kill) plus -ColdBoot or -NoSnapshot. On this laptop host uses the
                       Intel Iris Plus Vulkan driver, auto and angle_indirect pick Lavapipe, the swiftshader/swangle modes SwiftShader.
