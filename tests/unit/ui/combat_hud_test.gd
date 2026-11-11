@@ -8,7 +8,7 @@ var _hud: CombatHud
 func before_test() -> void:
 	_api = FakeRunApi.new()
 	_api.fake_phase = GameState.Id.SPAWNING
-	_hud = CombatTestKit.make_hud(self, _api)
+	_hud = CombatHudTestKit.make_hud(self, _api)
 
 
 func test_the_top_bar_shows_core_percent_wave_and_grouped_scrap() -> void:
@@ -147,7 +147,7 @@ func test_continue_calls_skip_intermission_once() -> void:
 	Events.intermission_started.emit(1, 480)
 	assert_str(_hud.intermission.continue_button.text).is_equal(Strings.t("hud.intermission.continue"))
 	_hud.intermission.continue_button.pressed.emit()
-	var skips: Array[Dictionary] = CombatTestKit.calls_of(_api, "skip_intermission")
+	var skips: Array[Dictionary] = CombatHudTestKit.calls_of(_api, "skip_intermission")
 	assert_int(skips.size()).is_equal(1)
 	assert_int(_api.calls.size()).is_equal(1)
 
@@ -190,11 +190,11 @@ func test_the_pause_button_only_emits_pause_requested() -> void:
 
 func test_no_visible_label_is_empty_in_any_state() -> void:
 	for n: int in 6:
-		CombatTestKit.drive(_hud, _api, n)
+		CombatHudTestKit.drive(_hud, _api, n)
 		_hud.refresh()
-		assert_array(CombatTestKit.empty_visible_labels(_hud)).is_empty()
-		for b: BaseButton in CombatTestKit.buttons(_hud):
+		assert_array(CombatHudTestKit.empty_visible_labels(_hud)).is_empty()
+		for b: BaseButton in CombatHudTestKit.buttons(_hud):
 			var btn: Button = b as Button
 			if btn != null and btn.is_visible_in_tree():
-				var has_words: bool = btn.text != "" or btn.icon != null or CombatTestKit.labels(btn).size() > 0
+				var has_words: bool = btn.text != "" or btn.icon != null or CombatHudTestKit.labels(btn).size() > 0
 				assert_bool(has_words).is_true()

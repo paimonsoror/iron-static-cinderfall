@@ -170,9 +170,10 @@ func test_upgrade_cost_query_and_max_level() -> void:
 	assert_int(w.upgrade_cost(99)).is_equal(-1)
 
 
-func test_stub_commands_report_wrong_state() -> void:
+func test_commands_report_their_block_reasons() -> void:
 	var w: SimWorld = TestContent.world()
-	assert_int(w.purchase_block_reason(Ids.UP_DAMAGE)).is_equal(Reason.Id.WRONG_STATE)
+	# Real economy rules (W1-C): a fresh world has 0 Scrap, so the damage upgrade is unaffordable.
+	assert_int(w.purchase_block_reason(Ids.UP_DAMAGE)).is_equal(Reason.Id.INSUFFICIENT_SCRAP)
 	assert_int(w.ability_block_reason(Ids.AB_EMP)).is_equal(Reason.Id.WRONG_STATE)
 	assert_int(PhaseSystem.skip_intermission(w)).is_equal(Reason.Id.WRONG_STATE)
 

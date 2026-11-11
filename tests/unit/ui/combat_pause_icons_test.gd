@@ -10,7 +10,7 @@ const ICON_IDS: Array[StringName] = [
 func _overlay() -> PauseOverlay:
 	var packed: PackedScene = load("res://src/ui/combat/pause_overlay.tscn") as PackedScene
 	var overlay: PauseOverlay = packed.instantiate() as PauseOverlay
-	CombatTestKit.screen(self, Vector2(1080.0, 1920.0)).add_child(overlay)
+	CombatHudTestKit.screen(self, Vector2(1080.0, 1920.0)).add_child(overlay)
 	overlay.setup()
 	return overlay
 
@@ -31,16 +31,16 @@ func test_the_pause_overlay_buttons_emit_their_signals_once() -> void:
 
 func test_the_pause_overlay_text_comes_from_the_string_table_and_buttons_are_big() -> void:
 	var overlay: PauseOverlay = _overlay()
-	await CombatTestKit.settle(get_tree())
+	await CombatHudTestKit.settle(get_tree())
 	assert_str(overlay.title_label.text).is_equal(Strings.t("pause.title"))
 	assert_str(overlay.resume_button.text).is_equal(Strings.t("pause.resume"))
 	assert_str(overlay.restart_button.text).is_equal(Strings.t("pause.restart"))
 	assert_str(overlay.settings_button.text).is_equal(Strings.t("pause.settings"))
 	assert_str(overlay.quit_button.text).is_equal(Strings.t("pause.quit"))
-	for b: BaseButton in CombatTestKit.buttons(overlay):
+	for b: BaseButton in CombatHudTestKit.buttons(overlay):
 		assert_float(b.size.x).is_greater_equal(132.0)
 		assert_float(b.size.y).is_greater_equal(148.0)
-	assert_int(CombatTestKit.buttons(overlay).size()).is_equal(4)
+	assert_int(CombatHudTestKit.buttons(overlay).size()).is_equal(4)
 
 
 func test_the_pause_overlay_blocks_taps_to_whatever_is_below_it() -> void:

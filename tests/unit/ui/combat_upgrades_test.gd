@@ -8,7 +8,7 @@ var _hud: CombatHud
 func before_test() -> void:
 	_api = FakeRunApi.new()
 	_api.fake_phase = GameState.Id.SPAWNING
-	_hud = CombatTestKit.make_hud(self, _api)
+	_hud = CombatHudTestKit.make_hud(self, _api)
 	_api.set_scrap(1000)
 	_hud.refresh()
 
@@ -26,7 +26,7 @@ func test_drawer_has_exactly_the_five_upgrade_cards() -> void:
 
 func test_tapping_an_affordable_card_issues_one_purchase_with_a_fresh_id() -> void:
 	_card(&"damage").pressed.emit()
-	var buys: Array[Dictionary] = CombatTestKit.calls_of(_api, "purchase_upgrade")
+	var buys: Array[Dictionary] = CombatHudTestKit.calls_of(_api, "purchase_upgrade")
 	assert_int(buys.size()).is_equal(1)
 	assert_int(_api.calls.size()).is_equal(1)
 	var sent_id: StringName = buys[0]["id"]
@@ -39,7 +39,7 @@ func test_tapping_an_affordable_card_issues_one_purchase_with_a_fresh_id() -> vo
 func test_two_taps_mint_two_different_command_ids() -> void:
 	_card(&"damage").pressed.emit()
 	_card(&"fire_rate").pressed.emit()
-	var buys: Array[Dictionary] = CombatTestKit.calls_of(_api, "purchase_upgrade")
+	var buys: Array[Dictionary] = CombatHudTestKit.calls_of(_api, "purchase_upgrade")
 	assert_int(buys.size()).is_equal(2)
 	var first: int = buys[0]["command_id"]
 	var second: int = buys[1]["command_id"]
@@ -132,7 +132,7 @@ func test_there_is_no_weapon_card_strip_and_no_data_counter() -> void:
 	_api.fake_phase = GameState.Id.INTERMISSION
 	_hud.open_drawer()
 	_hud.refresh()
-	for l: Label in CombatTestKit.labels(_hud):
+	for l: Label in CombatHudTestKit.labels(_hud):
 		var up: String = l.text.to_upper()
 		assert_bool(up.contains("DATA")).is_false()
 		assert_bool(up.contains("ASSAULT")).is_false()

@@ -1,4 +1,4 @@
-class_name CombatTestKit
+class_name CombatHudTestKit
 extends RefCounted
 ## Helpers shared by the combat HUD tests (not a suite itself).
 

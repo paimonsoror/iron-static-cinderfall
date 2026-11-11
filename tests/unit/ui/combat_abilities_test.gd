@@ -8,7 +8,7 @@ var _hud: CombatHud
 func before_test() -> void:
 	_api = FakeRunApi.new()
 	_api.fake_phase = GameState.Id.SPAWNING
-	_hud = CombatTestKit.make_hud(self, _api)
+	_hud = CombatHudTestKit.make_hud(self, _api)
 
 
 func _button(id: StringName) -> HudAbilityButton:
@@ -27,7 +27,7 @@ func test_ready_state_shows_ready_and_a_tap_issues_one_activation_with_a_fresh_i
 	assert_str(b.state_label.text).is_equal(Strings.t("hud.ability.ready"))
 	assert_bool(b.seconds_label.visible).is_false()
 	b.pressed.emit()
-	var calls: Array[Dictionary] = CombatTestKit.calls_of(_api, "activate_ability")
+	var calls: Array[Dictionary] = CombatHudTestKit.calls_of(_api, "activate_ability")
 	assert_int(calls.size()).is_equal(1)
 	assert_int(_api.calls.size()).is_equal(1)
 	var sent_id: StringName = calls[0]["id"]
@@ -116,6 +116,6 @@ func test_ability_signals_pulse_and_shake_without_issuing_commands() -> void:
 	_api.fake_ability_block[&"emp"] = Reason.Id.OK
 	Events.ability_activated.emit(&"emp")
 	Events.ability_rejected.emit(&"emp", Reason.Id.ON_COOLDOWN)
-	await CombatTestKit.settle(get_tree(), 2)
+	await CombatHudTestKit.settle(get_tree(), 2)
 	assert_int(_api.calls.size()).is_equal(0)
 	assert_bool(is_instance_valid(_button(&"emp"))).is_true()
