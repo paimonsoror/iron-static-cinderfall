@@ -1172,7 +1172,8 @@ func render(alpha: float, delta: float) -> void    # once per frame, after the f
 func fit_camera(viewport_size: Vector2, top_px: float, bottom_px: float) -> void
 func world_to_screen(x: float, z: float, height: float = 0.0) -> Vector2
 func set_quality(tier: int) -> void                # VisualQuality.Tier
-func set_reduced_flash(on: bool) -> void
+func set_reduced_flash(on: bool) -> void           # forwards to VfxLayer and ArenaView
+func set_high_contrast(on: bool) -> void           # added after Wave 1; forwards to ActorLayer (body is W2-E's)
 
 class_name CameraRig extends Node3D                # task W1-E
 var camera: Camera3D                               # PROJECTION_ORTHOGONAL, KEEP_HEIGHT; pitch from arena.pitch_down_deg
@@ -1198,6 +1199,7 @@ func bind(sim: SimWorld) -> void
 func unbind() -> void
 func render(alpha: float, delta: float) -> void
 func set_quality(tier: int) -> void
+func set_high_contrast(on: bool) -> void                 # brighter optics and rims (GDD 10.3); added after Wave 1
 func enemy_world_position(enemy_id: int) -> Vector3      # for VFX and floating text; Vector3.INF if unknown
 
 class_name VfxLayer extends Node3D                 # task W1-F

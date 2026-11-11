@@ -77,6 +77,12 @@ func set_reduced_flash(on: bool) -> void:
 	arena_view.set_reduced_flash(on)
 
 
+## High-contrast setting (GDD 10.3). Added by the coordinator after Wave 1 so Game and the view can be built in
+## parallel in Wave 2; the actor-side look is W2-E's.
+func set_high_contrast(on: bool) -> void:
+	actor_layer.set_high_contrast(on)
+
+
 func _sync_arena() -> void:
 	var hp_frac: float = _sim.core_hp / maxf(_sim.core_max_hp, 0.001)
 	var absorb: float = maxf(_sim.content.abilities[Ids.AB_SHIELD].absorb, 0.001)

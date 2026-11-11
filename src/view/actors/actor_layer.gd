@@ -16,6 +16,7 @@ var _sim: SimWorld
 var _pool: EnemyPool
 var _decals: ActorDecals
 var _quality: int = VisualQuality.Tier.HIGH
+var _high_contrast: bool = false  ## set by set_high_contrast; W2-E applies it to optics and rims
 var _frame: int = 0
 
 
@@ -123,6 +124,12 @@ func set_quality(tier: int) -> void:
 
 func quality() -> int:
 	return _quality
+
+
+## High-contrast setting (GDD 10.3): brighter enemy optics and a rim. Coordinator stub so that Game can wire the
+## setting in Wave 2; the body is W2-E's.  # TODO(W2-E)
+func set_high_contrast(on: bool) -> void:
+	_high_contrast = on
 
 
 ## World position of a live enemy's feet, or Vector3.INF if unknown.
