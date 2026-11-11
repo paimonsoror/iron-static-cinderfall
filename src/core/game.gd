@@ -1,14 +1,49 @@
 extends Node
-## `Game` autoload (ARCH 7.4). Wave 0 stub: boot builds the layer tree, shows the stub BootScreen over the
-## view sandbox, logs `game boot ...` and `boot ok`. Every other method logs and does nothing.
-## TODO(W2-A): the real state machine, screens, runs.
+## `Game` autoload (ARCH 7.4): the application state machine, the screens, and the life of a run.
+##
+## Flow: BOOT -> MENU -> BRIEFING -> a run (PREPARING .. VICTORY or DEFEAT, mirrored from the sim) -> results ->
+## retry or menu. PAUSED exists only here: the sim is simply not stepped. A run is a RunController (RunHost), a
+## BattleView (World), a CombatHud (HudRoot) and GameFeedback; they are built by `_begin_run` and torn down by
+## `_teardown_run`, which leaves no node, no Events connection and no sim reference behind. The BattleView is built
+## once per visit to the battlefield and reused by retries (its pools are reset by `bind`); it is freed on the way to
+## the menu.
+##
+## Debug arguments (ARCH 11): --seed, --autoplay[=none|greedy], --scenario=hold<N>, --quality, --debug-perf, --mute,
+## --quit-after-run. --autoplay and --scenario skip the boot screen and the menus and deploy at once.
+
+const SCREEN_BOOT: String = "res://src/ui/screens/boot_screen.tscn"
+const SCREEN_MENU: String = "res://src/ui/screens/main_menu_screen.tscn"
+const SCREEN_BRIEFING: String = "res://src/ui/screens/briefing_screen.tscn"
+const SCREEN_RESULTS: String = "res://src/ui/screens/results_screen.tscn"
+const SCREEN_SETTINGS: String = "res://src/ui/screens/settings_screen.tscn"
+const SCENE_HUD: String = "res://src/ui/combat/combat_hud.tscn"
+const SCENE_PAUSE: String = "res://src/ui/combat/pause_overlay.tscn"
+const SCENE_VIEW: String = "res://src/view/battle_view.tscn"
+const BOOT_MAX_S: float = 2.0  ## the boot screen never holds the game longer than this (GDD 10.2: at most 3 s)
+const RESULTS_DELAY_S: float = 1.2  ## the last moments of the battle stay visible before the results appear
+const FLUSH_RETRY_S: float = 5.0  ## a failed profile flush is retried this often
+const QUIT_WINDOW_MS: int = 2000  ## a second back gesture within this time quits from the menu
+const QUIT_CONFIRM_KEY: String = "menu.quit_confirm"
 
 var machine: GameStateMachine = GameStateMachine.new()
 var run: RunController  ## null outside a run
 var battle_view: BattleView  ## null outside a run
+var hud: CombatHud  ## null outside a run
+var content: ContentSet  ## Content.db unless a test injects another before `boot`
+var args: DebugArgs  ## the user arguments unless a test injects others before `boot`
+var results_delay_s: float = RESULTS_DELAY_S
+## Optional `func(config: SimConfig) -> void`, called on every new run before it starts (tests and tools set debug flags).
+var sim_config_hook: Callable = Callable()
+var last_summary: RunSummary  ## summary of the run that ended last
 
-var _world_root: Node
-var _screen_root: Control
+var _layers: GameLayers
+var _pause_overlay: PauseOverlay
+var _settings_overlay: Control
+var _feedback: GameFeedback = GameFeedback.new()
+var _used_run_ids: Dictionary[String, bool] = {}
+var _boot_logged: bool = false
+var _quit_armed_until: int = 0
+var _flush_timer: float = 0.0
 
 
 ## Called once by src/core/main.gd; builds layers; BOOT -> MENU.
@@ -16,86 +51,327 @@ func boot(root: Node) -> void:
 	var version: String = str(ProjectSettings.get_setting("application/config/version"))
 	Log.info("Game", "game boot version=%s renderer=%s" % [version, RendererInfo.current()])
 	Log.info("Game", "gpu adapter=%s" % RendererInfo.adapter())
-	var args: DebugArgs = DebugArgs.from_os()
+	if args == null:
+		args = DebugArgs.from_os()
+	if content == null:
+		content = Content.db
+	if content == null:
+		Log.error("Game", "no content loaded, cannot start")
+		return
 	Sfx.disabled = args.mute
-	_build_layers(root)
-	var sandbox: PackedScene = load("res://src/debug/view_sandbox.tscn") as PackedScene
-	_world_root.add_child(sandbox.instantiate())
-	var boot_scene: PackedScene = load("res://src/ui/screens/boot_screen.tscn") as PackedScene
-	var boot_screen: BootScreen = boot_scene.instantiate() as BootScreen
-	_screen_root.add_child(boot_screen)
+	Sfx.apply_settings()
+	_layers = GameLayers.build(root, content.tokens, GameViewSettings.bool_setting(&"high_contrast", false))
+	_layers.shell.app_paused.connect(pause_run)
+	_layers.shell.back_requested.connect(request_back)
+	Events.run_finished.connect(_on_run_finished)
+	Events.settings_changed.connect(_on_settings_changed)
+	get_viewport().size_changed.connect(_refit_later)
+	GameViewSettings.apply_fps_cap()
+	if args.debug_perf:
+		var perf: PerfHud = PerfHud.new()
+		_layers.debug_root.add_child(perf)
+		perf.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		perf.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if GameLaunch.wants_autostart(args):
+		_autostart()
+		return
+	var boot_screen: BootScreen = _layers.swap_screen(SCREEN_BOOT) as BootScreen
 	boot_screen.setup(version)
-	boot_screen.finished.connect(boot_screen.queue_free)
-	machine.transition(GameState.Id.MENU)
-	Log.info("Game", "boot ok")
+	boot_screen.finished.connect(goto_menu)
+	get_tree().create_timer(BOOT_MAX_S).timeout.connect(_boot_timeout)
 
 
+func _process(delta: float) -> void:
+	if GameRewards.flush_pending:
+		_flush_timer += delta
+		if _flush_timer >= FLUSH_RETRY_S:
+			_flush_timer = 0.0
+			GameRewards.retry_pending()
+
+
+func _exit_tree() -> void:
+	if Events.run_finished.is_connected(_on_run_finished):
+		Events.run_finished.disconnect(_on_run_finished)
+	if Events.settings_changed.is_connected(_on_settings_changed):
+		Events.settings_changed.disconnect(_on_settings_changed)
+	_feedback.detach()
+
+
+# --- screens ---
+
+
+## Any state that may legally go to the menu: boot, briefing, pause, results. An open run is abandoned (no reward).
 func goto_menu() -> void:
-	_stub("goto_menu")
+	if _layers == null or not GameStateMachine.can_transition(machine.current, GameState.Id.MENU):
+		return
+	_teardown_run(true)
+	_layers.clear_screen()
+	if not _set_state(GameState.Id.MENU):
+		return
+	var menu: MainMenuScreen = _layers.swap_screen(SCREEN_MENU) as MainMenuScreen
+	menu.setup(Save.profile)
+	menu.start_pressed.connect(goto_briefing)
+	menu.settings_pressed.connect(open_settings)
+	menu.quit_pressed.connect(_quit_app)
+	if not _boot_logged:
+		_boot_logged = true
+		Log.info("Game", "boot ok")
 
 
 func goto_briefing() -> void:
-	_stub("goto_briefing")
+	if _layers == null or machine.current != GameState.Id.MENU or not _set_state(GameState.Id.BRIEFING):
+		return
+	var briefing: BriefingScreen = _layers.swap_screen(SCREEN_BRIEFING) as BriefingScreen
+	briefing.setup(content)
+	briefing.deploy_pressed.connect(start_run)
+	briefing.back_pressed.connect(goto_menu)
 
 
-func start_run(_run_seed: int = -1) -> void:
-	_stub("start_run")
+## Deploys from the briefing. -1 = the fixed `--seed` if one was given, else a time-based seed.
+func start_run(run_seed: int = -1) -> void:
+	if machine.current == GameState.Id.BRIEFING:
+		_begin_run(run_seed)
 
 
+## Retry: from the pause overlay (restart) or the results screen.
 func restart_run() -> void:
-	_stub("restart_run")
+	var s: int = machine.current
+	if s == GameState.Id.PAUSED or GameState.is_terminal(s):
+		_begin_run(-1)
 
 
 func pause_run() -> void:
-	_stub("pause_run")
+	if run != null and GameState.is_run_phase(machine.current) and not GameState.is_terminal(machine.current):
+		run.api.pause()  # RunController.paused_changed does the rest, whoever paused
 
 
 func resume_run() -> void:
-	_stub("resume_run")
+	if run != null and machine.current == GameState.Id.PAUSED:
+		run.api.resume()
 
 
+## From the pause overlay or the results screen: abandons the run and shows the menu.
 func quit_to_menu() -> void:
-	_stub("quit_to_menu")
+	if run != null and GameState.is_run_phase(machine.current) and not GameState.is_terminal(machine.current):
+		pause_run()
+	goto_menu()
 
 
 func open_settings() -> void:
-	_stub("open_settings")
+	if _layers == null or _settings_overlay != null:
+		return
+	_settings_overlay = _layers.add_scene(_layers.overlay_root, SCREEN_SETTINGS)
+	if _settings_overlay == null:
+		return
+	var screen: SettingsScreen = _settings_overlay as SettingsScreen
+	screen.setup()
+	screen.closed.connect(_close_settings)
 
 
-## Android back, via BackPolicy.
+## Android back (and Escape on desktop), by BackPolicy.
 func request_back() -> void:
-	_stub("request_back")
+	var drawer: bool = hud != null and hud.is_drawer_open()
+	match BackPolicy.decide(machine.current, drawer, _settings_overlay != null):
+		BackPolicy.Action.CLOSE_OVERLAY:
+			_close_settings()
+		BackPolicy.Action.CLOSE_DRAWER:
+			hud.close_drawer()
+		BackPolicy.Action.PAUSE:
+			pause_run()
+		BackPolicy.Action.RESUME:
+			resume_run()
+		BackPolicy.Action.TO_MENU:
+			goto_menu()
+		BackPolicy.Action.CONFIRM_QUIT:
+			_confirm_quit()
 
 
 func state() -> int:
 	return machine.current
 
 
-func _stub(what: String) -> void:
-	Log.info("Game", "%s (stub, TODO(W2-A))" % what)
+# --- runs ---
 
 
-## The runtime tree of ARCH 7.4: World, RunHost, MobileShell, UI/{ScreenRoot, HudRoot, OverlayRoot, DebugRoot}.
-func _build_layers(root: Node) -> void:
-	_world_root = Node.new()
-	_world_root.name = "World"
-	root.add_child(_world_root)
-	var run_host: Node = Node.new()
-	run_host.name = "RunHost"
-	root.add_child(run_host)
-	var shell: MobileShell = MobileShell.new()
-	shell.name = "MobileShell"
-	root.add_child(shell)
-	var ui: CanvasLayer = CanvasLayer.new()
-	ui.name = "UI"
-	root.add_child(ui)
-	var theme: Theme = UiTheme.build(Content.db.tokens, false)
-	for layer_name: String in ["ScreenRoot", "HudRoot", "OverlayRoot", "DebugRoot"]:
-		var c: Control = Control.new()
-		c.name = layer_name
-		c.theme = theme
-		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		ui.add_child(c)
-		c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		if layer_name == "ScreenRoot":
-			_screen_root = c
+func _begin_run(run_seed: int) -> void:
+	if _layers == null or not GameStateMachine.can_transition(machine.current, GameState.Id.PREPARING):
+		return
+	_teardown_run(false)
+	_layers.clear_screen()
+	if battle_view == null and not _create_view():
+		return
+	var seed_value: int = GameLaunch.pick_seed(run_seed, args)
+	var config: SimConfig = SimConfig.create(content, seed_value)
+	run = RunController.new()
+	run.name = "RunController"
+	_layers.run_host.add_child(run)
+	GameLaunch.configure(config, run, args, seed_value)
+	if sim_config_hook.is_valid():
+		sim_config_hook.call(config)
+	run.paused_changed.connect(_on_paused_changed)
+	run.phase_changed.connect(_on_sim_phase)
+	_set_state(GameState.Id.PREPARING)
+	_feedback.attach(content)
+	var run_id: String = GameLaunch.make_run_id(seed_value, _used_run_ids, Save.profile.awarded_run_ids)
+	Log.info("Game", "run started id=%s seed=%d autoplay=%s scenario=%s" % [run_id, seed_value, args.autoplay, args.scenario])
+	run.start(config, run_id, battle_view)
+	hud = _layers.add_scene(_layers.hud_root, SCENE_HUD) as CombatHud
+	hud.setup(run.api, content, battle_view)
+	hud.pause_requested.connect(pause_run)
+	hud.resized.connect(_refit_later)
+	Sfx.start_ambience()
+	_refit_camera()
+
+
+## The BattleView of a battlefield visit: built once, with the player's quality settings applied.
+func _create_view() -> bool:
+	battle_view = _layers.add_scene(_layers.world, SCENE_VIEW) as BattleView
+	if battle_view == null:
+		return false
+	battle_view.setup(content)
+	GameViewSettings.apply_to_view(battle_view, args)
+	return true
+
+
+## Frees the run and everything built for it. `free_view` also frees the BattleView (leaving the battlefield).
+func _teardown_run(free_view: bool) -> void:
+	_feedback.detach()
+	_close_settings()
+	GameLayers.release(_pause_overlay)
+	_pause_overlay = null
+	GameLayers.release(hud)
+	hud = null
+	if run != null:
+		if run.paused_changed.is_connected(_on_paused_changed):
+			run.paused_changed.disconnect(_on_paused_changed)
+		if run.phase_changed.is_connected(_on_sim_phase):
+			run.phase_changed.disconnect(_on_sim_phase)
+		run.stop()
+		GameLayers.release(run)
+		run = null
+		Sfx.resume_all()
+		Sfx.stop_ambience()
+	if free_view:
+		GameLayers.release(battle_view)
+		battle_view = null
+
+
+func _on_sim_phase(_previous: int, current: int) -> void:
+	_set_state(current)
+
+
+func _on_paused_changed(is_paused: bool) -> void:
+	if is_paused:
+		if not _set_state(GameState.Id.PAUSED):
+			return
+		Sfx.pause_all()
+		_pause_overlay = _layers.add_scene(_layers.overlay_root, SCENE_PAUSE) as PauseOverlay
+		_pause_overlay.setup()
+		_pause_overlay.resume_pressed.connect(resume_run)
+		_pause_overlay.restart_pressed.connect(restart_run)
+		_pause_overlay.settings_pressed.connect(open_settings)
+		_pause_overlay.quit_pressed.connect(quit_to_menu)
+	elif machine.current == GameState.Id.PAUSED:
+		_close_settings()
+		GameLayers.release(_pause_overlay)
+		_pause_overlay = null
+		_set_state(machine.paused_from)
+		Sfx.resume_all()
+
+
+func _on_run_finished(result: int, run_id: String) -> void:
+	if run == null or run.run_id != run_id:
+		return
+	last_summary = run.summary
+	Log.info("Game", "run finished result=%s waves=%d core=%d data=+%d granted=%s" % [
+		RunResult.Id.keys()[result], last_summary.waves_completed, last_summary.core_hp, last_summary.data_reward,
+		str(run.reward_granted)])
+	if results_delay_s > 0.0:
+		get_tree().create_timer(results_delay_s).timeout.connect(_show_results.bind(run_id))
+	else:
+		_show_results(run_id)
+
+
+func _show_results(run_id: String) -> void:
+	if run == null or run.run_id != run_id or not GameState.is_terminal(machine.current):
+		return
+	GameLayers.release(hud)  # the HUD is drawn above the screens
+	hud = null
+	var screen: ResultsScreen = _layers.swap_screen(SCREEN_RESULTS) as ResultsScreen
+	screen.setup(last_summary, content, Save.profile, run.reward_granted)
+	screen.retry_pressed.connect(restart_run)
+	screen.menu_pressed.connect(goto_menu)
+	Log.info("Game", "results shown")
+	if args.quit_after_run:
+		Log.info("Game", "quit after run")
+		get_tree().quit(0)
+
+
+# --- state, settings, camera ---
+
+
+func _set_state(to: int) -> bool:
+	var previous: int = machine.current
+	if not machine.transition(to):
+		Log.warn("Game", "illegal state change %s -> %s" % [GameState.name_of(previous), GameState.name_of(to)])
+		return false
+	Events.state_changed.emit(previous, to)
+	GameRewards.retry_pending()
+	return true
+
+
+func _on_settings_changed(key: StringName) -> void:
+	if GameViewSettings.VIEW_KEYS.has(key):
+		GameViewSettings.apply_to_view(battle_view, args)
+	if key == &"high_contrast" and _layers != null:
+		_layers.apply_theme(content.tokens, GameViewSettings.bool_setting(&"high_contrast", false))
+	if key == &"fps_cap":
+		GameViewSettings.apply_fps_cap()
+	if key == &"sound_on" or key == &"music_on":
+		Sfx.apply_settings()
+
+
+func _refit_later() -> void:
+	_refit_camera.call_deferred()
+
+
+func _refit_camera() -> void:
+	if battle_view != null and is_inside_tree():
+		GameCameraFit.refit(battle_view, hud, get_viewport().get_visible_rect().size, content.tokens)
+
+
+# --- small helpers ---
+
+
+## --autoplay and --scenario: BOOT -> MENU -> BRIEFING -> deploy, with no screens in between.
+func _autostart() -> void:
+	_set_state(GameState.Id.MENU)
+	_set_state(GameState.Id.BRIEFING)
+	Log.info("Game", "boot ok")
+	_boot_logged = true
+	start_run()
+
+
+func _boot_timeout() -> void:
+	if machine.current == GameState.Id.BOOT:
+		goto_menu()
+
+
+func _close_settings() -> void:
+	GameLayers.release(_settings_overlay)
+	_settings_overlay = null
+
+
+func _confirm_quit() -> void:
+	var now: int = Time.get_ticks_msec()
+	if now <= _quit_armed_until:
+		_quit_app()
+		return
+	_quit_armed_until = now + QUIT_WINDOW_MS
+	var key: String = QUIT_CONFIRM_KEY if content.strings.has(QUIT_CONFIRM_KEY) else "menu.quit"
+	_layers.show_toast(Strings.t(key), float(QUIT_WINDOW_MS) / 1000.0)
+
+
+func _quit_app() -> void:
+	GameRewards.flush_now()
+	get_tree().quit()
