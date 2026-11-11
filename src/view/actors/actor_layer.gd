@@ -33,6 +33,7 @@ func setup(content: ContentSet) -> void:
 	_decals.setup(self, content.arena)
 	warden = WardenView.new()
 	warden.setup()
+	warden.set_quality(_quality)
 	add_child(warden)
 	for p: int in content.arena.turret_pads.size():
 		var t: TurretView = TurretView.new()
@@ -144,6 +145,15 @@ func render(alpha: float, delta: float) -> void:
 
 func set_quality(tier: int) -> void:
 	_quality = VisualQuality.from_setting(tier)
+	if warden != null:
+		warden.set_quality(_quality)
+
+
+## Look of the Warden (LookDevStyle.Look; W3-C look-dev). Also becomes the process-wide current look.
+func set_look(look: int) -> void:
+	LookDevStyle.set_current(look)
+	if warden != null:
+		warden.set_look(LookDevStyle.current())
 
 
 func quality() -> int:
