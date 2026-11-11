@@ -109,9 +109,7 @@ func test_reachability_passes_when_all_cells_reach() -> void:
 	assert_int(field.asked).is_equal(1)
 
 
-func test_flow_field_walls_off_a_spawn_region(
-	_do_skip: bool = true, _skip_reason: String = "enable in Wave 2: needs the real FlowField (W1-A); the W0 stub has no cells"
-) -> void:
+func test_flow_field_walls_off_a_spawn_region() -> void:
 	# A wall across the whole yard leaves the 'right' spawn region without a path to the core.
 	var wall: ObstacleDef = ObstacleDef.new()
 	wall.id = &"wall"
@@ -125,9 +123,7 @@ func test_flow_field_walls_off_a_spawn_region(
 	assert_str(_joined(ContentValidator.validate(c))).contains("spawn-region cells cannot reach the core in the flow field")
 
 
-func test_baseline_flow_field_reaches_the_core(
-	_do_skip: bool = true, _skip_reason: String = "enable in Wave 2: needs the real FlowField (W1-A); the W0 stub has no cells"
-) -> void:
+func test_baseline_flow_field_reaches_the_core() -> void:
 	var field: FlowField = FlowField.build(c.arena)
 	assert_int(field.cost.size()).is_greater(0)
 	assert_int(field.unreachable_spawn_cells(c.arena)).is_equal(0)
