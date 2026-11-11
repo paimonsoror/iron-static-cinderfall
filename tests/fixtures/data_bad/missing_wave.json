@@ -1,0 +1,10 @@
+{
+	"rule": "wave indices are exactly 1..5 (a wave is missing)",
+	"stage": "validator",
+	"patches": [
+		{ "file": "waves.json", "path": "waves[2]", "delete": true }
+	],
+	"expect": [
+		"waves.json: $.waves: expected 5 waves, got 4 (missing wave index: 3)"
+	]
+}

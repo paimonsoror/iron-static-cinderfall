@@ -1,0 +1,10 @@
+{
+	"rule": "upgrade costs > 0",
+	"stage": "validator",
+	"patches": [
+		{ "file": "vertical_slice_balance.json", "path": "upgrades.damage.base_cost", "set": -10 }
+	],
+	"expect": [
+		"vertical_slice_balance.json: $.upgrades.damage.base_cost: must be > 0 (got -10)"
+	]
+}

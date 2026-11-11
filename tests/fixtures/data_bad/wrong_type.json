@@ -1,0 +1,10 @@
+{
+	"rule": "values have the right type",
+	"stage": "loader",
+	"patches": [
+		{ "file": "vertical_slice_balance.json", "path": "weapons.pistol.damage", "set": "thirty" }
+	],
+	"expect": [
+		"vertical_slice_balance.json: $.weapons.pistol.damage: missing or not a number"
+	]
+}

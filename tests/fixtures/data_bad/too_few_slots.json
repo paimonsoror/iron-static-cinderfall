@@ -1,0 +1,10 @@
+{
+	"rule": "attack slots >= enemy cap + 2",
+	"stage": "validator",
+	"patches": [
+		{ "file": "arena.json", "path": "slots.ring_counts", "set": [5, 5, 5, 5] }
+	],
+	"expect": [
+		"arena.json: $.slots: 20 attack slots (20 ring entries) for an enemy cap of 50: need at least cap + 2 = 52"
+	]
+}

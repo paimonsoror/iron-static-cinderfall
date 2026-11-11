@@ -1,0 +1,10 @@
+{
+	"rule": "turret pads are inside the bounds",
+	"stage": "validator",
+	"patches": [
+		{ "file": "arena.json", "path": "turret_pads[1].z", "set": 99 }
+	],
+	"expect": [
+		"arena.json: $.turret_pads[1]: turret pad (-1, 99) is outside the bounds"
+	]
+}

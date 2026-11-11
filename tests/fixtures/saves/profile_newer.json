@@ -1,0 +1,10 @@
+{
+	"schema_version": 99,
+	"data": 7777,
+	"missions_completed": 12,
+	"best_core_hp": 990,
+	"runs_played": 30,
+	"awarded_run_ids": ["run_future"],
+	"armory": { "tier": 3, "unlocked": ["rail_gun"] },
+	"settings": { "sound_on": true }
+}

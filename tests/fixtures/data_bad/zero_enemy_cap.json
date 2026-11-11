@@ -1,0 +1,10 @@
+{
+	"rule": "enemy cap >= 1",
+	"stage": "validator",
+	"patches": [
+		{ "file": "vertical_slice_balance.json", "path": "simultaneous_enemy_cap", "set": 0 }
+	],
+	"expect": [
+		"vertical_slice_balance.json: $.simultaneous_enemy_cap: must be >= 1 (got 0)"
+	]
+}

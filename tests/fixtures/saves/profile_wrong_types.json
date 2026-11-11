@@ -1,0 +1,20 @@
+{
+	"schema_version": 1,
+	"data": "lots",
+	"missions_completed": true,
+	"best_core_hp": [1, 2],
+	"runs_played": null,
+	"awarded_run_ids": ["run_ok", 7, null, "", "run_ok", "run_two"],
+	"hints_seen": "not a list",
+	"cheat_mode": true,
+	"settings": {
+		"sound_on": "yes",
+		"music_on": 1,
+		"haptics_on": false,
+		"reduced_flash": true,
+		"high_contrast": null,
+		"quality": 7,
+		"fps_cap": 45,
+		"god_mode": true
+	}
+}

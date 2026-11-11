@@ -1,0 +1,10 @@
+{
+	"rule": "wave indices are exactly 1..5 and unique",
+	"stage": "validator",
+	"patches": [
+		{ "file": "waves.json", "path": "waves[2].index", "set": 2 }
+	],
+	"expect": [
+		"waves.json: $.waves[2].index: duplicate wave index 2 (first used by $.waves[1])"
+	]
+}

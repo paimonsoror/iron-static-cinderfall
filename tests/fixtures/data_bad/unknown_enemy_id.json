@@ -1,0 +1,10 @@
+{
+	"rule": "every enemy id in waves exists",
+	"stage": "loader",
+	"patches": [
+		{ "file": "waves.json", "path": "waves[0].groups[0].enemy", "set": "gremlin" }
+	],
+	"expect": [
+		"waves.json: $.waves[0].groups[0].enemy: unknown enemy id 'gremlin'"
+	]
+}

@@ -1,0 +1,10 @@
+{
+	"rule": "schema versions match (a missing version is reported once)",
+	"stage": "loader",
+	"patches": [
+		{ "file": "content_ext.json", "path": "schema_version", "delete": true }
+	],
+	"expect": [
+		"content_ext.json: $.schema_version: missing or not a number"
+	]
+}

@@ -1,7 +1,7 @@
 class_name SaveFs
 extends RefCounted
 ## File-system interface for the save system. DiskSaveFs (user://) and MemorySaveFs (tests) implement it.
-## TODO(W1-D) may extend the implementations; these base methods are the interface.
+## Paths are full ("user://profile_v1.json"); text is UTF-8.
 
 @warning_ignore_start("unused_parameter")
 

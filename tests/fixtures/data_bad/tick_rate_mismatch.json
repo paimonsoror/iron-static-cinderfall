@@ -1,0 +1,10 @@
+{
+	"rule": "the sim tick rate is 60 per second",
+	"stage": "loader",
+	"patches": [
+		{ "file": "vertical_slice_balance.json", "path": "sim_ticks_per_second", "set": 30 }
+	],
+	"expect": [
+		"vertical_slice_balance.json: $.sim_ticks_per_second: expected 60, got 30"
+	]
+}
