@@ -289,7 +289,9 @@ def main() -> int:
     ap.add_argument("--suite", help="suite file name (without .gd) inside --path, or a res:// path")
     ap.add_argument("--canary", action="store_true", help="prove the runner detects failures")
     ap.add_argument("--self-test", action="store_true", help="run parser unit checks")
-    ap.add_argument("--timeout", type=int, default=300)
+    # Per Godot invocation; only a hang guard. The full suite (stress and seed-sweep tests included) needs ~200 s
+    # and keeps growing, so the original 300 s left too little margin.
+    ap.add_argument("--timeout", type=int, default=900)
     a = ap.parse_args()
     if a.self_test:
         return self_test()
