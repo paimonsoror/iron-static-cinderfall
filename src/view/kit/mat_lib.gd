@@ -3,6 +3,9 @@ extends RefCounted
 ## Cached, shared flat-palette materials (ARCH 8). One instance per id, never per-instance shader data.
 ## ids: ceramic, gunmetal, dark_frame, rubber, concrete, steel_red, steel_grey, hazard,
 ##      emit_cyan, emit_amber, emit_red, flash_white, shadow_blob, add_cyan, add_amber, add_red, add_white
+## W1-E additions (arena only): concrete_light (pale painted concrete for barriers); pool_amber, pool_lamp,
+## pool_cyan, pool_red (additive light pools with a radial falloff, UV 0..1 across a quad); rain (faint additive
+## streaks). All colors still come from the palette tokens.
 
 const IDS: Array[StringName] = [
 	&"ceramic",
@@ -22,6 +25,12 @@ const IDS: Array[StringName] = [
 	&"add_amber",
 	&"add_red",
 	&"add_white",
+	&"concrete_light",
+	&"pool_amber",
+	&"pool_lamp",
+	&"pool_cyan",
+	&"pool_red",
+	&"rain",
 ]
 
 ## Palette defaults (data/visual_tokens.json) used until configure() supplies the real tokens.
@@ -36,6 +45,7 @@ const DEFAULT_PALETTE: Dictionary = {
 
 static var _tokens: VisualTokens = null
 static var _mats: Dictionary[StringName, StandardMaterial3D] = {}
+static var _glow: ImageTexture = null
 
 
 ## Same instance for the same id. Unknown ids give a magenta material so mistakes are visible.
@@ -53,6 +63,27 @@ static func configure(tokens: VisualTokens) -> void:
 	_tokens = tokens
 	for id: StringName in _mats.keys():
 		_paint(_mats[id], id)
+
+
+## Radial alpha falloff (white, alpha 1 at the center, 0 at the edge) shared by every light pool. Built once.
+static func glow_texture() -> ImageTexture:
+	if _glow == null:
+		_glow = ImageTexture.create_from_image(glow_image())
+	return _glow
+
+
+## The CPU image behind `glow_texture` (also what the tests read).
+static func glow_image() -> Image:
+	var n: int = 64
+	var img: Image = Image.create(n, n, false, Image.FORMAT_RGBA8)
+	for y: int in n:
+		for x: int in n:
+			var dx: float = (float(x) + 0.5) / float(n) * 2.0 - 1.0
+			var dy: float = (float(y) + 0.5) / float(n) * 2.0 - 1.0
+			var r: float = sqrt(dx * dx + dy * dy)
+			var a: float = pow(clampf(1.0 - r, 0.0, 1.0), 2.0)
+			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
+	return img
 
 
 static func _pal(token: StringName) -> Color:
@@ -85,6 +116,9 @@ static func _paint(m: StandardMaterial3D, id: StringName) -> void:
 		&"concrete":
 			m.albedo_color = _pal(&"obsidian").lerp(_pal(&"gunmetal"), 0.45)
 			m.roughness = 1.0
+		&"concrete_light":
+			m.albedo_color = _pal(&"bone_ceramic").lerp(_pal(&"gunmetal"), 0.45)
+			m.roughness = 0.95
 		&"steel_red":
 			m.albedo_color = _pal(&"chorus_red").lerp(_pal(&"obsidian"), 0.5)
 		&"steel_grey":
@@ -113,6 +147,17 @@ static func _paint(m: StandardMaterial3D, id: StringName) -> void:
 			_additive(m, _pal(&"chorus_red"))
 		&"add_white":
 			_additive(m, Color.WHITE)
+		&"pool_amber":
+			_pool(m, _pal(&"core_amber"), 0.5)
+		&"pool_lamp":
+			_pool(m, _pal(&"core_amber"), 0.16)
+		&"pool_cyan":
+			_pool(m, _pal(&"warden_cyan"), 0.3)
+		&"pool_red":
+			_pool(m, _pal(&"chorus_red"), 0.2)
+		&"rain":
+			_additive(m, _pal(&"bone_ceramic").lerp(_pal(&"warden_cyan"), 0.45))
+			m.albedo_color.a = 0.2
 		_:
 			m.albedo_color = Color.MAGENTA
 
@@ -132,3 +177,10 @@ static func _additive(m: StandardMaterial3D, c: Color) -> void:
 	m.albedo_color = Color(c.r, c.g, c.b, 0.6)
 	m.no_depth_test = false
 	m.disable_receive_shadows = true
+
+
+static func _pool(m: StandardMaterial3D, c: Color, peak: float) -> void:
+	_additive(m, c)
+	m.albedo_color = Color(c.r, c.g, c.b, peak)
+	m.albedo_texture = glow_texture()
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR

@@ -4,13 +4,16 @@ extends RefCounted
 ## Primitives are centered on their local origin; `xform` places them. Winding is resolved from the
 ## intended outward normal, so a primitive can never come out inside-out.
 ## Conventions: box/prism/sphere centered; cylinder along Y; prism has a triangular section in XY with
-## the apex at +Y, extruded along Z; quad lies in the local XZ plane facing +Y (size.y = Z extent).
+## the apex at +Y, extruded along Z; quad, disc and ring lie in the local XZ plane facing +Y (quad size.y = Z extent).
+## Every surface carries UVs (quad and box faces map 0..1; disc maps planar; ring maps radius to U, angle to V),
+## so a textured material (the radial light-pool texture) works on any of them.
 
 
 class Surf:
 	extends RefCounted
 	var verts: PackedVector3Array = PackedVector3Array()
 	var norms: PackedVector3Array = PackedVector3Array()
+	var uvs: PackedVector2Array = PackedVector2Array()
 	var idx: PackedInt32Array = PackedInt32Array()
 
 
@@ -112,6 +115,37 @@ func quad(size: Vector2, xform: Transform3D, mat_id: StringName) -> MeshBuilder:
 	return self
 
 
+## Flat annulus facing +Y between `r_in` and `r_out`.
+func ring(r_in: float, r_out: float, segments: int, xform: Transform3D, mat_id: StringName) -> MeshBuilder:
+	var n_seg: int = maxi(3, segments)
+	for i: int in n_seg:
+		var a0: float = TAU * float(i) / float(n_seg)
+		var a1: float = TAU * float(i + 1) / float(n_seg)
+		var d0: Vector3 = Vector3(cos(a0), 0.0, sin(a0))
+		var d1: Vector3 = Vector3(cos(a1), 0.0, sin(a1))
+		var v0: float = float(i) / float(n_seg)
+		var v1: float = float(i + 1) / float(n_seg)
+		_tri(mat_id, xform, d0 * r_in, d0 * r_out, d1 * r_out, Vector3.UP, Vector3.UP, Vector3.UP,
+			Vector2(0.0, v0), Vector2(1.0, v0), Vector2(1.0, v1))
+		_tri(mat_id, xform, d0 * r_in, d1 * r_out, d1 * r_in, Vector3.UP, Vector3.UP, Vector3.UP,
+			Vector2(0.0, v0), Vector2(1.0, v1), Vector2(0.0, v1))
+	return self
+
+
+## Flat filled polygon facing +Y (a disc for `sides` >= 12). UVs are planar: 0.5 + local xz / (2 * radius).
+func disc(radius: float, sides: int, xform: Transform3D, mat_id: StringName) -> MeshBuilder:
+	var n_sides: int = maxi(3, sides)
+	var inv: float = 0.5 / maxf(radius, 0.0001)
+	for i: int in n_sides:
+		var a0: float = TAU * float(i) / float(n_sides)
+		var a1: float = TAU * float(i + 1) / float(n_sides)
+		var p0: Vector3 = Vector3(cos(a0), 0.0, sin(a0)) * radius
+		var p1: Vector3 = Vector3(cos(a1), 0.0, sin(a1)) * radius
+		_tri(mat_id, xform, Vector3.ZERO, p0, p1, Vector3.UP, Vector3.UP, Vector3.UP,
+			Vector2(0.5, 0.5), Vector2(0.5 + p0.x * inv, 0.5 + p0.z * inv), Vector2(0.5 + p1.x * inv, 0.5 + p1.z * inv))
+	return self
+
+
 ## One ArrayMesh; one surface per distinct material, in order of first use, material already set.
 func build() -> ArrayMesh:
 	var mesh: ArrayMesh = ArrayMesh.new()
@@ -121,6 +155,7 @@ func build() -> ArrayMesh:
 		arrays.resize(Mesh.ARRAY_MAX)
 		arrays[Mesh.ARRAY_VERTEX] = s.verts
 		arrays[Mesh.ARRAY_NORMAL] = s.norms
+		arrays[Mesh.ARRAY_TEX_UV] = s.uvs
 		arrays[Mesh.ARRAY_INDEX] = s.idx
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		mesh.surface_set_material(mesh.get_surface_count() - 1, MatLib.mat(mat_id))
@@ -136,8 +171,8 @@ func triangle_count() -> int:
 	return n
 
 
-static func _sph(ring: int, i: int, rings: int, lon: int) -> Vector3:
-	var theta: float = PI * float(ring) / float(rings)
+static func _sph(ring_idx: int, i: int, rings: int, lon: int) -> Vector3:
+	var theta: float = PI * float(ring_idx) / float(rings)
 	var phi: float = TAU * float(i) / float(lon)
 	return Vector3(sin(theta) * cos(phi), cos(theta), sin(theta) * sin(phi))
 
@@ -151,12 +186,17 @@ func _surf(mat_id: StringName) -> Surf:
 
 
 func _quad4(mat_id: StringName, xf: Transform3D, n: Vector3, p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3) -> void:
-	_tri(mat_id, xf, p0, p1, p2, n, n, n)
-	_tri(mat_id, xf, p0, p2, p3, n, n, n)
+	var u0: Vector2 = Vector2(0.0, 0.0)
+	var u1: Vector2 = Vector2(1.0, 0.0)
+	var u2: Vector2 = Vector2(1.0, 1.0)
+	var u3: Vector2 = Vector2(0.0, 1.0)
+	_tri(mat_id, xf, p0, p1, p2, n, n, n, u0, u1, u2)
+	_tri(mat_id, xf, p0, p2, p3, n, n, n, u0, u2, u3)
 
 
 func _tri(
-	mat_id: StringName, xf: Transform3D, a: Vector3, b: Vector3, c: Vector3, na: Vector3, nb: Vector3, nc: Vector3
+	mat_id: StringName, xf: Transform3D, a: Vector3, b: Vector3, c: Vector3, na: Vector3, nb: Vector3, nc: Vector3,
+	ua: Vector2 = Vector2.ZERO, ub: Vector2 = Vector2.ZERO, uc: Vector2 = Vector2.ZERO
 ) -> void:
 	var s: Surf = _surf(mat_id)
 	var wa: Vector3 = xf * a
@@ -172,6 +212,9 @@ func _tri(
 	s.norms.append(wna)
 	s.norms.append(wnb)
 	s.norms.append(wnc)
+	s.uvs.append(ua)
+	s.uvs.append(ub)
+	s.uvs.append(uc)
 	# Godot front faces are clockwise: flip when the triangle is counter-clockwise seen from outside.
 	var face: Vector3 = (wb - wa).cross(wc - wa)
 	if face.dot(wna + wnb + wnc) > 0.0:
