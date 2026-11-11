@@ -6,10 +6,13 @@ extends Node
 ## BattleView (World), a CombatHud (HudRoot) and GameFeedback; they are built by `_begin_run` and torn down by
 ## `_teardown_run`, which leaves no node, no Events connection and no sim reference behind. The BattleView is built
 ## once per visit to the battlefield and reused by retries (its pools are reset by `bind`); it is freed on the way to
-## the menu.
+## the menu. The very first one is built while the boot screen shows (ARCH 8: ShaderWarmup draws every material variant
+## then, so the first shot of the first run does not hitch); it waits, hidden, in `_warm_view` and the first deploy
+## adopts it, so `battle_view` stays null outside a run.
 ##
-## Debug arguments (ARCH 11): --seed, --autoplay[=none|greedy], --scenario=hold<N>, --quality, --debug-perf, --mute,
-## --quit-after-run. --autoplay and --scenario skip the boot screen and the menus and deploy at once.
+## Debug arguments (ARCH 11): --seed, --autoplay[=none|greedy], --scenario=hold<N>, --quality, --debug-perf,
+## --debug-overlay[=all|flow,slots,stuck,spawns], --mute, --quit-after-run. --autoplay and --scenario skip the boot
+## screen and the menus and deploy at once.
 
 const SCREEN_BOOT: String = "res://src/ui/screens/boot_screen.tscn"
 const SCREEN_MENU: String = "res://src/ui/screens/main_menu_screen.tscn"
@@ -18,9 +21,9 @@ const SCREEN_RESULTS: String = "res://src/ui/screens/results_screen.tscn"
 const SCREEN_SETTINGS: String = "res://src/ui/screens/settings_screen.tscn"
 const SCENE_HUD: String = "res://src/ui/combat/combat_hud.tscn"
 const SCENE_PAUSE: String = "res://src/ui/combat/pause_overlay.tscn"
-const SCENE_VIEW: String = "res://src/view/battle_view.tscn"
 const BOOT_MAX_S: float = 2.0  ## the boot screen never holds the game longer than this (GDD 10.2: at most 3 s)
 const RESULTS_DELAY_S: float = 1.2  ## the last moments of the battle stay visible before the results appear
+const WARM_VIEW_DELAY_S: float = 0.1  ## the boot screen is on screen before the (slow) first BattleView is built
 const FLUSH_RETRY_S: float = 5.0  ## a failed profile flush is retried this often
 const QUIT_WINDOW_MS: int = 2000  ## a second back gesture within this time quits from the menu
 const QUIT_CONFIRM_KEY: String = "menu.quit_confirm"
@@ -37,6 +40,8 @@ var sim_config_hook: Callable = Callable()
 var last_summary: RunSummary  ## summary of the run that ended last
 
 var _layers: GameLayers
+var _perf: PerfHud  ## --debug-perf only
+var _warm_view: BattleView  ## built during the boot screen, adopted by the first deploy
 var _pause_overlay: PauseOverlay
 var _settings_overlay: Control
 var _feedback: GameFeedback = GameFeedback.new()
@@ -68,10 +73,7 @@ func boot(root: Node) -> void:
 	get_viewport().size_changed.connect(_refit_later)
 	GameViewSettings.apply_fps_cap()
 	if args.debug_perf:
-		var perf: PerfHud = PerfHud.new()
-		_layers.debug_root.add_child(perf)
-		perf.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		perf.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_perf = GameDebugTools.add_perf_hud(_layers.debug_root, Callable(self, "_alive_enemies"))
 	if GameLaunch.wants_autostart(args):
 		_autostart()
 		return
@@ -79,6 +81,7 @@ func boot(root: Node) -> void:
 	boot_screen.setup(version)
 	boot_screen.finished.connect(goto_menu)
 	get_tree().create_timer(BOOT_MAX_S).timeout.connect(_boot_timeout)
+	get_tree().create_timer(WARM_VIEW_DELAY_S).timeout.connect(_prebuild_view)
 
 
 func _process(delta: float) -> void:
@@ -106,6 +109,8 @@ func goto_menu() -> void:
 		return
 	_teardown_run(true)
 	_layers.clear_screen()
+	if _warm_view != null:
+		_warm_view.visible = false  # warmed up; it costs nothing while the menus are up
 	if not _set_state(GameState.Id.MENU):
 		return
 	var menu: MainMenuScreen = _layers.swap_screen(SCREEN_MENU) as MainMenuScreen
@@ -215,6 +220,7 @@ func _begin_run(run_seed: int) -> void:
 	var run_id: String = GameLaunch.make_run_id(seed_value, _used_run_ids, Save.profile.awarded_run_ids)
 	Log.info("Game", "run started id=%s seed=%d autoplay=%s scenario=%s" % [run_id, seed_value, args.autoplay, args.scenario])
 	run.start(config, run_id, battle_view)
+	GameDebugTools.bind(battle_view, run, _perf, args.debug_overlay)
 	hud = _layers.add_scene(_layers.hud_root, SCENE_HUD) as CombatHud
 	hud.setup(run.api, content, battle_view)
 	hud.pause_requested.connect(pause_run)
@@ -223,14 +229,29 @@ func _begin_run(run_seed: int) -> void:
 	_refit_camera()
 
 
-## The BattleView of a battlefield visit: built once, with the player's quality settings applied.
+## The BattleView of a battlefield visit: built once, with the player's view settings applied. The one that was
+## warmed up during the boot screen is adopted first (settings may have changed since, hence applied here).
 func _create_view() -> bool:
-	battle_view = _layers.add_scene(_layers.world, SCENE_VIEW) as BattleView
-	if battle_view == null:
-		return false
-	battle_view.setup(content)
-	GameViewSettings.apply_to_view(battle_view, args)
-	return true
+	battle_view = _warm_view if is_instance_valid(_warm_view) else GameViewBuilder.build(_layers, content, args)
+	_warm_view = null
+	if battle_view != null:
+		battle_view.visible = true
+		GameViewSettings.apply_to_view(battle_view, args)
+	return battle_view != null
+
+
+## Boot screen is up: build the first BattleView now so ShaderWarmup runs before the player can deploy.
+func _prebuild_view() -> void:
+	if machine.current == GameState.Id.BOOT and battle_view == null and _warm_view == null and _layers != null:
+		_warm_view = GameViewBuilder.build(_layers, content, args)
+		if _warm_view != null:
+			GameViewSettings.apply_to_view(_warm_view, args)
+			Log.info("Game", "battle view warmed up during boot")
+
+
+## The live enemy count for the PerfHud.
+func _alive_enemies() -> int:
+	return run.sim.alive_count() if run != null and run.sim != null else 0
 
 
 ## Frees the run and everything built for it. `free_view` also frees the BattleView (leaving the battlefield).
@@ -241,6 +262,7 @@ func _teardown_run(free_view: bool) -> void:
 	_pause_overlay = null
 	GameLayers.release(hud)
 	hud = null
+	GameDebugTools.unbind(battle_view)
 	if run != null:
 		if run.paused_changed.is_connected(_on_paused_changed):
 			run.paused_changed.disconnect(_on_paused_changed)

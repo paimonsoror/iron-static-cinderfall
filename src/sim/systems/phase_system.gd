@@ -77,10 +77,11 @@ static func _clear_wave(world: SimWorld) -> void:
 	world.events.push(SimEventKind.Id.INTERMISSION_STARTED, world.wave, world.phase_ticks_left)
 
 
-## RUN_FINISHED (result, waves completed, core hp), once per run.
+## Active abilities end, then RUN_FINISHED (result, waves completed, core hp), once per run.
 static func _finish_run(world: SimWorld) -> void:
 	world.phase_ticks_left = 0
 	if world.phase_state.run_finished:
 		return
 	world.phase_state.run_finished = true
+	AbilitySystem.end_all(world)
 	world.events.push(SimEventKind.Id.RUN_FINISHED, world.result(), world.waves_completed, world.core_hp)

@@ -20,6 +20,9 @@ var driver: TickDriver = TickDriver.new()
 var summary: RunSummary = null  ## set when the run ended
 var reward_granted: bool = false  ## true when this run's end granted Data (false for a repeat)
 var last_frame_ticks: int = 0  ## ticks the last frame ran
+## Optional `func(usec: float) -> void`, called after every frame that ran ticks with the average microseconds one tick
+## of that frame took (Game points it at `PerfHud.record_tick_usec` for --debug-perf).
+var tick_sink: Callable = Callable()
 
 var _view: BattleView
 var _relay: GameEventRelay
@@ -99,8 +102,11 @@ func step_frame(delta: float) -> int:
 	if not sim.is_over():
 		var t0: int = Time.get_ticks_usec()
 		ran = driver.advance(sim, delta)
-		_tick_usec += Time.get_ticks_usec() - t0
+		var spent: int = Time.get_ticks_usec() - t0
+		_tick_usec += spent
 		_tick_count += ran
+		if ran > 0 and tick_sink.is_valid():
+			tick_sink.call(float(spent) / float(ran))
 		_drain()
 	last_frame_ticks = ran
 	if _view != null and sim != null:
