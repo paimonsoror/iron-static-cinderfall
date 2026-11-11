@@ -1,0 +1,113 @@
+{
+  "schema_version": 2,
+  "note": "Initial schedules. Tune with deterministic simulation to achieve peak targets and 4.5\u20136 min duration. Cap 50 living enemies; queue excess rather than drop.",
+  "waves": [
+    {
+      "index": 1,
+      "peak_target": 10,
+      "groups": [
+        {
+          "enemy": "skitter",
+          "count": 16,
+          "start_s": 0,
+          "interval_s": 1.7,
+          "region": "right"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "peak_target": 18,
+      "groups": [
+        {
+          "enemy": "skitter",
+          "count": 30,
+          "start_s": 0,
+          "interval_s": 1.1,
+          "region": "right"
+        },
+        {
+          "enemy": "hollow_warden",
+          "count": 6,
+          "start_s": 8,
+          "interval_s": 4,
+          "region": "upper_right"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "peak_target": 28,
+      "groups": [
+        {
+          "enemy": "skitter",
+          "count": 42,
+          "start_s": 0,
+          "interval_s": 0.85,
+          "region": "right"
+        },
+        {
+          "enemy": "hollow_warden",
+          "count": 12,
+          "start_s": 5,
+          "interval_s": 2.6,
+          "region": "upper_right"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "peak_target": 40,
+      "groups": [
+        {
+          "enemy": "skitter",
+          "count": 58,
+          "start_s": 0,
+          "interval_s": 0.68,
+          "region": "right"
+        },
+        {
+          "enemy": "rusher",
+          "count": 18,
+          "start_s": 7,
+          "interval_s": 1.8,
+          "region": "upper_right"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "peak_target": 50,
+      "groups": [
+        {
+          "enemy": "skitter",
+          "count": 72,
+          "start_s": 0,
+          "interval_s": 0.55,
+          "region": "right"
+        },
+        {
+          "enemy": "rusher",
+          "count": 20,
+          "start_s": 10,
+          "interval_s": 1.65,
+          "region": "upper_right"
+        },
+        {
+          "enemy": "hollow_warden",
+          "count": 10,
+          "start_s": 14,
+          "interval_s": 3,
+          "region": "right"
+        },
+        {
+          "enemy": "siege_hulk",
+          "count": 1,
+          "start_s": 18,
+          "interval_s": 1,
+          "region": "upper_right"
+        }
+      ]
+    }
+  ]
+}

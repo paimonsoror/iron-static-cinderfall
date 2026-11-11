@@ -1,0 +1,12 @@
+# Binding decisions and precedence
+- **2026-11-10 approved visual direction**: cinematic realistic industrial sci-fi with charcoal/gunmetal, ally cyan `#39C9DB`, core/scrap amber `#F1A34A`, hostile red `#D94D4D`, bone ceramic `#D8D3C5`.
+- **Latest camera override**: fixed high top-down/isometric, 55–65° downward from horizontal; orthographic preferred; portrait-first. Warden and relay on left, incoming CHORUS swarm right and upper-right.
+- **Latest movement override**: continuous navigable arena, **not** three fixed lanes. Steering/pathfinding with light local avoidance, deterministic tie-breaking. Props can create soft funnels; never make navigation impassable.
+- **Latest density override**: target 10 / 18 / 28 / 40 / **50** peak simultaneously alive by waves 1–5. These are *targets*, not guaranteed by untested spawn schedules. Tune spawn pacing/DPS to attain them on reference hardware.
+- **Combat**: Warden stationary, automatic threat-based targeting/firing/reloading; no manual aim or movement. Tap upgrades, turret purchases, and EMP/shield/overdrive.
+- **Slice**: five waves, ~4:30–6:00 target duration, four enemy archetypes total: Skitter, Hollow Warden, Rusher, Siege Hulk boss. No Shieldbearer/Reclaimer until future scope.
+- **Lore**: Cinder = ASH-07 Warden character; NOT the relay/core. The 'Breach of Cinder' is a proposed spin-off event and requires canon owner confirmation. New defender designation TBD. Label objective **RELAY CORE B-4** (not ASH-07).
+- **Weapons**: pistol at start; SMG first in-run unlock. Rifle/LMG/Gauss/Arc/etc are future roadmap only, not required in slice. Concept art may show them but is non-binding.
+- **Pause/upgrade**: full pause stops simulation/cooldowns; upgrade panel opened during wave leaves combat running with explicit warning; intermission pauses hostile combat and allows upgrades.
+- **Data source of truth**: `03_DATA/vertical_slice_balance.json`, `03_DATA/waves.json`, `03_DATA/visual_tokens.json`. Validate these with automated tests; values are initial hypotheses.
+- **Repository**: separate project; audit original licensing before any code/asset reuse.

@@ -1,0 +1,14 @@
+asset_id,kind,needed_for_slice,requirements,source_or_license,status
+warden_defender,3d_model,yes,rigged idle aim fire reload hit death upper-body pivot,TBD,missing
+skitter,3d_model,yes,locomotion attack hit death,TBD,missing
+hollow_warden,3d_model,yes,locomotion attack hit death,TBD,missing
+rusher,3d_model,yes,sprint attack hit death,TBD,missing
+siege_hulk,3d_model,yes,heavy walk attack stagger death,TBD,missing
+pistol,3d_model,yes,muzzle marker and reload,TBD,missing
+smg,3d_model,yes,muzzle marker and reload,TBD,missing
+auto_turret,3d_model,yes,yaw pitch fire deploy,TBD,missing
+relay_core_b4,3d_model,yes,amber reactor idle damage failure,TBD,missing
+industrial_kit,3d_environment,yes,wet concrete steel barriers gantries pipes crates,TBD,missing
+combat_hud,ui,yes,Godot Control native scalable text/icons,TBD,missing
+vfx_bundle,vfx,yes,pooled muzzle impact EMP shield overdrive,TBD,missing
+audio_bundle,audio,yes,shots reload impacts alerts UI boss,TBD,missing

@@ -1,0 +1,16 @@
+{
+  "boot.title": "IRON STATIC: CINDERFALL",
+  "boot.continue": "CONTINUE",
+  "menu.title": "MAIN MENU (stub)",
+  "menu.start": "START",
+  "menu.settings": "SETTINGS",
+  "menu.quit": "QUIT",
+  "briefing.title": "BRIEFING (stub)",
+  "briefing.deploy": "DEPLOY",
+  "briefing.back": "BACK",
+  "results.title": "RESULTS (stub)",
+  "results.retry": "RETRY",
+  "results.menu": "MENU",
+  "settings.title": "SETTINGS (stub)",
+  "settings.close": "CLOSE"
+}

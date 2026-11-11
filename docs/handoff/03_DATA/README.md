@@ -1,0 +1,4 @@
+# Balance data semantics
+These JSON files are **authoring baselines**, not engine-importable `.tres` files. Implement validated conversion or load through a strict schema adapter. Validate all enemy IDs, nonnegative values, unique wave indices, group counts, cap, costs, ability cooldowns and finite numbers. A group scheduled when 50 are alive must queue pending spawns; do not discard units. Peak targets are goals and require actual simulation-based tuning. Wave totals intentionally exceed peak simultaneous count.
+
+For upgrade cost use `round(base_cost * growth ** purchased_level)` with explicit rounding semantics matching Godot and test boundary values. For simultaneous spawn order: wave group order, then group ordinal, then stable ID. End wave only when all pending spawns complete and all living enemies killed.

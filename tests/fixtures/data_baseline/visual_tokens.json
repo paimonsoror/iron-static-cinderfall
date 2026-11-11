@@ -1,0 +1,27 @@
+{
+  "palette": {
+    "obsidian": "#101820",
+    "warden_cyan": "#39C9DB",
+    "core_amber": "#F1A34A",
+    "chorus_red": "#D94D4D",
+    "gunmetal": "#6C7882",
+    "bone_ceramic": "#D8D3C5"
+  },
+  "camera": {
+    "type": "orthographic_preferred",
+    "down_angle_deg_min": 55,
+    "down_angle_deg_max": 65,
+    "orientation": "portrait",
+    "defender_side": "left",
+    "spawn_edges": [
+      "right",
+      "upper_right"
+    ]
+  },
+  "ui": {
+    "touch_target_min_dp": 48,
+    "top_hud_fraction": 0.11,
+    "bottom_controls_fraction": 0.23,
+    "text_contrast_target": 4.5
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "hud.title": "COMBAT HUD (stub)",
+  "hud.pause": "PAUSE",
+  "pause.title": "PAUSED",
+  "pause.resume": "RESUME",
+  "pause.restart": "RESTART",
+  "pause.settings": "SETTINGS",
+  "pause.quit": "QUIT TO MENU"
+}

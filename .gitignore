@@ -1,0 +1,28 @@
+# Godot
+.godot/
+.import/
+*.tmp
+
+# Build outputs, logs and per-checkout scratch (tools write only here)
+/build/
+*.apk
+*.aab
+*.idsig
+
+# Secrets and signing (never commit)
+*.keystore
+*.jks
+secrets*.json
+!secrets*.json.example
+*.p12
+*.pfx
+*.pem
+
+# Python
+.venv/
+__pycache__/
+
+# Misc
+Thumbs.db
+~lib*.dll
+~lib*.so

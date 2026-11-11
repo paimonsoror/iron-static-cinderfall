@@ -1,0 +1,131 @@
+{
+  "package_version": "2.0",
+  "date": "2026-11-10",
+  "files": [
+    {
+      "path": "00_START_HERE/AGENT_MASTER_PROMPT.md",
+      "size": 2343,
+      "sha256": "cb9837c75c40eef654abb80dd67ada4e36d7756e143e7a05163577b94207f353"
+    },
+    {
+      "path": "00_START_HERE/DECISION_LOG.md",
+      "size": 2136,
+      "sha256": "be761fe9d976eb6217ad94c2590d88a5a4f5597fbacda8bbfd26a5c8bd33a445"
+    },
+    {
+      "path": "01_PRODUCT_AND_LORE/GAME_DESIGN.md",
+      "size": 2699,
+      "sha256": "c9fe53a2bf2f67b785aed3debd0e33cde293535fe57c6d64285de596ed96e002"
+    },
+    {
+      "path": "02_TECHNICAL/ANDROID_BUILD.md",
+      "size": 1004,
+      "sha256": "d8223ecda47a19f98f68302df429eed7e16dbd03028de9eb03d0f8d2a3cea9d6"
+    },
+    {
+      "path": "02_TECHNICAL/ARCHITECTURE.md",
+      "size": 5737,
+      "sha256": "c1a216040f95cf67f2443005072c5b3ef6f6fd2a9ec32657bedd5a67d88a4a31"
+    },
+    {
+      "path": "02_TECHNICAL/ART_DIRECTION.md",
+      "size": 1850,
+      "sha256": "afe689fa14768d97289ff67446fd5881dd2c4971e91939ad3d9835229eb03988"
+    },
+    {
+      "path": "02_TECHNICAL/INTERFACES_AND_EVENTS.md",
+      "size": 1765,
+      "sha256": "113a8fb337dde114ca1823447120d70b6753003c1f9b793c729613b3db870c45"
+    },
+    {
+      "path": "03_DATA/README.md",
+      "size": 824,
+      "sha256": "dc43537d554a34e33defeb9636e721fd36d7199ed4ab16f6de4617e22e6d31a6"
+    },
+    {
+      "path": "03_DATA/vertical_slice_balance.json",
+      "size": 2400,
+      "sha256": "f04927c5b68d7ab586c32824eee12860f8bde8608b0d9517aecbb6f75e69eee4"
+    },
+    {
+      "path": "03_DATA/visual_tokens.json",
+      "size": 580,
+      "sha256": "268416a7d8d5fc63f7ff8adf7c57e359fb8322c1aef580434ceee8d3ad966ed7"
+    },
+    {
+      "path": "03_DATA/waves.json",
+      "size": 2375,
+      "sha256": "e5e9b7f9f948daacf57f99b8e6957c748150a443de2a0e879f5188828d94fb2e"
+    },
+    {
+      "path": "04_VISUAL_REFERENCES/REFERENCE_INDEX.md",
+      "size": 971,
+      "sha256": "1f36aa46d5f7602f76fc19b754971da45771209381412e45d14668db8455d6ee"
+    },
+    {
+      "path": "04_VISUAL_REFERENCES/armory_style.png",
+      "size": 2218214,
+      "sha256": "112c237cda170ece38c40ee008852fb723e93717c2e530e28d5ad53423796219"
+    },
+    {
+      "path": "04_VISUAL_REFERENCES/enemy_roster.png",
+      "size": 2553721,
+      "sha256": "0e7b1866acca01348f5763d7327c66b19bbbbb24c9043ca8454047baa3d526c5"
+    },
+    {
+      "path": "04_VISUAL_REFERENCES/environment_mood.png",
+      "size": 2831213,
+      "sha256": "2dc3b1f3487175877edaeb36c0ae6f9c0517dc03416021f382f863b9e305fcc4"
+    },
+    {
+      "path": "04_VISUAL_REFERENCES/topdown_approved.png",
+      "size": 2682906,
+      "sha256": "c54d0311d8f2a8e5f07ce03f9e96f51104421932ae57367335176b47b2cfbc7f"
+    },
+    {
+      "path": "04_VISUAL_REFERENCES/user_camera_inspiration.png",
+      "size": 196167,
+      "sha256": "15ac3e30c4f7d01aebc8c532001ee6150a1dac5c41d6798e1b8c132a838befc6"
+    },
+    {
+      "path": "05_AGENT_PROMPTS/PHASE_TASKS.md",
+      "size": 2076,
+      "sha256": "639400a4013beff0c9c3f51c603ee3eb38b66df1b0551ce2ef2f31f8607f3052"
+    },
+    {
+      "path": "05_AGENT_PROMPTS/REVIEW_TEMPLATE.md",
+      "size": 449,
+      "sha256": "4098485450df3ba71b0ad5648c9a3e0127b07bbdc8c2330aa3c81ed7606570a8"
+    },
+    {
+      "path": "06_QA_AND_RELEASE/ACCEPTANCE_MATRIX.md",
+      "size": 2053,
+      "sha256": "828d04b4a50565e033e6eabbc567bb9e36eb67d1dc6d40b359f566c5640b073e"
+    },
+    {
+      "path": "06_QA_AND_RELEASE/ASSET_MANIFEST.csv",
+      "size": 971,
+      "sha256": "b53f6844f2cee2be69b61536c452e1a36edfc8b7e9e93158e961875551f33131"
+    },
+    {
+      "path": "06_QA_AND_RELEASE/KNOWN_RISKS.md",
+      "size": 1025,
+      "sha256": "a80ba5a5a8b24508458bcb78bb1c8c63cb02ec0061b348dc226e9cea21ce1451"
+    },
+    {
+      "path": "06_QA_AND_RELEASE/TEST_PLAN.md",
+      "size": 1146,
+      "sha256": "a889f9930fd1076121ca0e368bf580640bef0c222482d327321c6c2e7de9b1b2"
+    },
+    {
+      "path": "07_SOURCE_CONTEXT/LEGACY_TECH_SPEC_v1.md",
+      "size": 24369,
+      "sha256": "e7843c47a9eebbd7d7b220e3e17d93694f011c583e8f7acbea5b8189a53b8344"
+    },
+    {
+      "path": "README.md",
+      "size": 1436,
+      "sha256": "db6f8620b19e64affdc8a7e920d49de8500e3d73cc111b333b4b15d85a8966ae"
+    }
+  ]
+}
