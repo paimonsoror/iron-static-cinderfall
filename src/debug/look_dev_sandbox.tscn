@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/debug/look_dev_sandbox.gd" id="1"]
+
+[node name="LookDevSandbox" type="Node"]
+script = ExtResource("1")

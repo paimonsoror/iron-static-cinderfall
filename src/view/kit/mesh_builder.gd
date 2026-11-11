@@ -15,10 +15,23 @@ class Surf:
 	var norms: PackedVector3Array = PackedVector3Array()
 	var uvs: PackedVector2Array = PackedVector2Array()
 	var idx: PackedInt32Array = PackedInt32Array()
+	var cols: PackedColorArray = PackedColorArray()  ## per vertex: rgb = tint * baked ambient occlusion, a = edge wear
+	var own: PackedInt32Array = PackedInt32Array()  ## per vertex: the shape (part id) it belongs to
 
+
+## W3-C look-dev additions (hard-surface kit). `tint` multiplies the vertex colour of every following primitive.
+## Vertex colours are written for every primitive but only reach the mesh when `use_colors` is set (by `bake_ao`
+## or by hand), so meshes that never asked for them stay byte-identical. Occluders (spheres) are registered by the
+## LookDevShapes helpers and read by LookDevBake.
+var tint: Color = Color.WHITE
+var use_colors: bool = false
+var occ_c: PackedVector3Array = PackedVector3Array()
+var occ_r: PackedFloat32Array = PackedFloat32Array()
+var occ_o: PackedInt32Array = PackedInt32Array()
 
 var _order: Array[StringName] = []
 var _surfs: Dictionary = {}  ## StringName -> Surf
+var _part: int = 0
 
 
 func box(size: Vector3, xform: Transform3D, mat_id: StringName) -> MeshBuilder:
@@ -156,6 +169,8 @@ func build() -> ArrayMesh:
 		arrays[Mesh.ARRAY_VERTEX] = s.verts
 		arrays[Mesh.ARRAY_NORMAL] = s.norms
 		arrays[Mesh.ARRAY_TEX_UV] = s.uvs
+		if use_colors:
+			arrays[Mesh.ARRAY_COLOR] = s.cols
 		arrays[Mesh.ARRAY_INDEX] = s.idx
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		mesh.surface_set_material(mesh.get_surface_count() - 1, MatLib.mat(mat_id))
@@ -169,6 +184,52 @@ func triangle_count() -> int:
 		var s: Surf = _surfs[s_key]
 		n += floori(float(s.idx.size()) / 3.0)
 	return n
+
+
+## Starts a new shape and returns its id: the vertices added until the next call belong to it (self-occlusion is
+## skipped by the AO bake).
+func begin_part() -> int:
+	_part += 1
+	return _part
+
+
+## Registers an occluder sphere (in the final mesh space) for the shape `begin_part` returned last.
+func add_occluder(center: Vector3, radius: float) -> void:
+	occ_c.append(center)
+	occ_r.append(radius)
+	occ_o.append(_part)
+
+
+## One triangle with explicit smooth normals and an optional per-vertex edge wear mask (0..1, vertex alpha).
+## Winding is resolved from the normals, like every primitive.
+func add_tri(
+	mat_id: StringName, xf: Transform3D, a: Vector3, b: Vector3, c: Vector3, na: Vector3, nb: Vector3, nc: Vector3,
+	wear: Vector3 = Vector3.ZERO
+) -> void:
+	_tri(mat_id, xf, a, b, c, na, nb, nc, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, wear)
+
+
+## Shifts everything added so far (vertices and occluders) by `-offset`: builds a part in the frame of its parent and
+## then moves its pivot to the origin, so the AO of an arm still sees the torso.
+func recentre(offset: Vector3) -> void:
+	for mat_id: StringName in _order:
+		var s: Surf = _surfs[mat_id]
+		for i: int in s.verts.size():
+			s.verts[i] -= offset
+	for j: int in occ_c.size():
+		occ_c[j] -= offset
+
+
+## The surface data of a material id (null when nothing was added with it); the bake reads and writes it.
+func surface_of(mat_id: StringName) -> Surf:
+	if not _surfs.has(mat_id):
+		return null
+	var s: Surf = _surfs[mat_id]
+	return s
+
+
+func surface_ids() -> Array[StringName]:
+	return _order
 
 
 static func _sph(ring_idx: int, i: int, rings: int, lon: int) -> Vector3:
@@ -196,7 +257,7 @@ func _quad4(mat_id: StringName, xf: Transform3D, n: Vector3, p0: Vector3, p1: Ve
 
 func _tri(
 	mat_id: StringName, xf: Transform3D, a: Vector3, b: Vector3, c: Vector3, na: Vector3, nb: Vector3, nc: Vector3,
-	ua: Vector2 = Vector2.ZERO, ub: Vector2 = Vector2.ZERO, uc: Vector2 = Vector2.ZERO
+	ua: Vector2 = Vector2.ZERO, ub: Vector2 = Vector2.ZERO, uc: Vector2 = Vector2.ZERO, wear: Vector3 = Vector3.ZERO
 ) -> void:
 	var s: Surf = _surf(mat_id)
 	var wa: Vector3 = xf * a
@@ -215,6 +276,12 @@ func _tri(
 	s.uvs.append(ua)
 	s.uvs.append(ub)
 	s.uvs.append(uc)
+	s.cols.append(Color(tint.r, tint.g, tint.b, wear.x))
+	s.cols.append(Color(tint.r, tint.g, tint.b, wear.y))
+	s.cols.append(Color(tint.r, tint.g, tint.b, wear.z))
+	s.own.append(_part)
+	s.own.append(_part)
+	s.own.append(_part)
 	# Godot front faces are clockwise: flip when the triangle is counter-clockwise seen from outside.
 	var face: Vector3 = (wb - wa).cross(wc - wa)
 	if face.dot(wna + wnb + wnc) > 0.0:

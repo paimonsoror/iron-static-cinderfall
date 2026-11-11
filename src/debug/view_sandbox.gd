@@ -5,7 +5,7 @@ extends Node
 ##   --quality=0|1|2                        LOW, MID, HIGH (default MID)
 ##   --high-contrast  --reduced-flash       accessibility looks
 ##   --debug-overlay[=all|flow,slots,stuck,spawns]   debug layers   --debug-perf   PerfHud and the [PERF] log line
-##   --seed=<n>
+##   --seed=<n>   --look=current|stylised|stylised_plus   the Warden look (W3-C look-dev; see look_dev_sandbox.tscn for the rest)
 ## In a capture the puppet steps a fixed 1/60 s per frame, so `--capture-frames=N` always shows second N/60 of the
 ## scenario (turrets 0.5 s and 1 s, SMG 1.5 s, stuck 1.2 s, shield 2 s, overdrive 3 s, EMP 8 s).
 ## Desktop keys: F1 flow  F2 slots  F3 stuck  F4 spawns  F5 quality  F6 high contrast  F7 perf overlay.
@@ -34,6 +34,9 @@ func _ready() -> void:
 	_view.set_quality(_tier)
 	_view.set_high_contrast(_high_contrast)
 	_view.set_reduced_flash(args.reduced_flash)
+	if args.look >= 0:
+		_view.actor_layer.set_look(args.look)
+		_view.arena_view.set_look(args.look)
 	_puppet = SimPuppet.new()
 	add_child(_puppet)
 	_puppet.setup(_content, args.scenario if args.scenario != "" else "hold50", args.run_seed if args.has_seed else 1)

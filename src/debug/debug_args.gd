@@ -20,6 +20,18 @@ var debug_overlay: String = ""  ## "", "all" or a comma list of flow, slots, stu
 var high_contrast: bool = false
 var reduced_flash: bool = false
 var hud_step: int = -1  ## --hud-step=<n>: pin the HUD sandbox to one state instead of cycling
+## Look-dev sandbox (W3-C): --look=current|stylised|stylised_plus (-1 = not forced), --zoom=<factor> (a top-down close-up of
+## the Warden), --view=game|top|front|side (camera), --solo (hide the enemies), --reload-pose (hold the reload pose),
+## --measure=<seconds> (quit after that long; the perf line is logged every 5 s with --debug-perf).
+var look: int = -1
+var zoom: float = 1.0
+var view: String = ""
+var solo: bool = false
+var reload_pose: bool = false
+var measure_s: float = 0.0
+var render_size: Vector2i = Vector2i.ZERO  ## --render-size=1080x1920: render the sandbox in a SubViewport of that size (live runs)
+var glow: int = -1  ## --glow=0|1: force bloom off or on for the cost measurement (-1 = by look and tier)
+var tune: String = ""  ## --tune=name:value,name:value  shader parameter overrides of the stylised materials (look-dev)
 
 
 ## The user arguments after `--`, plus the words of the environment variable CINDERFALL_ARGS (desktop only). The
@@ -88,6 +100,31 @@ static func parse(args: PackedStringArray) -> DebugArgs:
 				a.high_contrast = true
 			"--reduced-flash":
 				a.reduced_flash = true
+			"--look":
+				var picked: int = LookDevStyle.from_name(value)
+				if picked >= 0:
+					a.look = picked
+			"--zoom":
+				if value.is_valid_float():
+					a.zoom = clampf(value.to_float(), 0.25, 12.0)
+			"--view":
+				a.view = value.to_lower()
+			"--render-size":
+				var rs: PackedStringArray = value.split("x")
+				if rs.size() == 2 and rs[0].is_valid_int() and rs[1].is_valid_int():
+					a.render_size = Vector2i(rs[0].to_int(), rs[1].to_int())
+			"--glow":
+				if value == "0" or value == "1":
+					a.glow = value.to_int()
+			"--tune":
+				a.tune = value
+			"--solo":
+				a.solo = true
+			"--reload-pose":
+				a.reload_pose = true
+			"--measure":
+				if value.is_valid_float():
+					a.measure_s = maxf(value.to_float(), 0.0)
 			"--hud-step":
 				if value.is_valid_int():
 					a.hud_step = maxi(0, value.to_int())
