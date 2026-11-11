@@ -185,7 +185,7 @@ C:\dev\tower-two\
                  perf_hud.gd
   tests/
     unit/{shared,core,content,sim,sim_nav,sim_combat,sim_flow,save,game,view,ui,audio}/
-    integration/{sim,game}/   stress/   fixtures/   canary/
+    integration/{sim,game,e2e}/   stress/   fixtures/   canary/
   tools/         GODOT_VERSION GDUNIT_VERSION _common.ps1 check.ps1 test.ps1 test_runner.py compile_check.gd
                  compile_gate.py lint_layers.py capture.ps1 sim_run.gd sim_run.ps1 balance_run.gd balance_run.ps1
                  run_emulator.ps1 deploy_android.ps1 smoke_android.ps1 audio_gen/
@@ -889,6 +889,7 @@ class_name AbilitySystem
 static func activate(world: SimWorld, command_id: int, ability_index: int) -> int    # Reason.Id; pushes ACTIVATED or REJECTED
 static func block_reason(world: SimWorld, ability_index: int) -> int
 static func step(world: SimWorld) -> void
+static func end_all(world: SimWorld) -> void           # W3-A: the run ended; every active ability ends now (ABILITY_ENDED, SHIELD_CHANGED)
 
 class_name PhaseSystem
 static func init_world(world: SimWorld) -> void        # PREPARING with prepare_ticks
@@ -913,7 +914,9 @@ PREPARING counts `prepare_ticks` then wave 1 SPAWNING (`WAVE_STARTED`); SPAWNING
 `SpawnSystem.is_wave_fully_spawned`; CLEARING to INTERMISSION when `alive_count() == 0` (`WAVE_CLEARED`,
 `waves_completed += 1`, `INTERMISSION_STARTED`), or to VICTORY after wave 5; INTERMISSION counts
 `intermission_ticks` (or is skipped) then the next wave; DEFEAT the tick `core_hp <= 0`, from SPAWNING or
-CLEARING, checked before the wave-clear check. Terminal phases push `RUN_FINISHED` once.
+CLEARING, checked before the wave-clear check. Terminal phases push `RUN_FINISHED` once, after
+`AbilitySystem.end_all` (W3-A: `step()` is a no-op after the run, so an ability still active at the last tick would
+otherwise stay active forever; ending it pushes `ABILITY_ENDED` and, for the shield, `SHIELD_CHANGED` 0).
 
 ### 6.7 Replay and bot (task W2-D)
 
@@ -925,6 +928,8 @@ enum Policy { NONE, GREEDY }
 func _init(policy_value: int) -> void
 func act(world: SimWorld) -> void       # submits commands; deterministic; GREEDY = cheapest affordable upgrade by a fixed
                                         # priority, EMP when >= 12 enemies are attacking, shield when core is hit, overdrive when the boss is alive
+var id_source: Callable                 # W3-A, optional func() -> int minting command ids; Game sets it to RunApi.next_command_id so
+                                        # the bot and the HUD share one counter (default: the bot's own 1, 2, 3, ...)
 ```
 
 ---
@@ -1038,6 +1043,7 @@ var run_id: String
 var paused: bool = false
 var bot: PolicyBot = null                         # set by --autoplay
 func start(config: SimConfig, run_id_value: String, view: BattleView) -> void
+var tick_sink: Callable                          # W3-A, optional func(usec: float): average cost of one tick, per frame that ran ticks
 func set_paused(value: bool) -> void
 func stop() -> void                               # unbinds the view, frees the sim
 func _process(delta: float) -> void               # if not paused: driver.advance; drain events -> Events; view.render(alpha)
@@ -1064,6 +1070,14 @@ func open_settings() -> void
 func request_back() -> void               # Android back, via BackPolicy
 func state() -> int
 ```
+
+W3-A additions (no signature above changes): the first `BattleView` is built while the boot screen shows (a short timer
+after `boot`), so `ShaderWarmup` runs before the player can deploy (ARCH 8); it waits hidden in a private slot and the first
+deploy adopts it, so `battle_view` stays null outside a run. `--debug-perf` adds the `PerfHud` under `DebugRoot` (full rect,
+`setup(enemies_source, true)` after it is in the tree) and points `RunController.tick_sink` at `record_tick_usec`;
+`--debug-overlay[=spec]` adds a `BattleDebugOverlay` (a `Node3D` child of the view) that is bound to each run's sim and unbound
+when the run is torn down. The wiring lives in `GameDebugTools` and `GameViewBuilder` (`src/game/`). `MobileShell` reacts to the
+app lifecycle notifications only when `lifecycle_enabled` (default `OS.has_feature("mobile")`; tests switch it on).
 
 Main scene tree at runtime (built in code by `Game.boot`):
 
@@ -1134,6 +1148,7 @@ var last_load_status: int
 func use_fs(fs: SaveFs) -> void                               # tests inject MemorySaveFs, then call load_profile()
 func load_profile() -> int
 func flush() -> bool                                          # write tmp, verify by re-reading, keep previous as .bak, rename
+func profile_dirty() -> bool                                  # W3-A: true while the profile in memory has changes no successful flush wrote
 func grant_run_reward(run_id: String, result: int, data_amount: int, core_hp: int) -> bool
     # false and no change if run_id is already in awarded_run_ids; otherwise adds data, updates
     # missions_completed (victory), best_core_hp (victory, max), runs_played, appends run_id, flushes, emits profile_changed

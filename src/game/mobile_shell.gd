@@ -9,11 +9,15 @@ extends Node
 signal app_paused
 signal back_requested
 
+## React to the app leaving the foreground. True on mobile builds only (a desktop window that loses focus must not
+## pause a run); tests switch it on to send the real notifications.
+var lifecycle_enabled: bool = OS.has_feature("mobile")
+
 
 func _notification(what: int) -> void:
 	match what:
 		NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_APPLICATION_FOCUS_OUT:
-			if OS.has_feature("mobile"):
+			if lifecycle_enabled:
 				on_app_paused()
 		NOTIFICATION_WM_GO_BACK_REQUEST:
 			back_requested.emit()

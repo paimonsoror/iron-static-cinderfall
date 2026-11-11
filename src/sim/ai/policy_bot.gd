@@ -20,8 +20,13 @@ const EMP_ATTACKERS: int = 12
 const PRIORITY: Array[int] = [Ids.UP_SMG, Ids.UP_DAMAGE, Ids.UP_FIRE_RATE, Ids.UP_ARMOR_PIERCING, Ids.UP_AUTO_TURRET]
 
 var policy: int = Policy.NONE
-## Commands submitted so far; ids are 1, 2, 3, ... (unique per run, as the sim requires).
+## Commands submitted so far; by default the ids are 1, 2, 3, ... (unique per run, as the sim requires).
 var commands_submitted: int = 0
+## Optional `func() -> int` that mints each command id instead of the private counter. `Game` points it at
+## `RunApi.next_command_id`, so a bot and a human tapping the HUD during the same run (--autoplay keeps the HUD up)
+## draw from ONE counter. Two counters would repeat ids, and the sim answers a repeated id with DUPLICATE_COMMAND:
+## a human's purchase or ability tap, or the bot's own, would be dropped silently (a repeated skip is dropped for good).
+var id_source: Callable = Callable()
 
 var _last_core_hp: float = -1.0
 
@@ -92,10 +97,14 @@ func boss_in_range(world: SimWorld) -> bool:
 
 func _submit(world: SimWorld, kind: int, arg: int) -> void:
 	commands_submitted += 1
+	var command_id: int = commands_submitted
+	if id_source.is_valid():
+		var minted: Variant = id_source.call()
+		command_id = minted
 	match kind:
 		SimCommand.Kind.PURCHASE:
-			world.submit(SimCommand.purchase(commands_submitted, arg))
+			world.submit(SimCommand.purchase(command_id, arg))
 		SimCommand.Kind.ABILITY:
-			world.submit(SimCommand.ability(commands_submitted, arg))
+			world.submit(SimCommand.ability(command_id, arg))
 		_:
-			world.submit(SimCommand.skip(commands_submitted))
+			world.submit(SimCommand.skip(command_id))

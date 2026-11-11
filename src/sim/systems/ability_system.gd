@@ -65,6 +65,17 @@ static func step(world: SimWorld) -> void:
 	_step_enemy_timers(world)
 
 
+## The run just ended (PhaseSystem calls this as it finishes the run, before `RUN_FINISHED`): every ability that is
+## still active ends now, with the usual `ABILITY_ENDED` and, for the shield, `SHIELD_CHANGED`. `step()` is a no-op
+## after the run, so without this a shield that the killing blow emptied (or an overdrive that outlived the last
+## enemy) would read as active forever.
+static func end_all(world: SimWorld) -> void:
+	var st: AbilityState = world.abilities
+	for a: int in mini(world.content.abilities.size(), st.active_left.size()):
+		if st.active_left[a] > 0:
+			_end(world, a, world.content.abilities[a])
+
+
 ## Every living enemy without stun immunity: stun_ticks = max(stun_ticks, stun). The boss gets boss_stun_ticks.
 static func _apply_emp(world: SimWorld, def: AbilityDef) -> void:
 	var store: EnemyStore = world.enemies

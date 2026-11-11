@@ -84,7 +84,7 @@ const GAME: Array[String] = [
 	"game/mobile_shell.gd||||",
 	"game/back_policy.gd|decide|||",
 	"game/haptics.gd|tick|||",
-	"save/save_manager.gd|use_fs,load_profile,flush,grant_run_reward,get_setting,set_setting,mark_hint_seen,has_seen_hint||profile,last_load_status|",
+	"save/save_manager.gd|use_fs,load_profile,flush,profile_dirty,grant_run_reward,get_setting,set_setting,mark_hint_seen,has_seen_hint||profile,last_load_status|",
 	"save/profile.gd|defaults||data,missions_completed,best_core_hp,runs_played,awarded_run_ids,hints_seen,settings|SCHEMA_VERSION",
 	"save/profile_codec.gd|encode,decode|||",
 	"save/profile_decode_result.gd|||profile,error,schema_version|",

@@ -18,6 +18,7 @@ static func configure(config: SimConfig, run: RunController, args: DebugArgs, se
 	if args.autoplay != "":
 		var greedy: bool = args.autoplay == "greedy"
 		run.bot = PolicyBot.new(PolicyBot.Policy.GREEDY if greedy else PolicyBot.Policy.NONE)
+		run.bot.id_source = run.api.next_command_id  # one id counter for the bot and for the player's HUD taps
 
 
 ## An explicit seed (>= 0) wins, then a fixed --seed, else a time-based one.

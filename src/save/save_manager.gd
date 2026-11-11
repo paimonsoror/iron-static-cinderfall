@@ -17,6 +17,7 @@ var profile: Profile = Profile.defaults()
 var last_load_status: int = LoadStatus.NEW_PROFILE
 var _fs: SaveFs = DiskSaveFs.new()
 var _protect_main: bool = false  ## a newer-schema file could not be copied aside, so flush must not overwrite it
+var _dirty: bool = false  ## the profile in memory has changes that no successful flush has written yet
 
 
 func _ready() -> void:
@@ -34,6 +35,7 @@ func use_fs(fs: SaveFs) -> void:
 ## is copied to .newer and a fresh profile starts (NEWER_SCHEMA_SET_ASIDE). Never crashes, never deletes data.
 func load_profile() -> int:
 	_protect_main = false
+	_dirty = false
 	profile = Profile.defaults()
 	last_load_status = LoadStatus.NEW_PROFILE
 	if not _fs.exists(PATH_MAIN):
@@ -69,6 +71,7 @@ func load_profile() -> int:
 ## Write tmp, verify by re-reading, keep the previous good file as .bak, rename tmp over main. False leaves the
 ## previous main file as it was.
 func flush() -> bool:
+	_dirty = true  # stays true unless this write completes
 	if _protect_main:
 		Log.warn("Save", "flush refused: the newer-schema file has no copy yet")
 		return false
@@ -86,7 +89,15 @@ func flush() -> bool:
 		if kept:
 			_fs.rename(PATH_BAK, PATH_MAIN)  # put the previous file back; tmp stays for recovery
 		return false
+	_dirty = false
 	return true
+
+
+## True while the profile in memory holds changes that no successful flush has written yet (the last write failed or
+## was refused). `grant_run_reward` and the setters flush at once but cannot return a failed write; a caller that must
+## know (GameRewards) reads this afterwards and retries with `flush()`.
+func profile_dirty() -> bool:
+	return _dirty
 
 
 ## False and no change if run_id was already awarded (or is not a usable id). Otherwise adds Data, counts the run,
