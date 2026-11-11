@@ -1,0 +1,88 @@
+# W1-H acceptance command output (host GPU emulator, clean preset). EXIT lines were appended by the runner.
+
+## run_emulator.ps1 (no arguments)
+1794400986
+Starting tower_phone gpu=host ...
+Emulator emulator-5554 booted in 10s (gpu=host). Tip: wait ~20-25s after a COLD boot before launching apps.
+EXIT=0
+1794400999
+
+## deploy_android.ps1 -ProjectPath <wt> -Package com.normalexception.games.cinderfall.dev -Preset Cinderfall -LogSeconds 40 (final run)
+1794403096
+== Exporting Cinderfall -> C:\dev\tower-two-wt\W1-H\build\com.normalexception.games.cinderfall.dev.debug.apk
+Signed
+== APK 54.6 MB  sha256 724fff2508d140768b6de2888abe55e6245e75cc8418b89f0e7506562c63b39a
+== Data files in APK: 9
+== Installing
+Performing Incremental Install
+Performing Streamed Install
+Success
+== Launching com.normalexception.games.cinderfall.dev
+== Godot log for 40 s
+--------- beginning of main
+11-11 08:20:06.424  4077  4119 I godot   : Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+11-11 08:20:07.169  4077  4119 I godot   : Vulkan 1.3.0 - Forward Mobile - Using Device #0: Intel - Intel(R) Iris(R) Plus Graphics
+11-11 08:20:09.140  4077  4119 I godot   : 
+11-11 08:20:10.957  4077  4119 E godot   : ERROR: Couldn't present to Vulkan queue (VkResult error 5).
+11-11 08:20:10.957  4077  4119 E godot   :    at: command_queue_execute_and_present (drivers/vulkan/rendering_device_driver_vulkan.cpp:3359)
+11-11 08:20:16.588  4077  4119 I godot   : [Content] content ok enemies=4 waves=5 hash=09244f72d864
+11-11 08:20:16.588  4077  4119 I godot   : [Game] game boot version=0.1.0 renderer=mobile/vulkan
+11-11 08:20:16.588  4077  4119 I godot   : [Game] gpu adapter=Intel(R) Iris(R) Plus Graphics
+11-11 08:20:16.914  4077  4119 I godot   : [Game] boot ok
+11-11 08:20:17.146  4077  4119 E godot   : ERROR: Couldn't present to Vulkan queue (VkResult error 5).
+11-11 08:20:17.146  4077  4119 E godot   :    at: command_queue_execute_and_present (drivers/vulkan/rendering_device_driver_vulkan.cpp:3359)
+11-11 08:20:17.211  4077  4119 E godot   : ERROR: Couldn't present to Vulkan queue (VkResult error 5).
+11-11 08:20:17.212  4077  4119 E godot   :    at: command_queue_execute_and_present (drivers/vulkan/rendering_device_driver_vulkan.cpp:3359)
+== RUNNING (pid 4077)
+EXIT=0
+1794403242
+
+## smoke_android.ps1 -SkipDeploy (WaitSeconds shortened to 1 for this re-run; the 35 s run printed the same lines)
+== Waiting 1 s
+== Process running (pid 4077)
+== Log clean (78 lines scanned)
+== 'content ok' and 'boot ok' present
+== game boot version=0.1.0 renderer=mobile/vulkan
+== Vulkan 1.3.0 - Forward Mobile - Using Device #0: Intel - Intel(R) Iris(R) Plus Graphics
+== [Game] gpu adapter=Intel(R) Iris(R) Plus Graphics
+== Renderer mobile/vulkan as expected, no OpenGL fallback
+11-11 08:20:10.957  4077  4119 E godot   : ERROR: Couldn't present to Vulkan queue (VkResult error 5).
+11-11 08:20:17.146  4077  4119 E godot   : ERROR: Couldn't present to Vulkan queue (VkResult error 5).
+11-11 08:20:17.211  4077  4119 E godot   : ERROR: Couldn't present to Vulkan queue (VkResult error 5).
+SMOKE FAIL: Vulkan errors in the log (3 lines, first: ERROR: Couldn't present to Vulkan queue (VkResult error 5).); see docs/reports/BUILD_INSTRUCTIONS.md section 5
+EXIT=1
+
+## smoke_android.ps1 -SkipDeploy -WaitSeconds 1 -AllowVulkanErrors
+== Waiting 1 s
+== Process running (pid 4077)
+== Log clean (78 lines scanned)
+== 'content ok' and 'boot ok' present
+== game boot version=0.1.0 renderer=mobile/vulkan
+== Vulkan 1.3.0 - Forward Mobile - Using Device #0: Intel - Intel(R) Iris(R) Plus Graphics
+== [Game] gpu adapter=Intel(R) Iris(R) Plus Graphics
+== Renderer mobile/vulkan as expected, no OpenGL fallback
+== NOTE: 6 error-level godot log lines (not a failure); first: 11-11 08:20:10.957  4077  4119 E godot   : ERROR: Couldn't present to Vulkan queue (VkResult error 5).
+== Screenshot C:\dev\tower-two-wt\W1-H\build\smoke\20261111_082307.png
+== Screenshot 1080x2400; dominant color share 100.0% of 65536 samples, 1 distinct colors
+SMOKE FAIL: screenshot is blank (100.0% of samples are one color)
+EXIT=1
+
+## deploy_android.ps1 -ProjectPath <wt> -Serial emulator-5554 -LogSeconds 5 (defaults for package and preset)
+1794403478
+== Exporting Cinderfall -> C:\dev\tower-two-wt\W1-H\build\com.normalexception.games.cinderfall.dev.debug.apk
+Signed
+== APK 54.6 MB  sha256 6ba0d1e8df6997ccaf7727a65b0dad0789ee275fba7fe13eee030620a9884797
+== Data files in APK: 9
+== Installing
+Performing Incremental Install
+Performing Streamed Install
+Success
+== Launching com.normalexception.games.cinderfall.dev
+== Godot log for 5 s
+--------- beginning of main
+11-11 08:26:18.782  4477  4505 I godot   : Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+11-11 08:26:19.440  4477  4505 I godot   : Vulkan 1.3.0 - Forward Mobile - Using Device #0: Intel - Intel(R) Iris(R) Plus Graphics
+11-11 08:26:20.667  4477  4505 I godot   : 
+== RUNNING (pid 4477)
+EXIT=0
+1794403581

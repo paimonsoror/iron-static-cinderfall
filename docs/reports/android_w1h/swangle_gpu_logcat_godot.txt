@@ -1,0 +1,14 @@
+--------- beginning of main
+11-11 08:07:22.029  4022  4065 I godot   : Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+11-11 08:07:23.783  4022  4065 I godot   : Vulkan 1.2.0 - Forward Mobile - Using Device #0: Unknown - SwiftShader Device (LLVM 10.0.0)
+11-11 08:07:43.476  4022  4065 I godot   : 
+11-11 08:07:45.112  4022  4065 E godot   : ERROR: Couldn't present to Vulkan queue (VkResult error 5).
+11-11 08:07:45.112  4022  4065 E godot   :    at: command_queue_execute_and_present (drivers/vulkan/rendering_device_driver_vulkan.cpp:3359)
+11-11 08:07:47.230  4022  4065 I godot   : [Content] content ok enemies=4 waves=5 hash=09244f72d864
+11-11 08:07:47.231  4022  4065 I godot   : [Game] game boot version=0.1.0 renderer=mobile/vulkan
+11-11 08:07:47.231  4022  4065 I godot   : [Game] gpu adapter=SwiftShader Device (LLVM 10.0.0)
+11-11 08:07:47.696  4022  4065 I godot   : [Game] boot ok
+11-11 08:07:50.302  4022  4065 E godot   : ERROR: Couldn't present to Vulkan queue (VkResult error 5).
+11-11 08:07:50.302  4022  4065 E godot   :    at: command_queue_execute_and_present (drivers/vulkan/rendering_device_driver_vulkan.cpp:3359)
+11-11 08:07:50.352  4022  4065 E godot   : ERROR: Couldn't present to Vulkan queue (VkResult error 5).
+11-11 08:07:50.352  4022  4065 E godot   :    at: command_queue_execute_and_present (drivers/vulkan/rendering_device_driver_vulkan.cpp:3359)
