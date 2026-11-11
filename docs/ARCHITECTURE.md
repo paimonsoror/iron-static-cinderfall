@@ -772,6 +772,10 @@ signatures and TODO bodies that compile and do nothing.
 | `warden.magazine/reload/fire_acc/target/lock/aim/shots_fired`, `turrets.fire_acc/target/lock/aim`, `combat` | WeaponSystem, TurretSystem |
 | `scrap` (debit), `upgrade_levels`, `warden.weapon_index` (+ magazine reset on swap), `turrets.active` | EconomySystem |
 | `scrap` (credit), enemy alloc and free | `SimWorld.add_scrap`, `spawn_enemy`, `kill_enemy` |
+| `stats.core_damage_taken`, `stats.damage_absorbed` | CoreAttackSystem (added at the Wave 1 merge; no writer was listed) |
+| `stats.stuck_recoveries` | MovementSystem (added at the Wave 1 merge) |
+| `stats.max_pending` | SpawnSystem (added at the Wave 1 merge) |
+| `stats.wave_start_tick`, `stats.wave_clear_tick` | PhaseSystem |
 
 **Nav and spawn (task W1-A)**
 

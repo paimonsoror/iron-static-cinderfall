@@ -143,3 +143,11 @@ Also: the sim is pure `RefCounted`; one writer per sim field (ARCH 6.6); numbers
 - GdUnit4 6.2.3 needs `--ignoreHeadlessMode`; its test classes should stay under 20 public test methods.
 - Never write secrets, keystores or real ad ids into tracked files; `.gitignore` excludes `secrets*.json`, keystores,
   `*.apk`, `*.aab`.
+- Every task's `class_name`s land in ONE project when the worktrees merge. Test helper classes (kits, fixtures, fakes)
+  must carry a name unique to your task or suite (`CombatHudTestKit`, not `CombatTestKit`): two branches that were each
+  green alone broke the compile gate at the Wave 1 merge over a duplicate `class_name`. Check with
+  `git grep -n "^class_name <Name>"` on `main` before you choose a name.
+- Mobile (Vulkan) renderer: `GeometryInstance3D.transparency` has no effect on `MeshInstance3D` or
+  `MultiMeshInstance3D`. Fade or dim with material alpha instead (shared, pre-dimmed materials for pooled effects).
+- `SpawnSystem.begin_wave(world, n)` takes the 1-based wave number (the same value as `world.wave` and
+  `WAVE_STARTED.a`); content wave `n` is `content.waves[n - 1]`.

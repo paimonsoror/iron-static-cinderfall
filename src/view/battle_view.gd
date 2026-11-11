@@ -74,6 +74,7 @@ func set_quality(tier: int) -> void:
 
 func set_reduced_flash(on: bool) -> void:
 	vfx_layer.set_reduced_flash(on)
+	arena_view.set_reduced_flash(on)
 
 
 func _sync_arena() -> void:
