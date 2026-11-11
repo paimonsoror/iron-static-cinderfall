@@ -18,8 +18,9 @@ Written by task W1-H on 2026-11-11 from what was actually installed on this mach
 | CMake | 3.10.2.4988404 | `<sdk>\cmake` |
 | cmdline-tools | `latest` (revision 22.0) | `<sdk>\cmdline-tools\latest` |
 | Emulator | 37.2.13 | `<sdk>\emulator` |
-| System image | android-35 `google_apis_playstore` x86_64 | `<sdk>\system-images` |
+| System images | android-35 `google_apis_playstore` x86_64 (rev 9) and, since 2026-11-11, android-36 `google_apis_playstore` x86_64 (rev 7, Android 16) | `<sdk>\system-images` |
 | AVD | `tower_phone`: Pixel 6 profile, 1080x2400, 420 dpi, x86_64, 2560 MB RAM, 3 cores, `hw.gpu.mode=host` | `%USERPROFILE%\.android\avd\tower_phone.avd` |
+| AVD `tower_phone_36` | same hardware as `tower_phone`, system image android-36 (see 5.1; not the default) | `%USERPROFILE%\.android\avd\tower_phone_36.avd` |
 | Python | `py -3.12` | used by the check tools and by the APK content check |
 
 Godot editor settings (`%APPDATA%\Godot\editor_settings-4.7.tres`, outside the repo, never committed) must hold the JDK
@@ -141,33 +142,55 @@ of the launch load, not a different result). Evidence files are under `docs/repo
 | 5 | `-gpu angle_indirect ... -no-snapshot` | llvmpipe (LLVM 21.1.2), Vulkan 1.3.0 (the emulator selected the Lavapipe ICD, 1.4.318, not the Intel GPU) | yes, 3 times | black plus SystemUI ANR dialog | `mode_angle_indirect.{txt,png}` |
 | 6 | `-gpu auto ... -no-snapshot` | llvmpipe, same as 5 (`auto` resolves to Lavapipe on this laptop) | yes, 3 times | black (15,580 bytes) | `mode_auto.{txt,png}` |
 | 7 | `-gpu host ... -no-snapshot -feature -VulkanVirtualQueue -feature -VulkanQueueSubmitWithCommands -feature -VulkanUseDedicatedAhbMemoryType -feature -HostComposition` | Intel Iris Plus Graphics | yes, 3 times | black plus SystemUI ANR dialog | `mode_host_features.{txt,png}` |
+| 8 | **AVD `tower_phone_36` (android-36)**: `-gpu host -no-boot-anim -no-audio -no-snapshot` | Intel Iris Plus Graphics, Vulkan 1.3.0 | yes, 3 times | black behind the "Viewing full screen" confirmation and a background-app ANR dialog | `mode36_host.{txt,png}` |
+| 9 | AVD `tower_phone_36`: `-gpu swiftshader_indirect ... -no-snapshot` | SwiftShader Device (LLVM 10.0.0), Vulkan 1.2.0 | not in the 50 s log excerpt (software rendering was still compiling shaders); the end-of-run check 20 s later found it (`present_error=yes`) | black behind the same two dialogs | `mode36_swiftshader_indirect.{txt,png}` |
+| 10 | AVD `tower_phone_36`: `-gpu angle_indirect ... -no-snapshot` | llvmpipe (LLVM 21.1.2), Vulkan 1.3.0 (Lavapipe) | yes (2 in the excerpt) | black behind the same two dialogs | `mode36_angle_indirect.{txt,png}` |
 
 In every run `content ok`, `renderer=mobile/vulkan` and `boot ok` are logged, there is no OpenGL line, and the first present
 error comes at the engine boot-splash frame, before `content ok`. Three different Vulkan implementations (Intel via the host
 driver, SwiftShader, Lavapipe) fail identically, as do the four `-feature` switches that touch the Vulkan queue, memory
 and compositor paths, so the cause is not one ICD or one of those features. It is in the guest-side Vulkan swapchain
-(gfxstream WSI on the android-35 image) or in how Godot 4.7.2's swapchain meets it. The guest device does expose
+(gfxstream WSI on the android-35 and android-36 images) or in how Godot 4.7.2's swapchain meets it. The guest device does expose
 `VK_KHR_swapchain`, `VK_KHR_android_surface` and `VK_ANDROID_external_memory_android_hardware_buffer`
 (`adb shell cmd gpu vkjson`). The same project renders correctly on the desktop through the same Mobile/Vulkan renderer
 (`desktop_reference_view_sandbox_1080x2400.png`, `capture.ps1`, `renderer=mobile/vulkan`).
 
-Not tried and why: `-gpu software` and a visible (non-minimized) emulator window (low expected value, out of the time box);
-any OpenGL/Compatibility run (owner decision: forbidden); other system images (none installed, see below).
+**Second system image (owner approved 2026-11-11, installed and tested).** Android 16 / API 36 does not change the result: rows 8 to
+10 fail exactly like rows 1 to 7 (same present error at the boot-splash frame, same black surface; the guest reports
+`android 16 sdk 36`, `ro.hardware.vulkan=ranchu`). Only `-gpu host`, `swiftshader_indirect` and `angle_indirect` were run on it,
+as instructed. Two side effects of a fresh AVD: the one-time "Viewing full screen" confirmation (tap "Got it") covers the
+top of the frame, and the first cold boot takes 140 s plus about 10 minutes of load. Builds from the merged `main` also log
+`ERROR: Condition "header != String(shader_file_header)" ... _load_from_cache (shader_rd.cpp:633)` once per shader on the first
+launch with a given driver (an empty shader cache; Godot recompiles), which the API 35 runs did not have because they used the
+older APK.
 
-**Emulator and image candidates (listed only; nothing was downloaded or installed).** The installed emulator 37.2.13 is the
-newest one `sdkmanager --list` offers. Installed system image: `system-images;android-35;google_apis_playstore;x86_64`
-(rev 9). Candidates for a different guest Vulkan/gfxstream stack, in the order I would try them:
-`system-images;android-36;google_apis_playstore;x86_64` (rev 7, the API level Godot 4.7.2 targets),
-`system-images;android-36.1;google_apis_playstore;x86_64` (rev 4), `system-images;android-37.0;google_apis_playstore;x86_64`
-(rev 8), `system-images;android-35;google_apis;x86_64` (rev 9, same API without Play Store), and
-`system-images;android-34;google_apis_playstore;x86_64` (rev 14). Each is a download of about 2 GB plus a new AVD with the
-`tower_phone` hardware profile (1080x2400, 420 dpi, 2560 MB RAM, 3 cores); that needs the owner's go-ahead.
+Reproduce the API 36 setup (the licenses were already accepted on this machine; with stdin closed sdkmanager fails instead of
+accepting a new one, so append `< NUL` to the install line if you want that guarantee):
 
-Options for the owner, none taken by W1-H: (a) validate Mobile/Vulkan on a physical phone (none attached here, **NOT RUN**) and
-treat the emulator as unusable for 3D until it presents; (b) approve downloading one of the system-image candidates above
-and retry the same cycle; (c) revisit D1. Until then `smoke_android.ps1` fails with `SMOKE FAIL: Vulkan errors in the log`
-on every emulator run. The APK manifest declares `android.hardware.vulkan.level` and `.version` as `required=false`
-(Godot's default for the Mobile renderer), so devices without Vulkan 1.0 still install.
+```
+set JAVA_HOME=C:\dev\tools\jdk-17
+"%LOCALAPPDATA%\Android\Sdk\cmdline-tools\latest\bin\sdkmanager.bat" --install "system-images;android-36;google_apis_playstore;x86_64"
+"%LOCALAPPDATA%\Android\Sdk\cmdline-tools\latest\bin\avdmanager.bat" create avd -n tower_phone_36 -k "system-images;android-36;google_apis_playstore;x86_64" -d pixel_6
+```
+
+`avdmanager` prints "Could not load devices ... devices.xml" for these images and leaves a template `config.ini`
+(`avd.id=<build>`, PlayStore off, 4 cores, 2G RAM, no GPU). Replace it with a copy of
+`%USERPROFILE%\.android\avd\tower_phone.avd\config.ini` in which only `avd.id`, `avd.name`, `disk.dataPartition.path`,
+`image.sysdir.1` and `target` name the new AVD (`tower_phone_36`, `system-images\android-36\...`, `android-36`). That mirrors
+RAM 2560 MB, 3 cores, 1080x2400 at 420 dpi, 6 GB data partition, `hw.gpu.mode=host`, keyboard and sensors. `tower_phone` itself
+is untouched. Use it with `run_emulator.ps1 -Avd tower_phone_36 -Gpu <mode>`; the script default stays `tower_phone`, because
+neither AVD renders yet.
+
+Not tried and why: `-gpu software`, `lavapipe` by name, and a visible (non-minimized) emulator window (low expected value, out of
+the time box); any OpenGL/Compatibility run (owner decision: forbidden). Other system images (`android-36.1`, `android-37.0`,
+`android-35;google_apis`, `android-34`) are not installed.
+
+Options for the owner, none taken by W1-H: (a) validate Mobile/Vulkan on a physical phone (none attached here, **NOT RUN**), which
+is now the only way left to learn whether the problem is the emulator stack or Godot 4.7.2 Mobile on Android; (b) approve one more
+system-image candidate (`android-36.1` or `android-37.0`, newer gfxstream guest libraries) and rerun the same cycle; (c) revisit D1.
+Until then `smoke_android.ps1` fails with `SMOKE FAIL: Vulkan errors in the log` on every emulator run. The APK manifest declares
+`android.hardware.vulkan.level` and `.version` as `required=false` (Godot's default for the Mobile renderer), so devices without
+Vulkan 1.0 still install.
 
 ### 5.2 How the matrix was produced
 
