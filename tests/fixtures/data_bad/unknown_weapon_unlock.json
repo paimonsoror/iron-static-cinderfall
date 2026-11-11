@@ -1,0 +1,10 @@
+{
+	"rule": "ids resolve (the SMG unlock names a weapon)",
+	"stage": "loader",
+	"patches": [
+		{ "file": "content_ext.json", "path": "upgrades.smg_unlock.weapon", "set": "laser" }
+	],
+	"expect": [
+		"content_ext.json: $.upgrades.smg_unlock.weapon: unknown weapon id"
+	]
+}

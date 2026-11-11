@@ -1,0 +1,10 @@
+{
+	"rule": "schema versions match (arena.json)",
+	"stage": "loader",
+	"patches": [
+		{ "file": "arena.json", "path": "schema_version", "set": 2 }
+	],
+	"expect": [
+		"arena.json: $.schema_version: expected 1, got 2"
+	]
+}

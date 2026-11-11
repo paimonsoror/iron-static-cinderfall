@@ -1,0 +1,10 @@
+{
+	"rule": "every number non-negative (enemy hp must be positive)",
+	"stage": "validator",
+	"patches": [
+		{ "file": "vertical_slice_balance.json", "path": "enemies.skitter.hp", "set": -5 }
+	],
+	"expect": [
+		"vertical_slice_balance.json: $.enemies.skitter.hp: must be > 0 (got -5)"
+	]
+}

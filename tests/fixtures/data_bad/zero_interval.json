@@ -1,0 +1,10 @@
+{
+	"rule": "group interval >= 1 tick",
+	"stage": "validator",
+	"patches": [
+		{ "file": "waves.json", "path": "waves[0].groups[0].interval_s", "set": 0 }
+	],
+	"expect": [
+		"waves.json: $.waves[0].groups[0].interval_s: must be >= 1 (got 0 ticks)"
+	]
+}

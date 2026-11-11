@@ -1,0 +1,10 @@
+{
+	"rule": "required keys are present",
+	"stage": "loader",
+	"patches": [
+		{ "file": "vertical_slice_balance.json", "path": "core_max_hp", "delete": true }
+	],
+	"expect": [
+		"vertical_slice_balance.json: $.core_max_hp: missing or not a number"
+	]
+}

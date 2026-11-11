@@ -1,0 +1,10 @@
+{
+	"rule": "ability cooldowns > 0",
+	"stage": "validator",
+	"patches": [
+		{ "file": "vertical_slice_balance.json", "path": "abilities.shield.cooldown_s", "set": 0 }
+	],
+	"expect": [
+		"vertical_slice_balance.json: $.abilities.shield.cooldown_s: must be >= 1 (got 0 ticks)"
+	]
+}

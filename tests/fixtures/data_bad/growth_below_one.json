@@ -1,0 +1,10 @@
+{
+	"rule": "upgrade growth >= 1",
+	"stage": "validator",
+	"patches": [
+		{ "file": "vertical_slice_balance.json", "path": "upgrades.fire_rate.growth", "set": 0.9 }
+	],
+	"expect": [
+		"vertical_slice_balance.json: $.upgrades.fire_rate.growth: must be >= 1 (got 0.9)"
+	]
+}

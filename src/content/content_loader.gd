@@ -1,8 +1,9 @@
 class_name ContentLoader
 extends RefCounted
-## Maps the JSON files in res://data to typed defs (ARCH 5). Wave 0 does the straight mapping with basic
-## checks (file present, JSON parses, ids known, required keys, schema versions). TODO(W1-D): full rules,
-## better messages, ContentValidator.
+## Maps the JSON files in res://data to typed defs (ARCH 5.4). Structural checks live here: file present, JSON
+## parses, required keys and types, finite numbers, unknown top-level keys, schema versions, tick rate, ids that
+## must resolve (enemy, weapon, region). Every message reads "<file>: <JSON path>: <problem>". Range and
+## consistency rules on the typed result live in ContentValidator.
 
 const FILES: PackedStringArray = ["vertical_slice_balance.json", "waves.json", "visual_tokens.json", "content_ext.json", "arena.json"]
 const STRING_FILES: PackedStringArray = ["content_en.json", "combat_en.json", "screens_en.json", "lore_en.json"]
@@ -12,6 +13,18 @@ const SCHEMA_BALANCE: int = 2
 const SCHEMA_WAVES: int = 2
 const SCHEMA_EXT: int = 1
 const SCHEMA_ARENA: int = 1
+## Known top-level keys per file; anything else is reported (ARCH 5.4).
+const KEYS_BALANCE: PackedStringArray = [
+	"schema_version", "mission_id", "mission_name", "core_max_hp", "target_duration_seconds", "sim_ticks_per_second",
+	"simultaneous_enemy_cap", "intermission_seconds", "weapons", "enemies", "upgrades", "abilities", "reward", "targeting",
+]
+const KEYS_WAVES: PackedStringArray = ["schema_version", "note", "waves"]
+const KEYS_TOKENS: PackedStringArray = ["palette", "camera", "ui"]
+const KEYS_EXT: PackedStringArray = ["schema_version", "mission", "enemies", "upgrades", "abilities"]
+const KEYS_ARENA: PackedStringArray = [
+	"schema_version", "id", "bounds", "grid", "core", "warden", "turret_pads", "approach_radius", "slots",
+	"spawn_regions", "obstacles", "camera",
+]
 
 
 ## dir = "res://data". Reads the five data files and data/strings/*_en.json.
@@ -51,6 +64,11 @@ static func build(
 	_check_schema(rw, waves, SCHEMA_WAVES)
 	_check_schema(re, ext, SCHEMA_EXT)
 	_check_schema(ra, arena, SCHEMA_ARENA)
+	rb.check_keys(balance, KEYS_BALANCE, "$")
+	rw.check_keys(waves, KEYS_WAVES, "$")
+	rt.check_keys(tokens, KEYS_TOKENS, "$")
+	re.check_keys(ext, KEYS_EXT, "$")
+	ra.check_keys(arena, KEYS_ARENA, "$")
 	cs.mission = _mission(rb, re, balance, ext)
 	cs.enemies = _enemies(rb, re, balance, ext)
 	cs.weapons = _weapons(rb, balance)
@@ -72,17 +90,21 @@ static func _read_json(path: String, label: String, errors: PackedStringArray) -
 	if not FileAccess.file_exists(path):
 		errors.append("%s: file missing (%s)" % [label, path])
 		return {}
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if typeof(parsed) != TYPE_DICTIONARY:
-		errors.append("%s: not a JSON object or does not parse" % label)
+	var json: JSON = JSON.new()  # the instance API reports errors instead of printing them
+	if json.parse(FileAccess.get_file_as_string(path)) != OK:
+		errors.append("%s: not valid JSON (line %d: %s)" % [label, json.get_error_line(), json.get_error_message()])
 		return {}
-	var out: Dictionary = parsed
+	if typeof(json.data) != TYPE_DICTIONARY:
+		errors.append("%s: $: top level is not a JSON object" % label)
+		return {}
+	var out: Dictionary = json.data
 	return out
 
 
 static func _check_schema(r: JsonRead, d: Dictionary, expected: int) -> void:
+	var before: int = r.errors.size()
 	var got: int = r.integer(d, "schema_version", "$")
-	if got != expected:
+	if r.errors.size() == before and got != expected:  # a missing or malformed value was already reported
 		r.fail("$.schema_version", "expected %d, got %d" % [expected, got])
 
 
@@ -98,8 +120,9 @@ static func _mission(rb: JsonRead, re: JsonRead, b: Dictionary, e: Dictionary) -
 	m.id = StringName(rb.text(b, "mission_id", "$"))
 	m.name_key = "mission.%s.name" % String(m.id)
 	m.core_max_hp = rb.num(b, "core_max_hp", "$")
+	var before: int = rb.errors.size()
 	m.ticks_per_second = rb.integer(b, "sim_ticks_per_second", "$")
-	if m.ticks_per_second != TICK_RATE:
+	if rb.errors.size() == before and m.ticks_per_second != TICK_RATE:
 		rb.fail("$.sim_ticks_per_second", "expected %d, got %d" % [TICK_RATE, m.ticks_per_second])
 	m.enemy_cap = rb.integer(b, "simultaneous_enemy_cap", "$")
 	m.intermission_ticks = _ticks(rb.num(b, "intermission_seconds", "$"))
@@ -304,7 +327,10 @@ static func _tokens(r: JsonRead, t: Dictionary) -> VisualTokens:
 	var v: VisualTokens = VisualTokens.new()
 	var pal: Dictionary = r.dict(t, "palette", "$")
 	for name_key: String in ["obsidian", "warden_cyan", "core_amber", "chorus_red", "gunmetal", "bone_ceramic"]:
-		var hex: String = r.text(pal, name_key, "$.palette")
+		var before: int = r.errors.size()
+		var hex: String = r.text(pal, name_key, "$.palette")  # reports a missing or non-string token
+		if r.errors.size() > before:
+			continue
 		if hex.is_valid_html_color():
 			v.palette[StringName(name_key)] = Color.html(hex)
 		else:

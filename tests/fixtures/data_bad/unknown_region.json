@@ -1,0 +1,10 @@
+{
+	"rule": "region ids exist",
+	"stage": "loader",
+	"patches": [
+		{ "file": "waves.json", "path": "waves[1].groups[1].region", "set": "nowhere" }
+	],
+	"expect": [
+		"waves.json: $.waves[1].groups[1].region: unknown spawn region 'nowhere'"
+	]
+}

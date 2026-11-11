@@ -1,0 +1,10 @@
+{
+	"rule": "schema versions match",
+	"stage": "loader",
+	"patches": [
+		{ "file": "vertical_slice_balance.json", "path": "schema_version", "set": 3 }
+	],
+	"expect": [
+		"vertical_slice_balance.json: $.schema_version: expected 2, got 3"
+	]
+}

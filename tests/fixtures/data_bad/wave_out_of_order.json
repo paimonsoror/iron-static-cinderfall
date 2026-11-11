@@ -1,0 +1,11 @@
+{
+	"rule": "waves are listed in order 1..5 (the sim reads waves[wave - 1])",
+	"stage": "validator",
+	"patches": [
+		{ "file": "waves.json", "path": "waves[0].index", "set": 2 },
+		{ "file": "waves.json", "path": "waves[1].index", "set": 1 }
+	],
+	"expect": [
+		"waves.json: $.waves: waves must be listed in order 1..5"
+	]
+}

@@ -1,0 +1,10 @@
+{
+	"rule": "group count >= 1",
+	"stage": "validator",
+	"patches": [
+		{ "file": "waves.json", "path": "waves[0].groups[0].count", "set": 0 }
+	],
+	"expect": [
+		"waves.json: $.waves[0].groups[0].count: must be >= 1 (got 0)"
+	]
+}

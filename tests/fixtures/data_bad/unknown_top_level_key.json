@@ -1,0 +1,10 @@
+{
+	"rule": "unknown top-level keys are reported",
+	"stage": "loader",
+	"patches": [
+		{ "file": "waves.json", "path": "bonus_wave", "set": 6 }
+	],
+	"expect": [
+		"waves.json: $.bonus_wave: unknown key"
+	]
+}

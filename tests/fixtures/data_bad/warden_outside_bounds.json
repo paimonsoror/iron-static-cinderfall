@@ -1,0 +1,10 @@
+{
+	"rule": "the Warden is inside the bounds",
+	"stage": "validator",
+	"patches": [
+		{ "file": "arena.json", "path": "warden.x", "set": 50 }
+	],
+	"expect": [
+		"arena.json: $.warden: Warden (50, 7) is outside the bounds"
+	]
+}

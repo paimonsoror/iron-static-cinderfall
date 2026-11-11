@@ -1,0 +1,10 @@
+{
+	"rule": "the palette has the six tokens",
+	"stage": "loader",
+	"patches": [
+		{ "file": "visual_tokens.json", "path": "palette.core_amber", "delete": true }
+	],
+	"expect": [
+		"visual_tokens.json: $.palette.core_amber: missing or not a string"
+	]
+}

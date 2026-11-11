@@ -1,0 +1,10 @@
+{
+	"rule": "every number finite (JSON cannot carry NaN, so the helper turns the marker $NAN into NaN)",
+	"stage": "loader",
+	"patches": [
+		{ "file": "vertical_slice_balance.json", "path": "enemies.rusher.speed_mps", "set": "$NAN" }
+	],
+	"expect": [
+		"vertical_slice_balance.json: $.enemies.rusher.speed_mps: not a finite number"
+	]
+}

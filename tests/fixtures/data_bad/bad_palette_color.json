@@ -1,0 +1,10 @@
+{
+	"rule": "the palette tokens are colors",
+	"stage": "loader",
+	"patches": [
+		{ "file": "visual_tokens.json", "path": "palette.gunmetal", "set": "steel" }
+	],
+	"expect": [
+		"visual_tokens.json: $.palette.gunmetal: not a color: 'steel'"
+	]
+}
