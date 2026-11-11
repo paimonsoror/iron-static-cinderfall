@@ -1,0 +1,46 @@
+=== mode auto gpu=auto features=[] start 08:52:33
+Starting tower_phone gpu=auto (cold boot)...
+  emulator.exe -avd tower_phone -gpu auto -no-boot-anim -no-audio -no-snapshot
+Emulator emulator-5554 booted in 64s (gpu=auto). Tip: wait ~20-25s after a COLD boot before launching apps.
+run_emulator exit=0  08:54:03
+settled:  08:57:48 up 4 min,  0 users,  load average: 3.34, 7.30, 3.58  08:57:48
+    isKeyguardShowing=false
+Failed to write while dumping service window: Broken pipe
+--- godot log
+--------- beginning of main
+11-11 08:57:59.730  3788  3817 I godot   : Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+11-11 08:58:00.804  3788  3817 I godot   : Vulkan 1.3.0 - Forward Mobile - Using Device #0: Unknown - llvmpipe (LLVM 21.1.2, 256 bits)
+11-11 08:58:03.649  3788  3817 I godot   : 
+11-11 08:58:04.863  3788  3817 E godot   : ERROR: Couldn't present to Vulkan queue (VkResult error 5).
+11-11 08:58:04.863  3788  3817 E godot   :    at: command_queue_execute_and_present (drivers/vulkan/rendering_device_driver_vulkan.cpp:3359)
+11-11 08:58:05.903  3788  3817 I godot   : [Content] content ok enemies=4 waves=5 hash=09244f72d864
+11-11 08:58:05.904  3788  3817 I godot   : [Game] game boot version=0.1.0 renderer=mobile/vulkan
+11-11 08:58:05.904  3788  3817 I godot   : [Game] gpu adapter=llvmpipe (LLVM 21.1.2, 256 bits)
+11-11 08:58:06.089  3788  3817 I godot   : [Game] boot ok
+11-11 08:58:07.527  3788  3817 E godot   : ERROR: Couldn't present to Vulkan queue (VkResult error 5).
+11-11 08:58:07.527  3788  3817 E godot   :    at: command_queue_execute_and_present (drivers/vulkan/rendering_device_driver_vulkan.cpp:3359)
+11-11 08:58:13.247  3788  3817 E godot   : ERROR: Couldn't present to Vulkan queue (VkResult error 5).
+11-11 08:58:13.247  3788  3817 E godot   :    at: command_queue_execute_and_present (drivers/vulkan/rendering_device_driver_vulkan.cpp:3359)
+pid=3788
+  mCurrentFocus=null
+  mCurrentFocus=Window{3e6a7e u0 com.normalexception.games.cinderfall.dev/com.godot.game.GodotAppLauncher}
+screenshot=/c/dev/tower-two-wt/W1-H/build/shots/mode_auto.png bytes=15580
+vkjson bytes=55489
+--- SurfaceFlinger SurfaceView layers of the app
+  Layer [176] Background for SurfaceView[com.normalexception.games.cinderfall.dev/com.godot.game.GodotAppLauncher]#176
+ │  │  │     │  │        │  │  ├─ (Relative) SurfaceView[com.normalexception.game[...]com.godot.game.GodotAppLauncher]#174 parent=173
+ │  │  │     │  │        │  │  │  └─ SurfaceView[com.normalexception.game[...]ot.game.GodotAppLauncher](BLAST)#175
+  - Output Layer 0x75040caf0b80(Background for SurfaceView[com.normalexception.games.cinderfall.dev/com.godot.game.GodotAppLauncher]#176)
+--- emulator gpu lines
+INFO         | emuglConfig_get_vulkan_hardware_gpu_support_info: Found physical GPU 'Intel(R) Iris(R) Plus Graphics', type: VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU, apiVersion: 1.3.215, driverVersion: 0.404.2145
+INFO         | emuglConfig_init: vulkan_mode_selected:lavapipe gles_mode_selected:swiftshader
+INFO         | Selecting Vulkan device: llvmpipe (LLVM 21.1.2, 256 bits), Version: 1.4.318
+INFO         |     useVulkanComposition: false
+INFO         |     useVulkanNativeSwapchain: false
+INFO         |     guestVulkanOnly: false
+INFO         |     guestVulkanMaxApiVersion: 1.3.0
+INFO         | Graphics Adapter Vendor Google (Google Inc.)
+INFO         | Graphics Adapter Android Emulator OpenGL ES Translator (Google SwiftShader)
+INFO         | Graphics API Version OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+RESULT=FAIL present_error=yes
+=== end 08:58:48

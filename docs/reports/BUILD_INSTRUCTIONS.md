@@ -45,7 +45,7 @@ intent extras sent to the exported launcher, so this is the only way to pass arg
 ```
 # 1. Emulator (about 10 s from a quickboot snapshot, 50-100 s cold). Wait 25 s after a COLD boot before launching apps.
 powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\tower-two\tools\run_emulator.ps1
-#    options: -ColdBoot  -Gpu host|swangle_indirect|angle_indirect|swiftshader_indirect  -EmuLog <file>  -PublicDns
+#    options: -ColdBoot  -NoSnapshot  -Gpu host|swangle_indirect|angle_indirect|swiftshader_indirect|lavapipe|auto  -Feature "Name=off,..."  -EmuLog <file>  -PublicDns
 
 # 2. Export, install, launch, print the Godot log. Ends with "== RUNNING (pid n)" (exit 0) or "== NOT RUNNING" (exit 1).
 powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\tower-two\tools\deploy_android.ps1 -ProjectPath C:\dev\tower-two -Package com.normalexception.games.cinderfall.dev -Preset Cinderfall -LogSeconds 40
@@ -99,7 +99,7 @@ General behaviour of `tower_phone` on this laptop (4 cores, 15.7 GB), observed 2
   launching, then `adb shell input keyevent KEYCODE_WAKEUP` and `adb shell wm dismiss-keyguard`
   (`deploy_android.ps1` does both). Other Godot processes on the host (parallel agents, `check.ps1`) slow the emulator
   as well and can trigger the same dialog; tap "Wait".
-- **Switching `-gpu`.** `adb emu kill`, wait until `emulator.exe` is gone, then `run_emulator.ps1 -Gpu <mode> -ColdBoot`.
+- **Switching `-gpu`.** `adb emu kill`, wait until `emulator.exe` is gone, then `run_emulator.ps1 -Gpu <mode> -NoSnapshot` (or `-ColdBoot`).
   The AVD config keeps `hw.gpu.mode=host`; the command-line flag wins. `-EmuLog <file>` keeps the emulator's own stdout
   (it lists the GPU and Vulkan device it selected; it also contains local IP addresses, so do not commit it whole).
 - **Screenshots.** `adb exec-out screencap -p` must run from `C:\` (UNC working directories fail). A black PNG of exactly
@@ -127,23 +127,51 @@ project content is not the cause) and twice more around `boot ok`. After that th
 screenshot is a fully black 1080x2400 frame. SurfaceFlinger lists only the black "Background for SurfaceView" layer:
 the Vulkan surface never receives a buffer.
 
-| Run | Emulator `-gpu` | Vulkan device Godot used | Result |
-|---|---|---|---|
-| 1 (acceptance) | `host` (gfxstream to the Intel Iris Plus Vulkan 1.3 driver) | Intel Iris Plus Graphics, Vulkan 1.3.0 | present error, black screen. `android_w1h/host_gpu_*`, `w1h_emulator_black_screenshot.png`, `acceptance_commands_output.txt` |
-| 2 | `swangle_indirect` (gfxstream to SwiftShader) | SwiftShader Device (LLVM 10.0.0), Vulkan 1.2.0 | identical present error, black screen. `android_w1h/swangle_gpu_*` |
-| 3 (experiment, reverted) | `host`, preset `command_line/extra_args="--disable-vsync"` | Intel Iris Plus | "requested V-Sync mode Disabled is not available" (only FIFO is offered), same present error. `android_w1h/experiment_disable_vsync_godot_log.txt` |
+Every emulator mode tried so far fails the same way. Matrix (all runs: the same debug APK, Mobile renderer, 1080x2400
+portrait AVD `tower_phone`, android-35 `google_apis_playstore`, emulator 37.2.13). "Black" means `screencap` returned the
+empty frame (15,580 bytes) or the same frame with a "System UI isn't responding" dialog on top (the ANR is a side effect
+of the launch load, not a different result). Evidence files are under `docs/reports/android_w1h/`.
 
-Not tried: `angle_indirect` and `swiftshader_indirect` (the brief names host and swangle_indirect only), and any
-OpenGL run, because the owner decision forbids it and `project.godot` is not W1-H's. The same code renders correctly
-on the desktop through the same Mobile/Vulkan renderer (`android_w1h/desktop_reference_view_sandbox_1080x2400.png`,
-made with `capture.ps1`, `renderer=mobile/vulkan`), so the failure is in the emulator's guest Vulkan swapchain with this
-Godot build, not in the scene.
+| # | Emulator command line (`emulator.exe -avd tower_phone ...`) | Vulkan device Godot reported | `Couldn't present to Vulkan queue` | `screencap` | Evidence |
+|---|---|---|---|---|---|
+| 1 | `-gpu host -no-boot-anim -no-audio` (quickboot; acceptance run) | Intel Iris Plus Graphics, Vulkan 1.3.0 (host driver 1.3.215 via gfxstream) | yes, 3 times | black | `host_gpu_*`, `w1h_emulator_black_screenshot.png`, `host_emulator_gpu_lines.txt`, `acceptance_commands_output.txt` |
+| 2 | `-gpu swangle_indirect ... -no-snapshot-load` | SwiftShader Device (LLVM 10.0.0), Vulkan 1.2.0 | yes, 3 times | black | `swangle_*` |
+| 3 | `-gpu host ...` plus app argument `--disable-vsync` (preset `extra_args`, reverted) | Intel Iris Plus Graphics | yes ("requested V-Sync mode Disabled is not available", only FIFO is offered) | black | `experiment_disable_vsync_godot_log.txt` |
+| 4 | `-gpu swiftshader_indirect -no-boot-anim -no-audio -no-snapshot` | SwiftShader Device (LLVM 10.0.0), Vulkan 1.2.0 | yes, 3 times | black plus SystemUI ANR dialog | `mode_swiftshader_indirect.{txt,png}` |
+| 5 | `-gpu angle_indirect ... -no-snapshot` | llvmpipe (LLVM 21.1.2), Vulkan 1.3.0 (the emulator selected the Lavapipe ICD, 1.4.318, not the Intel GPU) | yes, 3 times | black plus SystemUI ANR dialog | `mode_angle_indirect.{txt,png}` |
+| 6 | `-gpu auto ... -no-snapshot` | llvmpipe, same as 5 (`auto` resolves to Lavapipe on this laptop) | yes, 3 times | black (15,580 bytes) | `mode_auto.{txt,png}` |
+| 7 | `-gpu host ... -no-snapshot -feature -VulkanVirtualQueue -feature -VulkanQueueSubmitWithCommands -feature -VulkanUseDedicatedAhbMemoryType -feature -HostComposition` | Intel Iris Plus Graphics | yes, 3 times | black plus SystemUI ANR dialog | `mode_host_features.{txt,png}` |
 
-Options for the owner, none taken by W1-H: (a) validate Vulkan on a physical phone (not available here, **NOT RUN**) and
-treat the emulator as unsupported for 3D until a newer emulator or system image presents; (b) accept an emulator-only
-OpenGL build for smoke runs (`command_line/extra_args="--rendering-method gl_compatibility --rendering-driver opengl3"`
-in a local, uncommitted preset change), knowing that `smoke_android.ps1` then fails on purpose (`-ExpectRenderer
-gl_compatibility/opengl3` lets it pass for that diagnostic build); (c) revisit D1. Until then `smoke_android.ps1`
-fails with `SMOKE FAIL: Vulkan errors in the log` on every emulator run. The APK manifest declares
-`android.hardware.vulkan.level` and `.version` as `required=false` (Godot's default for the Mobile renderer), so
-devices without Vulkan 1.0 still install and use `fallback_to_opengl3`.
+In every run `content ok`, `renderer=mobile/vulkan` and `boot ok` are logged, there is no OpenGL line, and the first present
+error comes at the engine boot-splash frame, before `content ok`. Three different Vulkan implementations (Intel via the host
+driver, SwiftShader, Lavapipe) fail identically, as do the four `-feature` switches that touch the Vulkan queue, memory
+and compositor paths, so the cause is not one ICD or one of those features. It is in the guest-side Vulkan swapchain
+(gfxstream WSI on the android-35 image) or in how Godot 4.7.2's swapchain meets it. The guest device does expose
+`VK_KHR_swapchain`, `VK_KHR_android_surface` and `VK_ANDROID_external_memory_android_hardware_buffer`
+(`adb shell cmd gpu vkjson`). The same project renders correctly on the desktop through the same Mobile/Vulkan renderer
+(`desktop_reference_view_sandbox_1080x2400.png`, `capture.ps1`, `renderer=mobile/vulkan`).
+
+Not tried and why: `-gpu software` and a visible (non-minimized) emulator window (low expected value, out of the time box);
+any OpenGL/Compatibility run (owner decision: forbidden); other system images (none installed, see below).
+
+**Emulator and image candidates (listed only; nothing was downloaded or installed).** The installed emulator 37.2.13 is the
+newest one `sdkmanager --list` offers. Installed system image: `system-images;android-35;google_apis_playstore;x86_64`
+(rev 9). Candidates for a different guest Vulkan/gfxstream stack, in the order I would try them:
+`system-images;android-36;google_apis_playstore;x86_64` (rev 7, the API level Godot 4.7.2 targets),
+`system-images;android-36.1;google_apis_playstore;x86_64` (rev 4), `system-images;android-37.0;google_apis_playstore;x86_64`
+(rev 8), `system-images;android-35;google_apis;x86_64` (rev 9, same API without Play Store), and
+`system-images;android-34;google_apis_playstore;x86_64` (rev 14). Each is a download of about 2 GB plus a new AVD with the
+`tower_phone` hardware profile (1080x2400, 420 dpi, 2560 MB RAM, 3 cores); that needs the owner's go-ahead.
+
+Options for the owner, none taken by W1-H: (a) validate Mobile/Vulkan on a physical phone (none attached here, **NOT RUN**) and
+treat the emulator as unusable for 3D until it presents; (b) approve downloading one of the system-image candidates above
+and retry the same cycle; (c) revisit D1. Until then `smoke_android.ps1` fails with `SMOKE FAIL: Vulkan errors in the log`
+on every emulator run. The APK manifest declares `android.hardware.vulkan.level` and `.version` as `required=false`
+(Godot's default for the Mobile renderer), so devices without Vulkan 1.0 still install.
+
+### 5.2 How the matrix was produced
+
+`run_emulator.ps1 -Gpu <mode> -NoSnapshot [-Feature "A=off,B=off"] -EmuLog <file>` (prints the exact emulator command line),
+wait for `adb shell uptime` load below 4, `KEYCODE_WAKEUP` plus `wm dismiss-keyguard`, `am force-stop`, `logcat -c`, `monkey`
+launch of the already installed APK, 50 s, then `logcat -d -s godot:V`, `screencap`, and the `Selecting Vulkan device` lines
+of the emulator log. Each cold boot needs 4 to 5 minutes before the load settles.

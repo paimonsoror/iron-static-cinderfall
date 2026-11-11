@@ -5,18 +5,24 @@ Prints the emulator serial when Android reports sys.boot_completed=1. Safe to ca
 (it just waits for it). Works with a physical phone attached too: the wait is done against the emulator's own serial.
 Exit 0 = booted, 1 = timeout or the emulator process died.
 .PARAMETER Avd        AVD name (default tower_phone: Pixel 6 profile, 1080x2400, x86_64, android-35 google_apis_playstore).
-.PARAMETER Gpu        Emulator -gpu mode (default host). host | swangle_indirect | angle_indirect | swiftshader_indirect | auto.
-                      Changing it needs a stopped emulator (adb emu kill) plus -ColdBoot. Mobile/Vulkan fallback order for
-                      a failing render is host, then swangle_indirect (docs/reports/BUILD_INSTRUCTIONS.md).
+.PARAMETER Gpu        Emulator -gpu mode (default host). host | swangle_indirect | angle_indirect | swiftshader_indirect | lavapipe | auto.
+                      Changing it needs a stopped emulator (adb emu kill) plus -ColdBoot or -NoSnapshot. On this laptop host uses the
+                      Intel Iris Plus Vulkan driver, auto and angle_indirect pick Lavapipe, the swiftshader/swangle modes SwiftShader.
+                      As of W1-H no mode presents Mobile/Vulkan frames (docs/reports/BUILD_INSTRUCTIONS.md section 5.1).
 .PARAMETER ColdBoot   Skip the quickboot snapshot (use after a crash, a config or -Gpu change, or when adb shows "offline").
+.PARAMETER NoSnapshot Cold boot and never save a snapshot on exit (-no-snapshot): fastest to stop, use for -Gpu and -Feature experiments.
+.PARAMETER Feature    Emulator -feature switches, comma separated: -Feature "VulkanVirtualQueue=off,HostComposition=off" (=on is the
+                      default; a leading "-" in the name also works but PowerShell may read it as a parameter name).
 .PARAMETER PublicDns  Opt-in: start with -dns-server 8.8.8.8,1.1.1.1 (not needed by Cinderfall: the build is offline).
 .PARAMETER EmuLog     Optional file that receives the emulator's own stdout and stderr (gpu and Vulkan diagnostics).
 .PARAMETER TimeoutSec Give up after this many seconds (default 300).
 #>
 param(
     [string]$Avd = "tower_phone",
-    [ValidateSet('host', 'swangle_indirect', 'angle_indirect', 'swiftshader_indirect', 'auto')][string]$Gpu = "host",
+    [ValidateSet('host', 'swangle_indirect', 'angle_indirect', 'swiftshader_indirect', 'lavapipe', 'swangle', 'swiftshader', 'software', 'auto')][string]$Gpu = "host",
     [switch]$ColdBoot,
+    [switch]$NoSnapshot,
+    [string[]]$Feature = @(),
     [switch]$PublicDns,
     [string]$EmuLog = "",
     [int]$TimeoutSec = 300
@@ -53,9 +59,17 @@ if ($serial) {
         Write-Host "Waiting for it. If this times out: adb emu kill, then run this script again with -ColdBoot."
     } else {
         $emuArgs = @('-avd', $Avd, '-gpu', $Gpu, '-no-boot-anim', '-no-audio')
-        if ($ColdBoot) { $emuArgs += '-no-snapshot-load' }
+        if ($NoSnapshot) { $emuArgs += '-no-snapshot' } elseif ($ColdBoot) { $emuArgs += '-no-snapshot-load' }
+        foreach ($f in $Feature) {
+            foreach ($one in ($f -split ',')) {
+                $one = $one.Trim()
+                if ($one -match '^(.+)=(on|off)$') { $one = if ($Matches[2] -eq 'off') { "-$($Matches[1])" } else { $Matches[1] } }
+                if ($one) { $emuArgs += @('-feature', $one) }
+            }
+        }
         if ($PublicDns) { $emuArgs += @('-dns-server', '8.8.8.8,1.1.1.1') }
-        Write-Host "Starting $Avd gpu=$Gpu $(if($ColdBoot){'(cold boot)'})$(if($PublicDns){' (public DNS)'})..."
+        Write-Host "Starting $Avd gpu=$Gpu $(if($ColdBoot -or $NoSnapshot){'(cold boot)'})$(if($PublicDns){' (public DNS)'})..."
+        Write-Host "  emulator.exe $($emuArgs -join ' ')"
         $sp = @{ FilePath = $emu; ArgumentList = $emuArgs; WindowStyle = 'Minimized'; PassThru = $true }
         if ($EmuLog) {
             $sp['RedirectStandardOutput'] = $EmuLog
