@@ -91,6 +91,10 @@ environment/defaults/default_clear_color=Color(0.0627, 0.0941, 0.1255, 1)
 anti_aliasing/quality/msaa_3d=0
 ```
 
+`msaa_3d` stays 0 as the project default. The hard-surface looks (W3-C) set MSAA per quality tier at run time through
+`LookDevStyle.apply_aa` (LOW off, MID 2x, HIGH 4x; the `CURRENT` look is always 0), called from `ArenaView.set_quality`
+and `ArenaView.set_look`. 4x on HIGH needs a phone check (section 13).
+
 ### 1.2 Export preset `Cinderfall` (`export_presets.cfg`, owned by task W1-H)
 
 `platform="Android"`, `runnable=true`, `export_filter="all_resources"`,
@@ -1256,11 +1260,13 @@ View rules:
 - Blob shadows and world health bars are transform-only `MultiMeshInstance3D`s (one draw call each).
 - Motion is procedural: bob, lean, stomp, recoil, Warden upper-body yaw toward `warden.aim_x/aim_z`.
 - No physics bodies, no collision shapes, no `NavigationAgent3D`, no `AnimationTree` in the slice.
-- `WorldEnvironment`: no glow, no SSAO, no SSR, no fog volumes. One `DirectionalLight3D`; shadows off on LOW
+- `WorldEnvironment`: no glow (the one exception is bloom on MID and HIGH when the look is `STYLISED_PLUS`:
+  `LookDevStyle.glow_enabled`, `ArenaView._apply_glow`), no SSAO, no SSR, no fog volumes. One `DirectionalLight3D`; shadows off on LOW
   and MID, on for static props only on HIGH. At most 4 unshadowed `OmniLight3D` on HIGH, 0 on LOW.
   Everything else is emissive material or additive quads.
 - Every shader or material variant is drawn once during the boot screen (`ShaderWarmup` helper in
-  `src/view/kit/`, alpha 0.02, 2 frames) so the first shot does not hitch.
+  `src/view/kit/`, alpha 0.02, 2 frames) so the first shot does not hitch. This includes the hard-surface
+  Warden materials (`LookDevMat.warm_materials`, drawn on vertex-colour quads because pipelines are keyed by vertex format).
 
 ---
 
@@ -1385,6 +1391,7 @@ checkouts never share `user://`. `-Path` accepts a comma-separated list and spli
 | Tracers alive | 24 | 48 |
 | Floating texts | 12 | 24 |
 | Lights | 1 directional + 4 omni (HIGH) | - |
+| MSAA (hard-surface looks only; CURRENT is always off) | LOW off, MID 2x, HIGH 4x (`LookDevStyle.apply_aa`) | Measured on the dev iGPU: +2.9 ms at 2x, +4.2 ms at 4x on HIGH; phone check pending. If a phone shows more than about 1 ms for 4x, `MSAA_HIGH` becomes 2 |
 | Texture memory | 48 MB | 96 MB |
 | Resident memory | 300 MB | 450 MB |
 | Cold start to menu | 3 s | 6 s |

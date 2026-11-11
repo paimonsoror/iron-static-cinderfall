@@ -624,8 +624,9 @@ gameplay. No concept PNG is ever used as a texture, sprite or background.
 | `vfx_bundle` | W1-F | Pooled quads and thin boxes with additive unshaded materials: tracers, muzzle star, sparks, debris cubes, EMP ground ring (scaled torus or ring mesh), shield dome (transparent sphere), overdrive glow, floating texts | Scale and fade over fixed lifetimes | `VfxLayer` |
 | `audio_bundle` | W2-C | Synthesized WAVs from `tools/audio_gen/gen.py` (noise bursts, filtered sweeps, FM tones) | - | `assets/audio/` by id |
 
-Budgets for placeholders: Skitter at most 300 triangles, Hollow Warden 400, Rusher 400, Hulk 900, Warden 700,
-turret 300, each as one mesh with at most 3 surfaces. Arena total at most 25 k triangles.
+Budgets for placeholders: Skitter at most 300 triangles, Hollow Warden 400, Rusher 400, Hulk 900, Warden 2,500
+(every body part plus the weapon in hand; it went 700 to 2,000 to 2,500 in W3-C, source of truth `ActorMeshes.TRI_BUDGET`),
+turret 300, each as one mesh with at most 3 surfaces (the Warden is 11 mesh instances with at most 3 surfaces each). Arena total at most 25 k triangles.
 
 Readability rules for all placeholder actors: dark blob shadow, one emissive accent in the faction color,
 silhouette differences in height and footprint first, detail second. Faction color is never the only cue.
