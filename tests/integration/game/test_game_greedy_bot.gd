@@ -1,7 +1,6 @@
 extends GdUnitTestSuite
 ## The greedy-bot run of the plan (GDD 8.4): the bot (PolicyBot GREEDY, task W2-D) plays a whole run on the real,
-## tuned content and wins with 30% to 80% of the core left. PolicyBot.act is still a stub, so the test is skipped:
-## to enable it, change `_do_skip` to false once W2-D has merged.
+## tuned content and wins with 30% to 80% of the core left. Enabled by the coordinator after W2-D merged.
 
 var _h: GameHarness
 
@@ -12,9 +11,7 @@ func after_test() -> void:
 		_h = null
 
 
-func test_a_greedy_bot_run_wins_with_30_to_80_percent_core(
-	_do_skip: bool = true, _skip_reason: String = "enable when W2-D merges"
-) -> void:
+func test_a_greedy_bot_run_wins_with_30_to_80_percent_core() -> void:
 	_h = GameHarness.create(self, PackedStringArray(["--autoplay=greedy", "--seed=1"]))
 	_h.game.set(&"content", Content.db)  # the tuned game data, not the frozen baseline
 	_h.boot()
