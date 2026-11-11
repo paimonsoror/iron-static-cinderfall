@@ -6,6 +6,7 @@
   "menu.start": "START MISSION",
   "menu.settings": "SETTINGS",
   "menu.quit": "QUIT",
+  "menu.quit_confirm": "PRESS BACK AGAIN TO QUIT",
   "menu.data": "RECOVERED DATA",
   "menu.best_core": "BEST CORE HP",
   "menu.missions": "MISSIONS HELD",
