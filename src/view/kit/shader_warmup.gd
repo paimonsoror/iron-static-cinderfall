@@ -7,6 +7,8 @@ extends MeshInstance3D
 ## FloatingTexts) and flashes the `ScreenFlash` CanvasLayer once at alpha 0.02, so those pipelines are warm too.
 ## The Mobile renderer ignores `GeometryInstance3D.transparency`, so callers hide the quads by placing the node just
 ## under the opaque ground: they are still submitted (pipelines compile), the depth test rejects every pixel.
+## `lit` adds the materials of the hard-surface Warden (LookDevMat.warm_materials): their quads carry a vertex colour, because
+## the Warden meshes do and the pipeline is keyed by the vertex format.
 
 const ALPHA: float = 0.02
 const FRAMES: int = 2
@@ -20,10 +22,10 @@ var flash: ScreenFlash
 
 
 ## Creates the warm-up node under `parent` at world point `at` and returns it.
-static func attach(parent: Node3D, at: Vector3, extra: Array[Material] = []) -> ShaderWarmup:
+static func attach(parent: Node3D, at: Vector3, extra: Array[Material] = [], lit: Array[Material] = []) -> ShaderWarmup:
 	var w: ShaderWarmup = ShaderWarmup.new()
 	w.name = "ShaderWarmup"
-	w.mesh = build_mesh(extra)
+	w.mesh = build_mesh(extra, lit)
 	w.transparency = 1.0 - ALPHA  # honored by Compatibility and Forward+ only; Mobile hides the quads by depth
 	w.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(w)
@@ -44,9 +46,9 @@ static func attach(parent: Node3D, at: Vector3, extra: Array[Material] = []) -> 
 
 
 ## One surface per MatLib id, then one per extra material, laid out in a row along X.
-static func build_mesh(extra: Array[Material]) -> ArrayMesh:
+static func build_mesh(extra: Array[Material], lit: Array[Material] = []) -> ArrayMesh:
 	var mb: MeshBuilder = MeshKit.begin()
-	var total: int = MatLib.IDS.size() + extra.size()
+	var total: int = MatLib.IDS.size() + extra.size() + lit.size()
 	var x0: float = -SPACING * float(total - 1) * 0.5
 	for i: int in MatLib.IDS.size():
 		var at: Vector3 = Vector3(x0 + SPACING * float(i), 0.0, 0.0)
@@ -55,6 +57,9 @@ static func build_mesh(extra: Array[Material]) -> ArrayMesh:
 	for j: int in extra.size():
 		var cx: float = x0 + SPACING * float(MatLib.IDS.size() + j)
 		_add_quad_surface(mesh, extra[j], cx)
+	for k: int in lit.size():
+		var lx: float = x0 + SPACING * float(MatLib.IDS.size() + extra.size() + k)
+		_add_quad_surface(mesh, lit[k], lx, true)
 	return mesh
 
 
@@ -69,7 +74,7 @@ func _process(_delta: float) -> void:
 		queue_free()
 
 
-static func _add_quad_surface(mesh: ArrayMesh, mat: Material, cx: float) -> void:
+static func _add_quad_surface(mesh: ArrayMesh, mat: Material, cx: float, colored: bool = false) -> void:
 	var h: float = QUAD * 0.5
 	var arrays: Array = []
 	arrays.resize(Mesh.ARRAY_MAX)
@@ -79,5 +84,7 @@ static func _add_quad_surface(mesh: ArrayMesh, mat: Material, cx: float) -> void
 	arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array([Vector3.UP, Vector3.UP, Vector3.UP, Vector3.UP])
 	arrays[Mesh.ARRAY_TEX_UV] = PackedVector2Array([Vector2(0.0, 0.0), Vector2(1.0, 0.0), Vector2(1.0, 1.0), Vector2(0.0, 1.0)])
 	arrays[Mesh.ARRAY_INDEX] = PackedInt32Array([0, 1, 2, 0, 2, 3])
+	if colored:
+		arrays[Mesh.ARRAY_COLOR] = PackedColorArray([Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE])
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	mesh.surface_set_material(mesh.get_surface_count() - 1, mat)

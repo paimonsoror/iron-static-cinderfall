@@ -103,12 +103,16 @@ static func accent_energy(look: int, tier: int) -> float:
 	return ACCENT_STYLISED
 
 
+## The LOW material has no lighting ramp (plain Lambert, full diffuse), so it takes this share of the gain: at the full gain it clipped
+## 30 percent of the Warden's pixels.
+const LOW_GAIN_SCALE: float = 0.8
+
 ## Value gain of the plate and suit materials (round 3): vertex colours are 8 bit and cannot go above 1, so the steel is
 ## lifted here and the vertex tints only say lighter or darker. `bone` is the ceramic (bone) plates.
 static func value_gain(look: int, bone: bool) -> float:
 	if look == Look.CURRENT:
 		return 1.0
-	return 1.0 if bone else 2.4
+	return 1.0 if bone else 3.1
 
 
 ## MSAA samples (0, 2 or 4) of the 3D viewport for a look at a tier. CURRENT keeps the project default (none): the hard-

@@ -64,7 +64,7 @@ func test_the_plate_materials_are_lifted_by_the_value_gain_on_every_tier() -> vo
 	assert_float(LookDevStyle.value_gain(STYLISED, true)).is_less(LookDevStyle.value_gain(STYLISED, false))
 	var base: Color = tokens.color(&"gunmetal")
 	var low: StandardMaterial3D = LookDevMat.surface(&"gunmetal", STYLISED, VisualQuality.Tier.LOW) as StandardMaterial3D
-	assert_float(low.albedo_color.r).is_equal_approx(base.r * LookDevStyle.value_gain(STYLISED, false), 0.001)
+	assert_float(low.albedo_color.r).is_equal_approx(base.r * LookDevStyle.value_gain(STYLISED, false) * LookDevStyle.LOW_GAIN_SCALE, 0.001)
 	for tier: int in [VisualQuality.Tier.MID, VisualQuality.Tier.HIGH]:
 		var sm: ShaderMaterial = LookDevMat.surface(&"gunmetal", STYLISED, tier) as ShaderMaterial
 		assert_float(sm.get_shader_parameter(&"value_gain")).is_equal(LookDevStyle.value_gain(STYLISED, false))

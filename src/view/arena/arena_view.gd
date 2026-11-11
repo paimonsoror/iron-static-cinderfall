@@ -20,7 +20,7 @@ var omnis: Array[OmniLight3D] = []
 var _arena: ArenaDef
 var _tokens: VisualTokens
 var _tier: int = VisualQuality.Tier.MID
-var _look: int = LookDevStyle.Look.CURRENT
+var _look: int = LookDevStyle.current()  ## the process-wide look, so the boot only sets LookDevStyle.set_current
 var _ground_mat: ShaderMaterial
 var _casters: Array[MeshInstance3D] = []
 var _pad_meshes: Array[MeshInstance3D] = []
@@ -54,7 +54,7 @@ func setup(arena: ArenaDef, tokens: VisualTokens) -> void:
 	set_quality(VisualQuality.Tier.MID)
 	var center: Vector3 = Vector3((arena.min_x + arena.max_x) * 0.5, -0.4, (arena.min_z + arena.max_z) * 0.5)
 	var extra: Array[Material] = [_ground_mat]
-	ShaderWarmup.attach(self, center, extra)
+	ShaderWarmup.attach(self, center, extra, LookDevMat.warm_materials(_look))
 	set_process(true)
 
 
