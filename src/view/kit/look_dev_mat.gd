@@ -55,6 +55,20 @@ static func accent_color(energy: float) -> Color:
 	return Color(c.r * energy, c.g * energy, c.b * energy, 1.0)
 
 
+## The materials a hard-surface Warden of `look` draws, for the boot warm-up (ShaderWarmup): the shaded variant (MID and HIGH)
+## and the baked variant (LOW) of every role. Empty for CURRENT (its materials are the MatLib ones, warmed already).
+static func warm_materials(look: int) -> Array[Material]:
+	var out: Array[Material] = []
+	if look == LookDevStyle.Look.CURRENT:
+		return out
+	for role: StringName in [&"ceramic", &"gunmetal", &"emit_cyan"]:
+		for tier: int in [VisualQuality.Tier.MID, VisualQuality.Tier.LOW]:
+			var m: Material = surface(role, look, tier)
+			if not out.has(m):
+				out.append(m)
+	return out
+
+
 static func cached_count() -> int:
 	return _cache.size()
 
@@ -71,6 +85,7 @@ static func _build(base_id: StringName, look: int, shaded: bool, is_accent: bool
 		var e: StandardMaterial3D = StandardMaterial3D.new()
 		e.resource_name = name_text
 		e.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		e.vertex_color_use_as_albedo = true  # the back panel has dim cells and bright cores (all other accents are white)
 		return e
 	if shaded:
 		var sm: ShaderMaterial = ShaderMaterial.new()
@@ -96,6 +111,8 @@ static func _paint(m: Material, base_id: StringName, look: int, tier: int) -> vo
 		std.albedo_color = accent_color(LookDevStyle.accent_energy(look, tier))
 		return
 	var gain: float = LookDevStyle.value_gain(look, base_id == &"ceramic")
+	if base_id != &"ceramic":
+		gain *= LookDevStyle.LOW_GAIN_SCALE
 	std.albedo_color = Color(color.r * gain, color.g * gain, color.b * gain, 1.0)
 	std.roughness = plain.roughness
 	std.metallic = 0.0  # no reflections on LOW: a metallic term would only darken the baked colors
@@ -108,8 +125,8 @@ static func _paint_shader(sm: ShaderMaterial, base_id: StringName, look: int, ti
 	sm.set_shader_parameter(&"albedo_tint", color)
 	sm.set_shader_parameter(&"value_gain", LookDevStyle.value_gain(look, not metal))
 	sm.set_shader_parameter(&"fill_strength", LookDevStyle.fill_strength(look) * (1.0 if metal else 0.4))
-	sm.set_shader_parameter(&"roughness", 0.55 if metal else 0.72)
-	sm.set_shader_parameter(&"spec_strength", (0.26 if metal else 0.1) * (1.4 if plus else 1.0))
+	sm.set_shader_parameter(&"roughness", 0.62 if metal else 0.72)
+	sm.set_shader_parameter(&"spec_strength", (0.12 if metal else 0.08) * (1.4 if plus else 1.0))
 	sm.set_shader_parameter(&"rim_color", cyan)
 	var rim: float = LookDevStyle.rim_strength(look) if LookDevStyle.rim_enabled(look, tier) else 0.0
 	sm.set_shader_parameter(&"rim_strength", rim * (0.9 if metal else 0.4))

@@ -143,7 +143,7 @@ func test_baked_vertex_colours_are_present_in_range_and_darken_the_creases() -> 
 					assert_float(c.b).is_between(0.0, 1.0)
 					assert_float(c.a).is_between(0.0, 1.0)
 					if role == &"emit_cyan":
-						assert_that(Vector3(c.r, c.g, c.b)).is_equal(Vector3.ONE)  # accents are not occluded
+						assert_float(minf(c.r, minf(c.g, c.b))).is_greater_equal(0.7)  # accents are not occluded (the dim cells of the back panel are 0.74)
 	var gun: Array = ActorMeshes.warden_part(&"torso", LookDevStyle.Look.STYLISED).surface_get_arrays(0)
 	var gun_cols: PackedColorArray = gun[Mesh.ARRAY_COLOR]
 	var lo: float = 1.0

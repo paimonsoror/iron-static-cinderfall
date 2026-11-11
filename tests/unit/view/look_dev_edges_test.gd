@@ -6,15 +6,17 @@ extends GdUnitTestSuite
 const STYLISED: int = LookDevStyle.Look.STYLISED
 ## Largest angle between the face normals of two triangles that share a smooth-shaded edge: a 6 sided tube has 60 degrees (the
 ## antenna and the cable), a 10 sided tube 36, the two facets of a rounded edge 45 and the corner of a rounded box about 55.
-const MAX_FACET_DEG: float = 65.0
+## (v4: the V chest plates are tilted 19 degrees on top of their chamfer facets, which is where the 66 comes from.)
+const MAX_FACET_DEG: float = 68.0
 ## The same for an untapered rounded box (only its corner triangles reach 55).
 const MAX_FACET_UNTAPERED_DEG: float = 56.0
 ## A taper adds its slope to the facet angles of the sides.
 const MAX_FACET_TAPERED_DEG: float = 70.0
 ## A shading crease above this is a hard edge.
 const CREASE_DEG: float = 20.0
-## Share of the edges of the figure that may be hard: the flat caps of tubes, the hinge pins, the antenna and the cable.
-const MAX_HARD_SHARE: float = 0.14
+## Share of the edges of the figure that may be hard: the flat caps of tubes, the hinge pins, the antenna and the cable, and in
+## v4 the small boxes of the back-panel frame, the harness straps and the panel line (13 percent measured).
+const MAX_HARD_SHARE: float = 0.15
 
 
 func before_test() -> void:

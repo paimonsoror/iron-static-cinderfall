@@ -7,6 +7,8 @@ extends SceneTree
 ## Pure Image API (no rendering, works headless); the glyphs are a 5 x 7 font drawn with rectangles.
 
 const FONT_SCALE: int = 3
+## JPEG quality of the .jpg outputs (`--jpg=0.85`).
+var _jpg_quality: float = 0.88
 const BG: Color = Color(0.063, 0.094, 0.125, 1.0)
 const FG: Color = Color(0.85, 0.86, 0.82, 1.0)
 const GLYPHS: Dictionary[String, Array] = {
@@ -61,6 +63,8 @@ func _init() -> void:
 				pad = value.to_int()
 			"--rows":
 				rows = maxi(1, value.to_int())
+			"--jpg":
+				_jpg_quality = clampf(value.to_float(), 0.3, 1.0)
 	var tiles: Array[Image] = []
 	for path: String in paths:
 		var img: Image = Image.load_from_file(path)
@@ -101,7 +105,7 @@ func _init() -> void:
 
 func _save(img: Image, out: String) -> void:
 	DirAccess.make_dir_recursive_absolute(out.get_base_dir())
-	var err: int = img.save_jpg(out, 0.88) if out.ends_with(".jpg") else img.save_png(out)
+	var err: int = img.save_jpg(out, _jpg_quality) if out.ends_with(".jpg") else img.save_png(out)
 	print("COMPARE %s %dx%d err=%d" % [out, img.get_width(), img.get_height(), err])
 	quit(0 if err == OK else 3)
 

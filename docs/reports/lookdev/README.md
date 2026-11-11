@@ -433,3 +433,182 @@ cyan panel and lights, the gains, the clip bound, the proportions, the footprint
 style gates, and the emission tests, because an unshaded material ignores its emission: the v2 "emission energy" of the accents never did anything, the accent
 brightness is now the albedo). `CURRENT` meshes remain byte-identical (hash test). The legibility scorer is a tool (`src/debug/look_dev_legibility.gd`), not
 unit-tested; its pairs and the table above are reproducible with the commands in section 1.
+
+## Round 4: Warden v4 (the freeze)
+
+The owner saw v3 and chose one last polish round, then freeze. Sheets only, in `v4/` (CURRENT | v3 | v4, or v3 | v4; JPG quality 0.85, 1.4 MB; the full-frame
+captures and the round 2 images were pruned from the public repo, so the v3 sheets are in `v3/` and the v3 captures used here were taken from my build directory).
+Same constraints: scale, camera and sim unchanged, CURRENT hash-pinned, budget 2,500 triangles, tier gating, LOW parity, nothing from any franchise.
+
+### Legibility (measured; same scorer and setup as round 3: 1080x2400, hold28, frame 240, `--msaa=0` on both halves)
+
+| Tier | Look | px | mean luma | ring | contrast | pixel contrast | p10 / p90 | clipped | white |
+|---|---|---|---|---|---|---|---|---|---|
+| HIGH | CURRENT | 2816 | 0.594 | 0.519 | 0.075 | 0.203 | 0.32 / 0.92 | 8.9% | 0.0% |
+| HIGH | v3 | 2317 | 0.628 | 0.514 | 0.114 | 0.205 | 0.30 / 0.84 | 3.3% | 1.1% |
+| HIGH | **v4** | 2318 | 0.691 | 0.518 | **0.173** | **0.208** | 0.44 / 0.88 | **2.9%** | 0.4% |
+| MID | CURRENT | 2681 | 0.600 | 0.514 | 0.085 | 0.202 | 0.32 / 0.92 | 9.4% | 0.0% |
+| MID | v3 | 2317 | 0.627 | 0.496 | 0.131 | 0.213 | 0.30 / 0.84 | 3.3% | 1.1% |
+| MID | **v4** | 2318 | 0.690 | 0.500 | **0.190** | **0.219** | 0.44 / 0.88 | **2.8%** | 0.4% |
+| LOW | CURRENT | 2926 | 0.543 | 0.516 | 0.027 | 0.156 | 0.33 / 0.74 | 0.0% | 0.0% |
+| LOW | v3 | 2483 | 0.562 | 0.512 | 0.049 | 0.184 | 0.28 / 0.81 | 1.6% | 0.0% |
+| LOW | **v4** | 2473 | 0.621 | 0.516 | **0.105** | **0.184** | 0.37 / 0.86 | **3.5%** | 0.0% |
+
+**The gate (HIGH pixel contrast at least 0.205, clipped at most 5 percent) is met: 0.208 and 2.9 percent.** The mean-luma contrast rose a lot (0.114 to 0.173 on HIGH) because
+the lower body is no longer black; the pixel contrast, which is what a half-dark figure scores honestly, is flat: the figure is brighter overall and sits further above the
+pad's luma (0.52) but has lost its very dark mass, so it is exactly as readable as v3 and CURRENT in that measure, not more. It was reached by value structure alone, no
+outline and no light: the plate gain 2.4 to 3.1 (the shader tolerates it, MID and HIGH have the ramp), the LOW material takes 0.8 of it (`LOW_GAIN_SCALE`; at the full gain LOW clipped
+29.5 percent of its pixels), a deeper shade floor (0.06 to 0.03) and a slightly warmer steel tint so the plates read grey, not ice blue, dark boots (0.2) and calves (0.3) and mid-light
+thighs (0.55) with a light front plate. LOW: the dark joint gaps and the unshaded lights are the same, so LOW gained the same way (0.105 against CURRENT's 0.027 on the mean, 0.184 against 0.156).
+
+### What v4 changed (the owner's items, in order)
+
+1. **Helmet.** One smooth ellipsoid shell (12 sides, 3 rings per half; v3 was a box) with a cyan visor band that follows the shell around the front and the sides (ends at plus and minus 74
+   degrees, the height falls off toward the ends so the corners are angled) over a dark bezel. **No mouth slot**: the jaw is a smooth steel ellipsoid with two small slits on each side.
+   Kept: the sensor pod on the right only, the dorsal fin with a cyan stripe. The cheek plates are gone. From the front it reads as a helmet with a visor, not a face. Caveat: a round dome with a
+   wide band is generic "trooper helmet"; the originality is in the fin, the pod, the side slits and the angled ends; nothing else was taken from anywhere.
+2. **Chest.** Layered plates: two pectoral plates in a V (tilted 19 degrees) over a lower plate, all chamfered shells with zero crease; an off-white core housing with a dark ring and the cyan hexagon
+   core inset; a panel line; harness straps over the shoulders (two thin dark bars on the yoke). The bone is now a clean off-white (`LookDevWarden.BONE_TINT` pulls the cream of the palette bone to neutral;
+   the right pauldron top reads off-white, not tan). No flat beige slab.
+3. **Legs.** Thighs are steel cylinders with rounded ends (mid-light steel), a light front plate with a cyan trim, dark only in the joint gap; mid steel calves; light greaves with the trim; dark boots.
+   The lower body now reads as part of one soldier.
+4. **Back panel.** Two cyan cells sunk behind a proud steel frame (spine, top, bottom, a middle slat); each cell has a brighter core (the cells are dimmed through the vertex colour of the unshaded
+   accent material, which now takes vertex colour). Still the biggest lit shape (0.14 m2 of cell facing the camera, plus the brighter cores); exists on LOW.
+5. **Specular.** Steel specular 0.26 to 0.12, roughness 0.55 to 0.62: no white blobs on the pauldrons at 3x.
+6. **Reload.** Magazine drop skipped (not cheap: the magazine is part of the weapon mesh and the hand targets would need a second weapon part and a pose state); the reload pose is as in v3.
+7. **Legibility.** See the table.
+
+Also: triangles 2,466 with the pistol and 2,490 with the SMG (budget 2,500; v3 2,448 and 2,472), 11 mesh instances, no new draw, light, pass or shader branch, so no new frame-cost measurement (round 3's
+numbers hold: the shader only gained constants). `ShaderWarmup` now draws the hard-surface materials at boot (see the recipe). `look_dev_compare.gd` has a `--jpg=<quality>` flag.
+
+### Is v4 good enough to freeze?
+
+**Yes for the rollout, with the honest limits below.** It reads as a heavy armoured trooper in every view at 3x, the helmet reads as a helmet, the lower body is armour, the colours are neutral grey and
+cyan with one clean off-white, the edges are smooth, and at 1x it is back at CURRENT's level of legibility with no clipping on any tier. What is still weak: (1) at 1x it is **not** clearly more
+legible than CURRENT (pixel contrast 0.208 against 0.203) and the figure is pale: a light grey figure on an amber pad, with the enemies' pale plates just as bright; the next lever that does not touch the
+palette is an outline (rejected by the owner) or a larger figure; (2) the helmet is a smooth dome with a band, safe but plain; the sensor pod and the side slits carry the identity; (3) the thighs are still
+capsules (with a plate on the front), the knees small, the boots rounded slabs; (4) the cyan panel cells are flat unshaded colour inside a framed recess; (5) the chest core and the harness straps are small
+and hidden by the arms in the front view; (6) the reload is a tilt, not a magazine drop; (7) LOW is a little flatter than MID and HIGH (no fill, no rim); (8) the old enemies are boxy and unaliased next to a smooth
+Warden until the rollout.
+
+## Applying the look to other actors
+
+This is the recipe for the rollout (turret, the four enemy archetypes, the Hulk). It was written when the Warden was frozen (v4). The look
+is: smooth, rounded hard-surface geometry; ambient occlusion and edge wear baked into the vertex colours; a soft lighting ramp, a thin cyan
+rim and a camera-side fill in one shared shader (MID and HIGH); cyan (or later red) lights that are part of the mesh; a value structure that
+reads at 55 px. Everything is procedural and deterministic. The Warden code is the worked example: `src/view/actors/look_dev_warden.gd`
+(legs, torso), `look_dev_head.gd` (helmet, pauldrons), `look_dev_gear.gd` (arms, pack, weapons), `warden_parts.gd` (dressing),
+`warden_view.gd`, `warden_motion.gd`.
+
+### 1. The kit (all in `src/view/kit/`)
+
+| Piece | What it is for |
+|---|---|
+| `MeshBuilder` (`mesh_builder.gd`) | One merged `ArrayMesh`, one surface per material id. `tint` multiplies the vertex colour of everything added next (rgb at most 1: see the traps). `begin_part()` starts a shape (the AO bake skips self-occlusion inside a part). `add_occluder(centre, radius)` registers a sphere (use it for neighbours that are separate meshes). `add_tri(...)` writes a triangle with explicit smooth normals and an edge-wear value. `recentre(pivot)` moves the origin of a part. `use_colors` is switched on by the bake. |
+| `LookDevShapes` | `bevel_box` (44 triangles; `plate` true gives a 30 triangle shell with no bottom face, for plates that sit on a body; `soft` 0 is the zero-crease default), `limb` (smooth tapered tube; `round_ends` 1 for rounded ends; `cap_a`/`cap_b` false where it disappears into armour), `ellipsoid` (`upper_only` for domes), `curved_plate`, `frame_along(a, b, t, offset, up)` (a frame along a segment: pass `Vector3.FORWARD` as `up` for a leg or the plate ends up behind the limb), `facing(dir)` (a basis whose +Y is `dir`, for plates that face a direction). |
+| `LookDevRound` | `rounded_box` (108 triangles, every edge a quarter cylinder, analytic normals): for the big masses (body, head block, boots). |
+| `LookDevBake` | `ao(mb, strength, reach, sky, ground_y, foot_dark, foot_h, skip_roles)`: bakes analytic ambient occlusion from the occluder spheres into rgb (once per mesh, at build time) plus a sky and a ground term; call it once at the end of a builder; skip the emissive role. `gradient_y` for a vertical value ramp. |
+| `LookDevStyle` | The look switch (`CURRENT`, `STYLISED`, `STYLISED_PLUS`), the per-tier gates, `value_gain`, `fill_strength`, `rim_strength`, `accent_energy`, and the anti-aliasing switch (`msaa_samples`, `apply_aa`). **Every behaviour of the look is decided here by (look, tier); do not test tiers elsewhere.** |
+| `LookDevMat` | The shared materials: `surface(role, look, tier)` returns the material for a role (`ceramic`, `gunmetal`, `dark_frame`, `emit_cyan`; anything else is the plain MatLib material). MID and HIGH: a `ShaderMaterial` on `look_dev_actor.gdshader`. LOW: a `StandardMaterial3D` that only shows the vertex colours (the gain is in its albedo). `accent_color(energy)`, `warm_materials(look)`, `refresh()` (after `MatLib.configure`). |
+| `look_dev_actor.gdshader` | Soft ramp, cool shade tint, desaturated light, cyan fresnel rim from above, camera-side fill, edge wear, optional detail texture (PLUS). Mobile safe: opaque, no discard, no screen or depth texture, one `light()`. Per-material uniforms only; **nothing is per instance**. |
+| `LookDevTex` | The 128 px detail texture (STYLISED_PLUS only). |
+
+### 2. Building a part (the pattern to copy)
+
+1. A static builder per mesh in a new file `src/view/actors/look_dev_<actor>.gd` (stay under the 400 line cap; the Warden needed four files).
+   Local frame: the origin at the feet or at the joint the node rotates about; forward is -Z.
+2. Per shape: set `mb.tint` first (a value at most 1, with a small helper per actor: `_steel(k)`, `_suit(k)`, `_bone(k)` in `LookDevWarden`), then call
+   the shape. Use `LookDevRound.rounded_box` for the big masses and `bevel_box` (zero crease, bevel 0.03 to 0.05) for plates, `limb` with 8 to 10 sides
+   for tubes and `ellipsoid` for domes. No bare 90 degree corners on anything that shows at 3x.
+3. Register occluders for neighbours that are separate meshes (`_ghosts` in `look_dev_warden.gd`), then `LookDevBake.ao(...)` once, then `mb.build()`.
+4. Emissive parts: `mb.tint = Color.WHITE`, `mb.begin_part()`, then `mb.box(...)` / `mb.cylinder(...)` with `emit_cyan`. They exist on LOW because they are mesh,
+   not shader. A tint below 1 on the emissive role dims it (the back panel has dim cells and bright cores).
+5. Register the mesh in `ActorMeshes` (`warden_part(part, look)` is the pattern): CURRENT returns the old builder; any other look returns a cached styled mesh
+   under a separate key. The budget is `ActorMeshes.TRI_BUDGET` (one test asserts it).
+6. Hard-surface colour plan that worked: a value structure, not colours. Light neutral steel for the plates that face the camera (tint 0.8 to 1.0 times the
+   gain), mid steel for the lower mass (0.3 to 0.6), near black only in joint gaps and under plates (0.1), one clean off-white (the `ceramic` role with
+   `LookDevWarden.BONE_TINT`, never cream) and large cyan lights. Avoid values near the floor's value (about 0.5 luma on the pad): mid grey on a mid
+   ground disappears (this was v2's failure).
+
+### 3. How the look swap works, single instance versus pooled actors
+
+- **Single instance (the Warden).** `WardenParts.apply(look, tier)` swaps `mesh` and the surface override materials on fixed nodes; nothing is created or freed.
+  Extra nodes (arms, pack, antenna, cable) are shown only in the styled looks. Secondary motion (springs, IK, breathing) is Warden-only and costs a few transforms.
+- **The enemies and the turret are NOT MultiMeshes.** `EnemyPool` allocates 108 pooled `EnemyActor`s (50, 24, 32, 2), each one `MeshInstance3D` that shares ONE
+  `ArrayMesh` per kind (`ActorMeshes.enemy(id)`); only the blob shadows and the health bars are `MultiMeshInstance3D`s. What applies to the pooled actors:
+  - Vertex colours (AO, tint, wear) are in the shared mesh: **zero per-instance cost**, the same vertex buffer for all 50 skitters.
+  - Materials are shared per (role, look, tier class); set them once with `set_surface_override_material` when the pool is built, and loop the pool when
+    the look changes (swap `mesh.mesh` and the overrides: no allocation). Never make a material per instance.
+  - The hit flash is `material_override`, which wins over surface overrides, so the flash keeps working unchanged. `ActorContrast` (High Contrast) builds
+    its variants from the plain MatLib materials as surface overrides: it must be extended to build variants of the look materials (a `ShaderMaterial` copy
+    with a higher rim or value gain) or High Contrast will silently bring the old look back.
+  - A pooled actor is one merged mesh posed by whole-mesh transforms (`ActorMotion`): do not split an enemy into parts (108 actors times 4 nodes is 430
+    nodes and draws). The Warden's springs, IK, extras and muzzle light do not apply.
+  - If a kind is ever moved to a `MultiMesh`: the baked vertex colours still apply (leave `use_colors` of the MultiMesh off, or the instance colour multiplies on
+    top), the shared `ShaderMaterial` works on a `MultiMeshInstance3D`, but the hit flash needs per-instance data (a `flash` instance uniform that the shader does not have yet).
+- **Cost to expect.** The Warden (one instance, 11 nodes) measured at +0.1 to +0.3 ms on the iGPU. For 108 instances the fill cost of the shader is
+  what to measure, not the triangles: run `docs/reports/lookdev/measure.ps1` (50 enemies, `hold50`) before and after, 3 runs per cell, LOW, MID and HIGH.
+
+### 4. Triangle budgets (guidance, to be confirmed by the measurement above)
+
+The Warden is 2,500 (2,466 with the pistol, 2,490 with the SMG; one instance). Triangles that are sub-pixel at 1x are waste, so spend them where 3x shows an edge
+(the silhouette: heads, shoulders, rounded masses) and not on the hidden sides. Proposal for the pooled actors, which draw up to 50 at once: skitter 450 (now 300),
+hollow warden and rusher 500 (now 400), turret 600 (now 300), Hulk 1,500 (now 900, two instances). The 2.1k extra primitives of the Warden were not
+measurable on the iGPU; 50 skitters at +150 triangles each is +7.5k and must be measured. Keep at most 3 surfaces per mesh (`ActorMeshes.MAX_SURFACES`).
+
+### 5. Tier gating (LookDevStyle is the only place)
+
+| | LOW | MID | HIGH |
+|---|---|---|---|
+| Geometry and baked vertex colours (AO, wear, tint) | yes | yes | yes |
+| Value gain | in the material albedo | shader | shader |
+| Ramp, rim, edge wear, fill | no | yes | yes |
+| Detail texture, bloom (PLUS only) | no | yes | yes; muzzle light (PLUS only) HIGH only |
+| Cyan lights (unshaded mesh surface) | yes | yes | yes |
+| MSAA (hard-surface looks only; CURRENT 0) | 0 | 2x | 4x (see README round 3: **needs a phone check**) |
+
+Rule: a new gate is a function in `LookDevStyle` with a test in `look_dev_style_test.gd`. `CURRENT` must return "off" for every gate. LOW must still read
+(parity): the LOW material has the gain and the lights and loses only the ramp, the rim and the fill.
+
+### 6. The CURRENT-unchanged test pattern
+
+`look_dev_meshes_test.gd` holds a `BASELINE` table: for every CURRENT mesh the triangle count, the vertex count, the surface count and an FNV-1a hash of the
+material names, vertices, normals and indices (`LookDevTestKit.mesh_hash`), plus "no vertex colours". Copy the pattern for each new actor: capture the table
+**before** touching the actor (a test run prints nothing on success, so record the numbers from a first failing run or a script), then assert that `ActorMeshes.<actor>(CURRENT)`
+still matches. Styled meshes go under separate cache keys, so the CURRENT meshes cannot change by accident. Also assert: budget, at most 3 surfaces, palette
+roles only, vertex colours in range, determinism (two builds hash equal), and the edge statistics of `look_dev_edges_test.gd` (facet angle on smooth edges, hard-edge share).
+
+### 7. The legibility scorer (acceptance at the real camera)
+
+`--hide-warden` (sandbox) draws the same deterministic frame without the Warden; `src/debug/look_dev_legibility.gd` scores a capture pair: Warden pixels = the pixels
+that differ, ring = background 3 to 9 px outside, `contrast`, `pixel contrast`, `clipped`, `white`. For a new actor add a `--hide-<actor>` flag next to `hide_warden` in
+`debug_args.gd` and `look_dev_sandbox.gd` and pass `--box=x,y,w,h` of its screen position. Always capture both halves with `--msaa=0`. Acceptance used for the Warden:
+mean-luma contrast and pixel contrast at least CURRENT's on HIGH, MID and LOW, and at most 5 percent clipped pixels. Commands:
+`Godot --headless --path <project> --script res://src/debug/look_dev_legibility.gd -- --without=<png> --box=215,1402,100,80 --with=LABEL|<png> [--dump=<dir>]`.
+
+### 8. Traps (all of these cost a round)
+
+1. **An unshaded `StandardMaterial3D` ignores its emission.** It outputs the albedo only. The glow is the albedo times the energy; set `albedo_color`, not `emission_energy_multiplier`.
+   (Rounds 1 and 2 set an emission energy that did nothing, and the PLUS bloom never worked.)
+2. **Vertex colours are 8 bit unorm and clamp at 1.** A tint above 1 does nothing. Lift values with `value_gain` (the shader uniform, or the LOW material's albedo), and use tints only for lighter and darker.
+3. **The shared-material cache.** `LookDevMat.surface()` returns one instance per (role, look, shaded class) and repaints it on every call; never edit a returned material for one actor
+   (it changes all of them), and call `LookDevMat.refresh()` after `MatLib.configure`.
+4. **`frame_along` needs an `up` vector for legs.** The default `Vector3.UP` puts the thigh and shin plates behind the limb when the knee is bent; pass `Vector3.FORWARD`.
+5. **Winding is resolved from the normals** (`MeshBuilder._tri`): a wrong normal gives an inside-out face, not an error. This is also why the open-corner bevel boxes
+   (`closed` false) showed dark notches: use `closed` true, or `plate` for shells.
+6. **Shading crease.** A chamfer strip whose border normals lean toward the neighbour face (`soft` above 0) shows a crease; `soft` 0 is smooth. Stacked domes need the same side count or the seam zigzags.
+7. **The specular used the raw (warm) light colour**, which turned dark parts copper; the shader now uses the desaturated light for both diffuse and specular.
+8. **Mid grey on a mid ground.** Legibility is |value - ground|: the pad is about 0.5 luma. Go clearly lighter or clearly darker, not mid.
+9. **Clipping is measured on any channel**: a bluish light steel clips its blue channel first. Keep the plate gain where `clipped` stays under 5 percent.
+10. **The warm-up must use the Warden's vertex format.** A pipeline is keyed by the vertex format; the warm-up quads of the styled materials carry a vertex colour (`ShaderWarmup.attach(..., lit)`).
+11. **`.gd.uid` files are committed**, and every new `class_name` needs an import before a headless script can see it.
+12. **Do not call the model by a franchise name, copy its colours or silhouette** (public repo): "heavy-armour trooper archetype" only.
+
+### 9. Boot wiring and warm-up
+
+- Set the look once at boot, before the battle view is built: `LookDevStyle.set_current(look)` (look = `LookDevStyle.Look.STYLISED` or `STYLISED_PLUS`; default CURRENT),
+  **before `BattleView.setup`**. `ActorLayer` reads it when the Warden view binds (`WardenView.bind` calls `set_look(LookDevStyle.current())`), and since v4 `ArenaView`
+  also starts in `LookDevStyle.current()`, so glow, the tier MSAA and the warm-up follow without a second call. `ActorLayer.set_look(look)` and `ArenaView.set_look(look)`
+  switch at run time (`src/debug/view_sandbox.gd` shows the pair).
+- The warm-up: `ArenaView._ready` calls `ShaderWarmup.attach(self, center, extra, LookDevMat.warm_materials(_look))`, so the hard-surface materials are drawn once during the boot
+  screen. If the look is chosen after `ArenaView` is built, call `LookDevMat.warm_materials(look)` and attach a `ShaderWarmup` with it.

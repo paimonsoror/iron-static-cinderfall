@@ -68,7 +68,8 @@ static func arm_fore(side: float) -> ArrayMesh:
 
 
 ## Backpack: a big rounded dark body, two exhaust stacks with cyan caps, a cyan strip across the top (the camera looks down
-## on it) and the big back panel (two tall cyan cells with a spine between them): the largest lit shape the camera sees.
+## on it) and the big back panel (two tall cyan cells sunk behind a proud steel frame, each with a brighter core): the largest
+## lit shape the camera sees.
 ## Pivot = LookDevWarden.PACK_PIVOT.
 static func pack() -> ArrayMesh:
 	var mb: MeshBuilder = MeshKit.begin()
@@ -79,16 +80,23 @@ static func pack() -> ArrayMesh:
 	for sx: float in [-1.0, 1.0]:
 		mb.tint = LookDevWarden._steel(0.7)
 		LookDevShapes.limb(mb, Vector3(sx * 0.19, 0.66, 0.4), Vector3(sx * 0.19, 0.8, 0.4), 0.052, 0.048, 6, G, ID, 0, false, true)
+	# the back panel, with depth: two cyan cells sunk behind a proud steel frame (spine, top, bottom and a middle slat), each with
+	# a brighter core; the cells are darker than the cores through the vertex colour of the unshaded accent material
+	mb.tint = LookDevWarden._steel(0.95)
+	var _frame: int = mb.begin_part()
+	mb.box(Vector3(0.05, 0.4, 0.03), _at(0.0, 0.43, 0.495), G)
+	mb.box(Vector3(0.5, 0.03, 0.03), _at(0.0, 0.615, 0.495), G)
+	mb.box(Vector3(0.5, 0.03, 0.03), _at(0.0, 0.245, 0.495), G)
+	mb.box(Vector3(0.46, 0.02, 0.026), _at(0.0, 0.43, 0.493), G)
 	mb.tint = Color.WHITE
 	var _lit: int = mb.begin_part()
 	for sx2: float in [-1.0, 1.0]:
 		mb.box(Vector3(0.07, 0.014, 0.07), _at(sx2 * 0.19, 0.804, 0.4), L)
-		mb.box(Vector3(0.2, 0.34, 0.012), _at(sx2 * 0.125, 0.43, 0.486), L)
+		mb.tint = Color(0.74, 0.84, 0.88, 1.0)
+		mb.box(Vector3(0.2, 0.34, 0.012), _at(sx2 * 0.125, 0.43, 0.484), L)
+		mb.tint = Color.WHITE
+		mb.box(Vector3(0.12, 0.22, 0.008), _at(sx2 * 0.125, 0.43, 0.49), L)
 	mb.box(Vector3(0.38, 0.012, 0.11), _at(0.0, 0.686, 0.34), L)
-	mb.tint = LookDevWarden._suit(0.8)
-	var _slats: int = mb.begin_part()
-	for k: int in 2:
-		mb.box(Vector3(0.5, 0.016, 0.018), _at(0.0, 0.43 + 0.075 * (1.0 - 2.0 * float(k)), 0.49), G)
 	LookDevBake.ao(mb, 0.85, 0.13, 0.25, HeroMeshes.WARDEN_WAIST_Y, 1.0, 0.1, SKIP)
 	mb.recentre(LookDevWarden.PACK_PIVOT)
 	return mb.build()
@@ -111,7 +119,7 @@ static func cable() -> ArrayMesh:
 	mb.use_colors = true
 	mb.tint = _grey(0.22)
 	var path: Array[Vector3] = [
-		Vector3.ZERO, Vector3(-0.1, -0.03, 0.0), Vector3(-0.17, -0.16, -0.05), Vector3(-0.14, -0.3, -0.13),
+		Vector3.ZERO, Vector3(-0.17, -0.16, -0.05), Vector3(-0.14, -0.3, -0.13),
 	]
 	for k: int in path.size() - 1:
 		LookDevShapes.limb(mb, path[k], path[k + 1], 0.02, 0.02, 6, G, ID, 0, false, k == path.size() - 2)
