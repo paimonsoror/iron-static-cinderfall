@@ -360,3 +360,9 @@ func draft_actions_locked() -> bool:
 ## int, "life_left": int (ticks until it is lost; -1 = never), "x": float, "z": float }. Empty when no crate is out.
 func crate_status() -> Dictionary:
 	return {}
+
+
+## The route option that spawns in the current wave, in the shape of route_option(). Empty before the first wave and
+## on the legacy content; a boss wave has no pack ("name_key" is empty).
+func wave_route() -> Dictionary:
+	return {}

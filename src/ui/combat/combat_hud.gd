@@ -350,7 +350,8 @@ func _on_core_changed(current: float, max_value: float) -> void:
 func _on_wave_started(index: int) -> void:
 	_deploy_shown = false
 	_inter_wave = 0
-	banners.show_wave(index)
+	if not variety.show_wave(index):
+		banners.show_wave(index)
 	if _auto_opened:
 		_set_drawer(false, true)
 	refresh()

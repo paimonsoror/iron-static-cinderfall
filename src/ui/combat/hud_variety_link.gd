@@ -72,6 +72,22 @@ func bind_events(bind: Callable) -> void:
 	bind.call(Events.elite_spawned, on_elite)
 
 
+## The wave banner of a generated run: WAVE n over what the chosen route sends ("POWDER TRAIN // VOLATILE SWARM"), from
+## RunApi.wave_route. The whisper lines of the legacy banner describe the five scripted waves ("armored frames on the
+## gantry line") and would be wrong here. False on the legacy content (the HUD then shows its old banner).
+func show_wave(index: int) -> bool:
+	if not active:
+		return false
+	var route: Dictionary = _api.wave_route()
+	var words: PackedStringArray = PackedStringArray()
+	for key_name: String in ["name_key", "modifier_key"]:
+		var key: String = route.get(key_name, "")
+		if key != "" and RunUi.has_key(key):
+			words.append(Strings.t(key))
+	_hud.banners.show_text(Strings.tf("hud.banner.wave", [index]), " // ".join(words), 3.2)
+	return true
+
+
 ## ACT II: THE GANTRY LINE over the plating tier ("CHORUS PLATING: TIER 2").
 func on_act_started(act: int) -> void:
 	_hud.banners.show_text(

@@ -36,6 +36,7 @@ var fake_variety_paused: bool = false  ## FakeRunApi keeps it equal to fake_paus
 var fake_buyout_used: bool = false
 var fake_draft_locked: bool = false
 var fake_crate_status: Dictionary = {}  ## the shape of RunApi.crate_status(); empty = no crate on the field
+var fake_wave_route: Dictionary = {}  ## the shape of RunApi.route_option(): what the current wave sends
 
 
 ## Implemented by FakeRunApi: appends the entry to `calls`.
@@ -228,6 +229,10 @@ func draft_actions_locked() -> bool:
 
 func crate_status() -> Dictionary:
 	return fake_crate_status
+
+
+func wave_route() -> Dictionary:
+	return fake_wave_route
 
 
 func _draft_id(slot: int) -> StringName:

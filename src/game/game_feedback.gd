@@ -8,15 +8,30 @@ extends RefCounted
 ##   hint.core_hit      first core hit
 ##   hint.intermission  first intermission
 ##
+## A generated run (variety content with the shop closed; VARIETY_SPEC 11.7) has no upgrade drawer and no timed
+## intermission, so those two hints are not shown there. Its combat hints take their place:
+##
+##   hint.crate   first crate on the field
+##   hint.event   first event warning (the Deadfall Strike the player called counts)
+##   hint.swap    first wave that starts with a second weapon carried (needs `api`)
+##
+## The hints of the draft and the route (hint.draft, hint.route, hint.corrupted) belong on their overlays, which cover
+## the HUD banner: they are V4-U's and are not marked as seen here.
+##
 ## `attach` connects Events; `detach` disconnects every connection (the run's teardown must leave none behind).
 
 const HINT_TAP_UPGRADES: String = "hint.tap_upgrades"
 const HINT_CORE_HIT: String = "hint.core_hit"
 const HINT_INTERMISSION: String = "hint.intermission"
+const HINT_CRATE: String = "hint.crate"
+const HINT_EVENT: String = "hint.event"
+const HINT_SWAP: String = "hint.swap"
 ## Scrap for the first hint when the content has no upgrades to price (GDD 10.4: "first 150 Scrap").
 const DEFAULT_HINT_SCRAP: int = 150
 
 var scrap_threshold: int = DEFAULT_HINT_SCRAP
+var generated: bool = false  ## the content is a generated run without the shop
+var api: RunApi = null  ## optional: the live run, for the hint that needs a query (hint.swap)
 
 var _bindings: Array = []  ## [Signal, Callable] pairs
 
@@ -24,9 +39,15 @@ var _bindings: Array = []  ## [Signal, Callable] pairs
 func attach(content: ContentSet) -> void:
 	detach()
 	scrap_threshold = _cheapest_upgrade(content)
-	_bind(Events.scrap_changed, _on_scrap_changed)
+	generated = content != null and content.is_variety() and not content.mission.shop_enabled
 	_bind(Events.core_hit, _on_core_hit)
-	_bind(Events.intermission_started, _on_intermission_started)
+	if generated:
+		_bind(Events.crate_dropped, _on_crate_dropped)
+		_bind(Events.event_warned, _on_event_warned)
+		_bind(Events.wave_started, _on_wave_started)
+	else:
+		_bind(Events.scrap_changed, _on_scrap_changed)
+		_bind(Events.intermission_started, _on_intermission_started)
 	_bind(Events.purchase_resolved, _on_purchase_resolved)
 	_bind(Events.boss_spawned, _on_boss_spawned)
 
@@ -38,6 +59,7 @@ func detach() -> void:
 		if sig.is_connected(handler):
 			sig.disconnect(handler)
 	_bindings.clear()
+	api = null
 
 
 func connection_count() -> int:
@@ -70,6 +92,19 @@ func _on_core_hit(_enemy_id: int, _kind: StringName, _hp_damage: float, _absorbe
 
 func _on_intermission_started(_wave_cleared: int, _ticks: int) -> void:
 	request_hint(HINT_INTERMISSION)
+
+
+func _on_crate_dropped(_x: float, _z: float) -> void:
+	request_hint(HINT_CRATE)
+
+
+func _on_event_warned(_id: StringName, _ticks: int, _x: float, _z: float) -> void:
+	request_hint(HINT_EVENT)
+
+
+func _on_wave_started(_index: int) -> void:
+	if api != null and api.weapon_slot_count() > 1 and api.weapon_slot(1).get("id", &"") != &"":
+		request_hint(HINT_SWAP)
 
 
 func _on_purchase_resolved(_command_id: int, success: bool, _reason: int) -> void:

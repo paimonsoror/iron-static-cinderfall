@@ -22,7 +22,20 @@ static func route_option(w: SimWorld, i: int) -> Dictionary:
 	var pw: PlannedWave = next_wave(w)
 	if pw == null or pw.is_boss or i < 0 or i >= pw.options.size():
 		return {}
-	var o: RouteOption = pw.options[i]
+	return describe_option(w, pw.options[i], pw.act)
+
+
+## The option the current wave spawns (RunApi.wave_route); {} before the first wave, without a plan and for null.
+static func wave_route(w: SimWorld) -> Dictionary:
+	if w == null or w.plan == null or w.wave < 1:
+		return {}
+	var pw: PlannedWave = w.plan.wave(w.wave)
+	var o: RouteOption = w.plan.option(w.wave)
+	return describe_option(w, o, pw.act) if pw != null and o != null else {}
+
+
+## One RouteOption in the shape of RunApi.route_option().
+static func describe_option(w: SimWorld, o: RouteOption, act_number: int) -> Dictionary:
 	var content: ContentSet = w.content
 	var run: RunDef = content.run
 	var counts: Dictionary = {}
@@ -50,7 +63,7 @@ static func route_option(w: SimWorld, i: int) -> Dictionary:
 		var reward: RewardDef = run.route_rewards[o.reward_index]
 		out["reward"] = reward.id
 		out["reward_key"] = reward.name_key
-		out["reward_amount"] = _reward_amount(reward, pw.act)
+		out["reward_amount"] = _reward_amount(reward, act_number)
 	return out
 
 

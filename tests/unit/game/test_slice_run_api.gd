@@ -56,6 +56,29 @@ func test_the_wave_count_is_the_plan_s() -> void:
 	assert_int(rc.sim.content.waves.size()).is_equal(5)
 
 
+func test_the_wave_route_is_the_option_the_current_wave_spawns() -> void:
+	var rc: RunController = _rc(1)
+	var w: SimWorld = rc.sim
+	assert_bool(rc.api.wave_route().is_empty()).is_true()  # PREPARING: no wave yet
+	GameRunKit.frames(rc, c.mission.prepare_ticks + 1)
+	assert_int(w.wave).is_equal(1)
+	var opener: Dictionary = rc.api.wave_route()
+	assert_str(str(opener["pack"])).is_equal("pack_tide")  # the opener's fixed pack
+	assert_str(str(opener["name_key"])).is_equal("pack.tide.name")
+	assert_int(opener["total"]).is_equal(w.plan.option(1).total_count())
+	assert_str(str(opener["modifier"])).is_equal("")
+	w.plan.chosen[1] = 1  # a debug write: the route picked for wave 2
+	w.wave = 2
+	assert_dict(rc.api.wave_route()).is_equal(SimRunQueries.describe_option(w, w.plan.wave(2).options[1], 1))
+	assert_bool(rc.api.wave_route()["hot"]).is_true()
+	w.wave = 5
+	var boss_wave: Dictionary = rc.api.wave_route()
+	assert_str(str(boss_wave["name_key"])).is_equal("")  # a boss wave has no pack
+	assert_int(boss_wave["total"]).is_greater(1)
+	assert_bool(RunApi.new().wave_route().is_empty()).is_true()
+	assert_bool(GameRunKit.controller(self, GameRunKit.config(1), null, "legacy-route").api.wave_route().is_empty()).is_true()
+
+
 func test_the_buy_out_is_reported_used_after_it_was_used() -> void:
 	var rc: RunController = _rc()
 	assert_bool(rc.api.draft_buyout_used()).is_false()  # no draft is open

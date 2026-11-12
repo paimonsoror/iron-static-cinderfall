@@ -333,10 +333,8 @@ func event_charges(id: StringName) -> int:
 
 func call_block_reason(id: StringName) -> int:
 	var w: SimWorld = _world()
-	if w == null:
-		return super.call_block_reason(id)
-	if controller.paused:
-		return Reason.Id.PAUSED
+	if w == null or controller.paused:
+		return Reason.Id.PAUSED if w != null else super.call_block_reason(id)
 	return EventSystem.block_reason(w, w.content.event_index(id))
 
 
@@ -380,6 +378,10 @@ func draft_actions_locked() -> bool:
 
 func crate_status() -> Dictionary:
 	return SimRunQueries.crate_status(_variety())
+
+
+func wave_route() -> Dictionary:
+	return SimRunQueries.wave_route(_variety())
 
 
 func _send(command_id: int, kind: int, arg: int) -> void:

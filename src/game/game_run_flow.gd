@@ -74,6 +74,10 @@ static func start(game: Node, config: SimConfig, run_id: String) -> void:
 		run.start_resumed(pending_resume, view, config.content, pending_rebuild)
 	pending_resume = {}
 	pending_rebuild = null
+	var feedback_o: Object = game.get(&"_feedback")
+	var feedback: GameFeedback = feedback_o as GameFeedback
+	if feedback != null:
+		feedback.api = run.api  # the hint of the second weapon asks the run
 	var layers_o: Object = game.get(&"_layers")
 	var layers: GameLayers = layers_o as GameLayers
 	if layers != null and run.sim != null:

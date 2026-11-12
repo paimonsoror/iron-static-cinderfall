@@ -221,6 +221,36 @@ func test_the_combat_hud_feeds_the_crate_status_to_the_ticker() -> void:
 	assert_int(hud.banners.ticker.visible_lines()).is_equal(before)
 
 
+# --- the wave banner ---
+
+
+func test_the_wave_banner_of_a_generated_run_names_the_pack_and_the_modifier() -> void:
+	var api: FakeRunApi = VarietyEKit.api_for("combat2")
+	var hud: CombatHud = VarietyEKit.hud(self, api)
+	api.fake_wave_route = {"name_key": "pack.powder.name", "modifier_key": "modifier.volatile.name"}
+	Events.wave_started.emit(3)
+	assert_str(hud.banners.banner_title.text).is_equal(Strings.tf("hud.banner.wave", [3]))
+	assert_str(hud.banners.banner_whisper.text).is_equal("%s // %s" % [Strings.t("pack.powder.name"), Strings.t("modifier.volatile.name")])
+	api.fake_wave_route = {"name_key": "pack.tide.name", "modifier_key": ""}
+	Events.wave_started.emit(4)
+	assert_str(hud.banners.banner_whisper.text).is_equal(Strings.t("pack.tide.name"))
+	api.fake_wave_route = {"name_key": "", "modifier_key": ""}  # a boss wave: the boss banner follows on its own
+	Events.wave_started.emit(5)
+	assert_str(hud.banners.banner_whisper.text).is_equal("")
+	for n: int in [2, 3, 4]:  # never the lines of the five scripted waves
+		assert_str(hud.banners.banner_whisper.text).is_not_equal(Strings.t("hud.whisper.%d" % n))
+
+
+func test_the_legacy_hud_keeps_its_wave_whispers() -> void:
+	var api: FakeRunApi = FakeRunApi.new()
+	var packed: PackedScene = load(VarietyEKit.HUD) as PackedScene
+	var hud: CombatHud = packed.instantiate() as CombatHud
+	VarietyEKit.host(self, VarietyEKit.SIZES[0]).add_child(hud)
+	hud.setup(api, _legacy, null)
+	Events.wave_started.emit(2)
+	assert_str(hud.banners.banner_whisper.text).is_equal(Strings.t("hud.whisper.2"))
+
+
 # --- the draft screen ---
 
 
