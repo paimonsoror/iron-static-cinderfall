@@ -25,6 +25,29 @@ enum Verdict {
 }
 
 
+## ContentFingerprint.of(content), computed once per ContentSet object and per wave count (the walk costs about 20 ms
+## and every run start needs it). A ContentSet is not edited once a run has used it: `Content.reload` makes a new one.
+static var _hash_cache: Dictionary = {}  ## instance id -> [WeakRef, wave count, hash]
+
+
+static func content_hash(content: ContentSet) -> String:
+	if content == null:
+		return ""
+	var key: int = content.get_instance_id()
+	var hit: Variant = _hash_cache.get(key)
+	if typeof(hit) == TYPE_ARRAY:
+		var row: Array = hit
+		var ref: WeakRef = row[0]
+		if ref.get_ref() == content and row[1] == content.waves.size():
+			var cached: String = row[2]
+			return cached
+	if _hash_cache.size() > 64:
+		_hash_cache.clear()
+	var fresh: String = ContentFingerprint.of(content)
+	_hash_cache[key] = [weakref(content), content.waves.size(), fresh]
+	return fresh
+
+
 static func build_version() -> String:
 	return str(ProjectSettings.get_setting("application/config/version"))
 
@@ -38,7 +61,7 @@ static func header(config: SimConfig, run_id: String) -> Dictionary:
 	var doc: Dictionary = {
 		"schema_version": SCHEMA_VERSION,
 		"build": build_version(),
-		"content_hash": ContentFingerprint.of(content),
+		"content_hash": content_hash(content),
 		"run_id": run_id,
 		"seed": config.run_seed,
 		"kit": kit_id,
@@ -87,7 +110,7 @@ static func check(doc: Dictionary, content: ContentSet) -> int:
 		return Verdict.NONE
 	if whole(doc.get("schema_version"), -1) != SCHEMA_VERSION or text(doc.get("build")) != build_version():
 		return Verdict.STALE
-	if text(doc.get("content_hash")) != ContentFingerprint.of(content):
+	if text(doc.get("content_hash")) != content_hash(content):
 		return Verdict.STALE
 	var b: Variant = doc.get("boundary")
 	if typeof(b) != TYPE_DICTIONARY or whole(doc.get("seed"), -1) < 0 or id_of(doc).is_empty():
