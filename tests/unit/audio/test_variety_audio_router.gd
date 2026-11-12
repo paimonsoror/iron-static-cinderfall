@@ -185,12 +185,13 @@ func test_every_new_enemy_dies_with_a_catalog_sound_and_armored_ones_ring_dull()
 	assert_bool(AudioEventRouter.ARMORED_KINDS.has(&"shieldbearer")).is_true()
 
 
-func test_the_burster_fuse_has_a_door_but_no_signal_yet() -> void:
-	_dir.router.variety.on_burster_armed(7)
+func test_a_burster_that_arms_plays_its_fuse() -> void:
+	# V3-I: `Events.burster_armed` exists now (GameEventRelay makes it from a fused enemy reaching its slot)
+	assert_bool(_dir.router.signal_names().has(&"burster_armed")).is_true()
+	_events.burster_armed.emit(7)
 	assert_that(_last()).is_equal(&"burster_arm")
-	# no Events signal says "a burster armed" (ENEMY_REACHED_SLOT is dropped by GameEventRelay): nothing may be wired for it
 	for sig: StringName in _dir.router.signal_names():
-		assert_str(String(sig)).is_not_equal("enemy_reached_slot")
+		assert_str(String(sig)).is_not_equal("enemy_reached_slot")  # the raw sim event is still not a signal
 
 
 func test_the_drone_follows_the_act_and_the_place_of_the_wave_in_it() -> void:

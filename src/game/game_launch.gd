@@ -9,15 +9,21 @@ static func wants_autostart(args: DebugArgs) -> bool:
 	return args.autoplay != "" or args.scenario_n > 0
 
 
+## The PolicyBot.Policy of `--autoplay=<name>`: a name of PolicyBot.NAMES (none, greedy, random, balanced, ...); an
+## unknown name is the do-nothing policy, which still answers every intermission choice (PolicyAnswers).
+static func autoplay_policy(policy_name: String) -> int:
+	var policy: int = PolicyBot.policy_from_name(policy_name)
+	return policy if policy >= 0 else PolicyBot.Policy.NONE
+
+
 ## --scenario=hold<N> makes the core invulnerable and holds N enemies alive; --autoplay=<policy> attaches the bot
-## (anything other than "greedy" is the do-nothing policy). Neither changes the content or the rules.
+## (`autoplay_policy`). Neither changes the content or the rules.
 static func configure(config: SimConfig, run: RunController, args: DebugArgs, seed_value: int) -> void:
 	if args.scenario_n > 0:
 		config.debug_invulnerable_core = true
 		run.scenario = GameHoldScenario.new(args.scenario_n, seed_value)
 	if args.autoplay != "":
-		var greedy: bool = args.autoplay == "greedy"
-		run.bot = PolicyBot.new(PolicyBot.Policy.GREEDY if greedy else PolicyBot.Policy.NONE)
+		run.bot = PolicyBot.new(autoplay_policy(args.autoplay))
 		run.bot.id_source = run.api.next_command_id  # one id counter for the bot and for the player's HUD taps
 
 

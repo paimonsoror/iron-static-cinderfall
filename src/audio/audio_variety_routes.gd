@@ -55,6 +55,7 @@ func wiring() -> Dictionary[StringName, Callable]:
 		&"chain_arc": on_chain_arc,
 		&"delayed_hit": on_delayed_hit,
 		&"event_warned": on_event_warned,
+		&"burster_armed": on_burster_armed,
 	}
 
 
@@ -145,8 +146,8 @@ func on_event_warned(id: StringName, _ticks: int, _x: float, _z: float) -> void:
 		_play(sound)
 
 
-## A burster reaches its slot and arms for 1.2 s. NOT connected: no `Events` signal says so (ENEMY_REACHED_SLOT is one of
-## the sim events GameEventRelay drops), so the owner of the bus decides; the sound exists and this is its door.
+## A burster reaches its slot and arms for 1.2 s (`Events.burster_armed`, which GameEventRelay makes from the arrival of a
+## fused enemy at its slot).
 func on_burster_armed(_enemy_id: int) -> void:
 	_play(&"burster_arm")
 

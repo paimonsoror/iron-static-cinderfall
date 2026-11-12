@@ -62,4 +62,6 @@ signal boss_phase(phase: int)
 signal charges_changed(id: StringName, n: int)
 signal command_rejected(command_id: int, reason: int)
 signal unlock_purchased(id: StringName)
+# --- slice integration (V3-I; append only) ---
+signal burster_armed(id: int)  ## an enemy with a fuse reached its slot: it goes off when the fuse (1.2 s) ends
 @warning_ignore_restore("unused_signal")

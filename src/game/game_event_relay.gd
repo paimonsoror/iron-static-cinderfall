@@ -5,7 +5,8 @@ extends RefCounted
 ##
 ## Not handled here: PHASE_CHANGED (Game mirrors it into the application state machine) and RUN_FINISHED (the
 ## reward is granted before `run_finished`); RunController takes those two. ENEMY_REACHED_SLOT and SPAWN_QUEUED have
-## no Events signal (nothing outside the sim listens), so they are dropped on purpose.
+## no Events signal of their own (nothing outside the sim listens), so they are dropped on purpose; the one exception
+## is a fused enemy reaching its slot, which becomes `burster_armed` (V3-I).
 ##
 ## The sim frees a killed enemy's store slot, and ENEMY_KILLED carries no type, so the relay remembers the type of
 ## every enemy it saw spawn (enemy id -> type index) until it dies.
@@ -86,6 +87,8 @@ func relay(e: SimEvent) -> bool:
 			Events.enemy_stunned.emit(e.a, e.b)
 		SimEventKind.Id.ENEMY_STUCK:
 			Events.enemy_stuck.emit(e.a)
+		SimEventKind.Id.ENEMY_REACHED_SLOT:
+			return _relay_reached_slot(e)
 		_:
 			return _relay_variety(e)
 	return true
@@ -169,6 +172,16 @@ func _directive(index: int) -> StringName:
 
 func _event(index: int) -> StringName:
 	return _content.events[index].id if index >= 0 and index < _content.events.size() else &""
+
+
+## ENEMY_REACHED_SLOT has no signal of its own. An enemy with a fuse (`fuse_s`, the burster) arms on the tick it reaches
+## its slot (CoreAttackSystem), which is what `burster_armed` announces. False for every other enemy.
+func _relay_reached_slot(e: SimEvent) -> bool:
+	var type_index: int = _types.get(e.a, -1)
+	if type_index < 0 or type_index >= _content.enemies.size() or _content.enemies[type_index].beh(&"fuse_s") <= 0.0:
+		return false
+	Events.burster_armed.emit(e.a)
+	return true
 
 
 ## enemy_killed, then enemy_died_at (position and Scrap for the effects).

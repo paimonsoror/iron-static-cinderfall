@@ -124,6 +124,18 @@ func test_crate_events_and_the_kinds_without_a_signal() -> void:
 	assert_int(_log.rows.size()).is_equal(0)
 
 
+func test_a_fused_enemy_reaching_its_slot_is_burster_armed_and_nothing_else_is() -> void:
+	_send(SimEventKind.Id.ENEMY_SPAWNED, 41, Ids.EN_BURSTER, 5.0, -3.0)
+	_send(SimEventKind.Id.ENEMY_SPAWNED, 42, Ids.EN_SKITTER, 5.0, -3.0)
+	_log.clear()
+	assert_bool(_send(SimEventKind.Id.ENEMY_REACHED_SLOT, 42, 3)).is_false()  # a skitter has no fuse
+	assert_bool(_send(SimEventKind.Id.ENEMY_REACHED_SLOT, 99, 3)).is_false()  # an enemy the relay never saw
+	assert_int(_log.rows.size()).is_equal(0)
+	assert_bool(_send(SimEventKind.Id.ENEMY_REACHED_SLOT, 41, 3)).is_true()
+	assert_array(_log.names()).is_equal([&"burster_armed"])
+	assert_array(_log.first_args(&"burster_armed")).is_equal([41])
+
+
 func test_run_api_base_defaults() -> void:
 	var api: RunApi = RunApi.new()
 	assert_int(api.awaiting()).is_equal(RunApi.AWAIT_NONE)

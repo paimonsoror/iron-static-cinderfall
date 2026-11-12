@@ -157,6 +157,26 @@ static func active_events(w: SimWorld) -> Array[Dictionary]:
 	return out
 
 
+## The three queries below take the variety world or null (no run, legacy content) and then give the base defaults.
+static func buyout_used(w: SimWorld) -> bool:
+	return w != null and w.draft.open and (w.draft.bought_out or w.draft.slots_left() < 2)
+
+
+static func draft_locked(w: SimWorld) -> bool:
+	return w != null and w.draft.open and w.draft.reroll_locked
+
+
+static func crate_status(w: SimWorld) -> Dictionary:
+	if w == null or not w.salvage.crate_active:
+		return {}
+	var s: SalvageState = w.salvage
+	var total: int = SalvageSystem.secure_ticks(w)
+	return {
+		"contested": SalvageSystem.is_contested(w), "ticks_left": maxi(0, total - s.crate_progress), "ticks_total": total,
+		"life_left": -1 if w.mods.has_flag(&"crate_never_lost") else maxi(0, s.crate_life_left), "x": s.crate_x, "z": s.crate_z,
+	}
+
+
 static func build_tags(w: SimWorld) -> Dictionary:
 	var out: Dictionary = {}
 	var tags: Dictionary[StringName, int] = DraftSystem.build_tags(w)
