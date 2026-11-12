@@ -174,7 +174,11 @@ func test_enemies_json_overrides_keep_the_legacy_numbers() -> void:
 	var base: ContentSet = TestContent.baseline()
 	for i: int in Ids.LEGACY_ENEMY_COUNT:
 		assert_float(c.enemies[i].hp).is_equal(base.enemies[i].hp)
-		assert_int(c.enemies[i].scrap).is_equal(base.enemies[i].scrap)  # the slice does not lower Scrap yet
+	# V3-I refreshed the fixture with the Scrap values of CONTENT 4.1 (20 / 35 / 25 became 5 / 15 / 8; the boss keeps its own)
+	assert_int(c.enemies[Ids.EN_SKITTER].scrap).is_equal(5)
+	assert_int(c.enemies[Ids.EN_HOLLOW].scrap).is_equal(15)
+	assert_int(c.enemies[Ids.EN_RUSHER].scrap).is_equal(8)
+	assert_int(c.enemies[Ids.EN_HULK].scrap).is_equal(base.enemies[Ids.EN_HULK].scrap)
 	assert_int(c.enemies[Ids.EN_SKITTER].alive_cap).is_equal(50)
 	assert_int(c.enemies[Ids.EN_HOLLOW].alive_cap).is_equal(24)
 	assert_int(c.enemies[Ids.EN_RUSHER].alive_cap).is_equal(32)
