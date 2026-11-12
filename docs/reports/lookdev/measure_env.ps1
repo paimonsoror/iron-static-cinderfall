@@ -68,8 +68,8 @@ for ($pass = 1; $pass -le $Passes; $pass++) {
         $p95 = ($used | ForEach-Object { Field $_ 'p95_ms' } | Measure-Object -Average).Average
         $draws = ($used | ForEach-Object { Field $_ 'draws' } | Measure-Object -Average).Average
         $prims = ($used | ForEach-Object { Field $_ 'prims' } | Measure-Object -Average).Average
-        "{0} pass={1} {2} tier={3} frame_ms={4:N2} p95={5:N2} draws={6:N0} prims={7:N0}" -f $Tag, $pass, $name, $tier, $ms, $p95, $draws, $prims | Write-Host
-        "{0},{1},{2},{3},{4:N3},{5:N3},{6:N0},{7:N0}" -f $Tag, $pass, $name, $tier, $ms, $p95, $draws, $prims | Out-File -Encoding ascii -Append $csv
+        "{0} pass={1} {2} tier={3} frame_ms={4:N2} p95={5:N2} draws={6:F0} prims={7:F0}" -f $Tag, $pass, $name, $tier, $ms, $p95, $draws, $prims | Write-Host
+        "{0},{1},{2},{3},{4:N3},{5:N3},{6:F0},{7:F0}" -f $Tag, $pass, $name, $tier, $ms, $p95, $draws, $prims | Out-File -Encoding ascii -Append $csv
         Start-Sleep -Seconds 2
     }
 }
