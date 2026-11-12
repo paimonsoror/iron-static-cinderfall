@@ -5,8 +5,19 @@ extends RefCounted
 ## whether those systems are still stubs or already real. Content: TestContent.variety() (WORK_PLAN rule 5).
 
 
+## The variety fixture, parsed once for the whole run of the suites: reading the JSON dominates the cost of a world,
+## and the bot suites only read the content (a test that changes it must build its own with TestContent.variety()).
+static var _content: ContentSet = null
+
+
+static func content() -> ContentSet:
+	if _content == null:
+		_content = TestContent.variety()
+	return _content
+
+
 static func world(run_seed: int = 1) -> SimWorld:
-	return TestContent.variety_world(run_seed)
+	return SimWorld.new(SimConfig.create(content(), run_seed))
 
 
 ## A variety world that waits for the choice `kind` (PhaseState.Await.*), in the intermission after wave `wave_number`.

@@ -71,7 +71,7 @@ func test_policy_names_round_trip() -> void:
 
 
 func test_a_balanced_run_on_variety_content_ends_cleanly_with_a_signature() -> void:
-	var report: HarnessReport = SimHarness.run(SimConfig.create(TestContent.variety(), 2), PolicyBot.Policy.BALANCED)
+	var report: HarnessReport = SimHarness.run(SimConfig.create(VarietyHKit.content(), 2), PolicyBot.Policy.BALANCED)
 	assert_bool(report.stalled).is_false()
 	assert_bool(report.timed_out).is_false()
 	assert_array(report.violations).is_empty()
@@ -84,7 +84,7 @@ func test_a_balanced_run_on_variety_content_ends_cleanly_with_a_signature() -> v
 
 
 func test_the_death_wave_is_the_wave_of_the_defeat() -> void:
-	var report: HarnessReport = SimHarness.run(SimConfig.create(TestContent.variety(), 1), PolicyBot.Policy.NONE)
+	var report: HarnessReport = SimHarness.run(SimConfig.create(VarietyHKit.content(), 1), PolicyBot.Policy.NONE)
 	assert_str(report.result_name()).is_equal("DEFEAT")
 	assert_int(report.death_wave).is_equal(report.wave_reached)
 
@@ -93,7 +93,7 @@ func test_the_death_wave_is_the_wave_of_the_defeat() -> void:
 
 
 func test_a_choice_nobody_answers_ends_the_run_as_stalled_instead_of_hanging() -> void:
-	var report: HarnessReport = SimHarness.run(SimConfig.create(TestContent.variety(), 1), PolicyBot.Policy.NONE, 60000, SilentBot.new())
+	var report: HarnessReport = SimHarness.run(SimConfig.create(VarietyHKit.content(), 1), PolicyBot.Policy.NONE, 60000, SilentBot.new())
 	assert_bool(report.stalled).is_true()
 	assert_int(report.stalled_on).is_equal(PhaseState.Await.DRAFT)
 	assert_bool(report.timed_out).is_true()
@@ -101,7 +101,7 @@ func test_a_choice_nobody_answers_ends_the_run_as_stalled_instead_of_hanging() -
 
 
 func test_a_choice_that_stays_open_after_400_answers_is_a_stall_too() -> void:
-	var report: HarnessReport = SimHarness.run(SimConfig.create(TestContent.variety(), 1), PolicyBot.Policy.NONE, 60000, RefusedBot.new())
+	var report: HarnessReport = SimHarness.run(SimConfig.create(VarietyHKit.content(), 1), PolicyBot.Policy.NONE, 60000, RefusedBot.new())
 	assert_bool(report.stalled).is_true()
 	assert_int(report.ticks).is_less(SimHarness.MAX_AWAIT_CALLS + 60)
 
