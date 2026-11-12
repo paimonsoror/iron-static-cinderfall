@@ -35,6 +35,7 @@ static func bake(
 	mb: MeshBuilder, seed_i: int, height: float, plate_dirt: float, frame_dirt: float, skip: Array[StringName] = []
 ) -> void:
 	mb.use_colors = true
+	var noise_at: Dictionary = {}  # Vector3i (0.5 mm) -> Vector2(dirt, chip): a position is shared by 3 to 6 vertices
 	for mat_id: StringName in mb.surface_ids():
 		if skip.has(mat_id):
 			continue
@@ -43,14 +44,20 @@ static func bake(
 		var s: MeshBuilder.Surf = mb.surface_of(mat_id)
 		for i: int in s.verts.size():
 			var p: Vector3 = s.verts[i]
-			var n1: float = vnoise(p * 6.5, seed_i)
-			var n2: float = vnoise(p * 17.0 + Vector3(5.1, 1.7, 9.3), seed_i + 1)
-			var dirt: float = smoothstep(0.4, 0.8, n1 * 0.7 + n2 * 0.3)
+			var key: Vector3i = Vector3i(roundi(p.x * 2000.0), roundi(p.y * 2000.0), roundi(p.z * 2000.0))
+			var nz: Vector2
+			if noise_at.has(key):
+				nz = noise_at[key]
+			else:
+				var n1: float = vnoise(p * 6.5, seed_i)
+				var n2: float = _lattice(floori(p.x * 17.0), floori(p.y * 17.0), floori(p.z * 17.0), seed_i + 1)
+				nz = Vector2(smoothstep(0.4, 0.8, n1 * 0.8 + n2 * 0.2), n2)
+				noise_at[key] = nz
 			var low: float = 1.0 - smoothstep(0.0, height * 0.45, p.y)
-			var k: float = 1.0 - amount * (0.5 * dirt + 0.32 * low)
-			var stain: float = dirt * amount if plate else 0.0
+			var k: float = 1.0 - amount * (0.5 * nz.x + 0.32 * low)
+			var stain: float = nz.x * amount if plate else 0.0
 			var c: Color = s.cols[i]
-			var chip: float = smoothstep(0.76, 0.9, n2) * (0.5 if plate else 0.4)  # soft stains: a vertex chip spreads over its triangles
+			var chip: float = smoothstep(0.76, 0.9, nz.y) * (0.5 if plate else 0.4)  # soft stains: a vertex chip spreads over its triangles
 			s.cols[i] = Color(c.r * k, c.g * k * (1.0 - 0.1 * stain), c.b * k * (1.0 - 0.28 * stain), maxf(c.a, chip))
 
 

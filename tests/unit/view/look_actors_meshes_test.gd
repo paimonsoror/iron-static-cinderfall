@@ -138,6 +138,23 @@ func test_styled_meshes_are_deterministic_and_cached_apart_from_current() -> voi
 		assert_object(ActorMeshes.enemy_look(id, STYLED)).is_not_same(ActorMeshes.enemy(id))
 
 
+func test_the_one_time_build_cost_is_reported_and_bounded() -> void:
+	var names: Array[String] = ["skitter", "hollow_warden", "rusher", "siege_hulk", "turret_base", "turret_head"]
+	var builds: Array[Callable] = [
+		LookActorsSkitter.build, LookActorsHollow.build, LookActorsRusher.build, LookActorsHulk.build,
+		LookActorsTurret.base, LookActorsTurret.head,
+	]
+	var total_ms: float = 0.0
+	for i: int in builds.size():
+		var started: int = Time.get_ticks_usec()
+		var _m: ArrayMesh = builds[i].call()
+		var ms: float = float(Time.get_ticks_usec() - started) / 1000.0
+		total_ms += ms
+		print("ACTOR_BUILD_MS %s=%.1f" % [names[i], ms])
+	print("ACTOR_BUILD_MS total=%.1f" % total_ms)
+	assert_float(total_ms).is_less(3000.0)  # one-time, at boot behind the warm-up; GDScript on a desktop CPU (a phone is several times slower)
+
+
 func test_current_is_byte_identical_through_the_new_accessors_even_after_styled_meshes_exist() -> void:
 	for id: StringName in ENEMIES:
 		var _styled: ArrayMesh = ActorMeshes.enemy_look(id, STYLED)
