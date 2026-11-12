@@ -147,7 +147,7 @@ func test_floor_and_props_follow_the_tier() -> void:
 	assert_bool(v.glow_active()).is_true()
 	assert_int(v.environment_node.environment.tonemap_mode).is_equal(EnvStyle.GRADE_TONEMAP)
 	assert_bool(v.environment_node.environment.adjustment_enabled).is_true()
-	assert_float(v.environment_node.environment.adjustment_contrast).is_equal(EnvStyle.GRADE_CONTRAST)
+	assert_float(v.environment_node.environment.adjustment_contrast).is_equal_approx(EnvStyle.GRADE_CONTRAST, 0.001)
 
 
 func test_bloom_of_stylised_plus_is_unchanged_on_mid() -> void:

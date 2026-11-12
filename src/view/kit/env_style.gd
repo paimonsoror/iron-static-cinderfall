@@ -84,9 +84,9 @@ const GRADE_CONTRAST: float = 1.06
 const GRADE_SATURATION: float = 0.94
 
 ## Bloom of the styled yard: only values above 1.0 glow (the HDR lamp heads and reactor windows).
-const LAMP_GAIN: float = 2.2
+const LAMP_GAIN: float = 1.5
 const REACTOR_GAIN: float = 0.95
-const WINDOW_GAIN: float = 1.7
+const WINDOW_GAIN: float = 1.3
 
 ## Peak alpha of the additive halos (reactor, lamps, turret pads).
 ## The core's own light pool under the Warden's pad: below 1 on purpose (the Warden's contrast against its pad is the legibility floor).

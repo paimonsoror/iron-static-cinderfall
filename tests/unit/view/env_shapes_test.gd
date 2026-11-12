@@ -48,7 +48,8 @@ func test_vertex_colours_stay_in_range_and_the_alpha_is_the_wear() -> void:
 		for s: int in mesh.get_surface_count():
 			var arrays: Array = mesh.surface_get_arrays(s)
 			var cols: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
-			assert_int(cols.size()).is_equal((arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size())
+			var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			assert_int(cols.size()).is_equal(verts.size())
 			for c: Color in cols:
 				assert_float(c.r).is_between(0.0, 1.0)
 				assert_float(c.g).is_between(0.0, 1.0)

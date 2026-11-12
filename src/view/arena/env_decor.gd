@@ -223,12 +223,12 @@ static func drums(mb: MeshBuilder, at: Vector3) -> void:
 static func _kind_color(kind: int) -> Color:
 	match kind:
 		0:
-			return EnvShapes.paint(&"steel_red", 1.0)
+			return EnvShapes.paint(&"steel_red", 1.4)
 		1:
-			return EnvShapes.paint(&"steel_grey", 0.92)
+			return EnvShapes.paint(&"steel_grey", 1.3)
 		2:
-			return EnvShapes.teal(1.0)
-	return EnvShapes.paint(&"dark_frame", 0.8)
+			return EnvShapes.teal(1.35)
+	return EnvShapes.paint(&"dark_frame", 1.0)
 
 
 static func _k(c: Color, k: float) -> Color:
