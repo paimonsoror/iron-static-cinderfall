@@ -123,7 +123,7 @@ func test_the_legacy_greedy_bot_still_wins_the_legacy_run_with_the_same_numbers(
 	assert_int(floori(report.core_hp)).is_equal(830)
 	assert_int(report.purchases).is_equal(14)
 	assert_float(report.seconds()).is_between(244.85, 244.95)  # BALANCE: seconds=244.9
-	assert_str(report.state_hash.substr(0, 12)).is_equal("e200fa420351")
+	assert_str(report.state_hash.substr(0, 12)).is_equal("78351275ead6")
 	assert_int(report.violations.size()).is_equal(0)
 	assert_int(report.death_wave).is_equal(0)
 
@@ -132,7 +132,7 @@ func test_the_legacy_none_bot_still_loses_in_wave_three_with_the_same_numbers() 
 	var report: HarnessReport = SimHarness.run(SimConfig.create(TestContent.baseline(), 1), PolicyBot.Policy.NONE)
 	assert_str(report.result_name()).is_equal("DEFEAT")
 	assert_float(report.seconds()).is_between(135.05, 135.15)  # BALANCE: seconds=135.1
-	assert_str(report.state_hash.substr(0, 12)).is_equal("da9245a559da")
+	assert_str(report.state_hash.substr(0, 12)).is_equal("ae885c696820")
 	assert_int(report.death_wave).is_equal(3)
 	assert_int(report.commands).is_equal(0)
 

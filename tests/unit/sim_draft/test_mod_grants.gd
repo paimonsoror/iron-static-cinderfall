@@ -180,7 +180,7 @@ func test_the_slice_rewards_do_what_their_ops_say() -> void:
 	ModSystem.apply_reward(w, run.reward_index(&"rw_reroll"))
 	assert_int(w.draft.free_rerolls).is_equal(1)
 	ModSystem.apply_reward(w, run.reward_index(&"rw_charge"))
-	assert_int(w.events_state.charges[w.content.event_index(&"deadfall_strike")]).is_equal(1)
+	assert_int(w.events_state.charges[w.content.event_index(&"deadfall_strike")]).is_equal(2)  # start_charges 1 + the reward
 	assert_bool(w.draft.next_rare).is_false()
 	ModSystem.apply_reward(w, run.reward_index(&"rw_rare_draft"))
 	assert_bool(w.draft.next_rare).is_true()
