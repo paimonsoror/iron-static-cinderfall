@@ -2,7 +2,7 @@ class_name ActorMeshes
 extends RefCounted
 ## Single entry point for the procedural actor meshes (WORK_PLAN 6). Every mesh is built once and cached; an
 ## authored asset replaces a placeholder by changing the function that returns it (`enemy`, `warden_*`, `turret*`).
-## Budgets (the hard-surface looks; CURRENT meshes are far below them): skitter 450, hollow warden 500, rusher 500,
+## Budgets (the hard-surface looks; CURRENT meshes are far below them): skitter 450 (hold50 shows 30 of them), hollow warden 500, rusher 500,
 ## hulk 1500 (W3-D raised them from 300, 400, 400 and 900), warden 2500 (every body part plus the weapon in hand; W3-C
 ## raised it from 700 to 2000 because the Warden is a single instance, and to 2500 in v3 for the smooth rounded silhouette),
 ## turret 600 (base plus head; was 300) triangles, each mesh at most 3 surfaces. The CURRENT look of every actor is unchanged

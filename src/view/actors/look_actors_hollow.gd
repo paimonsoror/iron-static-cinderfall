@@ -5,7 +5,7 @@ extends RefCounted
 ## hang to the knees ending in big fists. Original design: the upper body leans forward 11 degrees from the hips.
 ## Asymmetric damage: the left shoulder plate is gone (a bare frame stub shows) and that arm is thin and clawed, the right arm
 ## is a heavy plated ram, the chest slab covers only the right half of the chest (the left half is gone).
-## Three surfaces (gunmetal, ceramic, emit_red), about 500 triangles, weathering baked in the vertex colours.
+## Three surfaces (gunmetal, ceramic, emit_red), about 470 triangles, weathering baked in the vertex colours.
 
 const G: StringName = &"gunmetal"
 const C: StringName = &"ceramic"
@@ -39,7 +39,7 @@ static func _legs(mb: MeshBuilder) -> void:
 		var knee: Vector3 = Vector3(side * 0.2, 0.46, -0.1)
 		var ankle: Vector3 = Vector3(side * 0.2, 0.12, 0.02)
 		mb.tint = LookActorsKit.frame(0.22)
-		LookActorsKit.limb2(mb, hip, knee, ankle, 0.15, 0.12, 0.085, 5, G)
+		LookActorsKit.limb2(mb, hip, knee, ankle, 0.15, 0.12, 0.085, 4, G)
 		mb.tint = LookActorsKit.plate(0.85)  # a thigh plate down to the knee
 		var thigh: Transform3D = LookDevShapes.frame_along(hip, knee, 0.5, Vector3(0.0, 0.15, 0.0), Vector3.FORWARD)
 		LookDevShapes.bevel_box(mb, Vector3(0.2, 0.05, 0.36), thigh, C, 0.04, Vector2(0.8, 0.9), 0.0, true, true)
@@ -63,7 +63,7 @@ static func _arms(mb: MeshBuilder, up: Transform3D) -> void:
 	var er: Vector3 = up * Vector3(0.53, 0.3, -0.06)
 	var wr: Vector3 = up * Vector3(0.49, 0.0, -0.16)
 	mb.tint = LookActorsKit.frame(0.24)
-	LookActorsKit.limb2(mb, sr, er, wr, 0.115, 0.105, 0.09, 5, G)
+	LookActorsKit.limb2(mb, sr, er, wr, 0.115, 0.105, 0.09, 4, G)
 	mb.tint = LookActorsKit.plate(0.8)
 	LookDevShapes.bevel_box(mb, Vector3(0.22, 0.2, 0.26), Transform3D(Basis(Vector3.RIGHT, -0.19), wr + Vector3(0.0, -0.1, -0.02)), C, 0.05, Vector2.ONE, 0.0, true, true)
 	# left: a thin arm with a claw
@@ -71,6 +71,6 @@ static func _arms(mb: MeshBuilder, up: Transform3D) -> void:
 	var el: Vector3 = up * Vector3(-0.5, 0.28, -0.1)
 	var wl: Vector3 = up * Vector3(-0.44, -0.02, -0.26)
 	mb.tint = LookActorsKit.frame(0.2)
-	LookActorsKit.limb2(mb, sl, el, wl, 0.07, 0.06, 0.05, 5, G)
+	LookActorsKit.limb2(mb, sl, el, wl, 0.07, 0.06, 0.05, 4, G)
 	mb.tint = LookActorsKit.plate(0.6)
 	LookActorsKit.cone(mb, wl + Vector3(0.0, 0.0, 0.0), wl + Vector3(0.03, -0.2, -0.1), 0.045, 4, C)

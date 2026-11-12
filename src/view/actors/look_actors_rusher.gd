@@ -4,7 +4,7 @@ extends RefCounted
 ## (the knee forward, the ankle back), a low wedge head with the single red optic band, forward-reaching arms that end in
 ## blades, three swept-back dorsal spines and a dim red glow strip along the spine (a secondary light, not an eye).
 ## Asymmetric damage: the third spine is snapped short, the left blade is broken and the left shoulder plate is missing.
-## Three surfaces (gunmetal, ceramic, emit_red), about 460 triangles, weathering baked in the vertex colours.
+## Three surfaces (gunmetal, ceramic, emit_red), about 440 triangles, weathering baked in the vertex colours.
 
 const G: StringName = &"gunmetal"
 const C: StringName = &"ceramic"
@@ -64,7 +64,7 @@ static func _arms(mb: MeshBuilder) -> void:
 		var elbow: Vector3 = Vector3(side * 0.31, 0.78, -0.36)
 		var wrist: Vector3 = Vector3(side * 0.22, 0.56, -0.46)
 		mb.tint = LookActorsKit.frame(0.24)
-		LookActorsKit.limb2(mb, shoulder, elbow, wrist, 0.06, 0.05, 0.045, 5, G)
+		LookActorsKit.limb2(mb, shoulder, elbow, wrist, 0.06, 0.05, 0.045, 4, G)
 		mb.tint = LookActorsKit.plate(0.74)
 		var tip: Vector3 = wrist + Vector3(side * -0.02, -0.1, -0.16)
 		if side < 0.0:
@@ -78,8 +78,8 @@ static func _legs(mb: MeshBuilder) -> void:
 		var knee: Vector3 = Vector3(side * 0.16, 0.4, -0.14)
 		var ankle: Vector3 = Vector3(side * 0.15, 0.1, 0.2)
 		mb.tint = LookActorsKit.frame(0.22)
-		LookActorsKit.limb2(mb, hip, knee, ankle, 0.095, 0.075, 0.045, 5, G)
+		LookActorsKit.limb2(mb, hip, knee, ankle, 0.095, 0.075, 0.045, 4, G)
 		mb.tint = LookActorsKit.plate(0.7)
-		LookDevShapes.limb(mb, hip.lerp(knee, 0.3), knee + Vector3(0.0, 0.04, -0.02), 0.1, 0.085, 5, C, LookActorsKit.ID, 0, false, false)
+		LookDevShapes.limb(mb, hip.lerp(knee, 0.3), knee + Vector3(0.0, 0.04, -0.02), 0.1, 0.085, 4, C, LookActorsKit.ID, 0, false, false)
 		mb.tint = LookActorsKit.frame(0.16)
 		LookDevShapes.bevel_box(mb, Vector3(0.13, 0.07, 0.34), LookActorsKit.at(side * 0.15, 0.035, 0.05), G, 0.03, Vector2.ONE, 0.0, true, true)
