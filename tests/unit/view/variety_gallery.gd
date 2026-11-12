@@ -3,6 +3,7 @@ extends Node
 ## perspective camera, so the new models can be looked at the way the three-quarter game camera and a close camera see them.
 ##   -Scene "res://tests/unit/view/variety_gallery.tscn --gallery=burster|mote|swarm|row|arc|crate|ring --az=35 --el=28 --dist=3.4"
 ##   --armed (burster: held in ATTACK mode so the tank swells)  --look=current|stylised  --quality=0|1|2  --high-contrast
+##   --harmful (ring: the telegraph is a red hatch)  --world (keep the yard's props)
 ## Nothing here is part of the game; it writes into a throwaway SimWorld like the debug puppet does.
 
 const SOLO_HIDDEN: Array[String] = ["Core", "Props", "Decor", "LampHeads", "LampPools", "Pad0", "Pad1", "PadPool0", "PadPool1", "Rain"]
@@ -20,6 +21,7 @@ var _armed: bool = false
 var _frame: int = 0
 var _solo: bool = true
 var _tick_hold: int = 0
+var _harmful: bool = false  ## the strike's event is a harmful one (a red hatch instead of the cyan ring)
 
 
 func _ready() -> void:
@@ -53,6 +55,8 @@ func _ready() -> void:
 				_solo = false
 			"--hold":
 				_tick_hold = value.to_int()
+			"--harmful":
+				_harmful = true
 	var packed: PackedScene = load("res://src/view/battle_view.tscn") as PackedScene
 	_view = packed.instantiate() as BattleView
 	add_child(_view)
@@ -62,6 +66,8 @@ func _ready() -> void:
 	if look >= 0:
 		_view.actor_layer.set_look(look)
 		_view.arena_view.set_look(look)
+	if _harmful:
+		content.events[content.event_index(&"deadfall_strike")].harmful = true  # this process's copy only
 	_world = SimWorld.new(SimConfig.create(content, 1))
 	_world.phase = GameState.Id.SPAWNING
 	_place()

@@ -59,6 +59,7 @@ func unbind() -> void:
 ## Once per rendered frame, after the pools stepped.
 func step(delta: float, facing: Basis) -> void:
 	blasts.flashes.facing = facing
+	blasts.flashes_cyan.facing = facing
 	ground.step(delta)
 	blasts.frame_done()
 	arcs.frame_done()

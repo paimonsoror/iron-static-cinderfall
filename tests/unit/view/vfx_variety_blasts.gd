@@ -79,9 +79,12 @@ func test_ours_is_cyan_and_theirs_is_amber() -> void:
 		Events.area_blast.emit(kind, 1.0, 1.0, 2.0)
 	assert_int(_blasts(vfx).rings_amber.live_count()).is_equal(4)
 	assert_int(_blasts(vfx).rings_cyan.live_count()).is_equal(0)
+	assert_int(_blasts(vfx).flashes_cyan.live_count()).is_equal(0)  # their flash is amber
 	for kind: int in [HazardState.K_STRIKE, HazardState.K_VENT]:  # the Deadfall Strike and the Core Vent are ours
 		Events.area_blast.emit(kind, 1.0, 1.0, 4.0)
 	assert_int(_blasts(vfx).rings_cyan.live_count()).is_equal(2)
+	assert_int(_blasts(vfx).flashes_cyan.live_count()).is_equal(2)  # ... and so is the colour of our flash, the ring's colour
+	assert_int(_blasts(vfx).flashes.live_count()).is_equal(4)
 
 
 func test_pool_caps_by_tier_and_the_surplus_is_dropped() -> void:
@@ -152,7 +155,7 @@ func test_reduced_flash_removes_the_flash_and_dims_the_ring() -> void:
 	assert_float(_blasts(vfx).rings_cyan.mesh_alpha()).is_less(lit * 0.6)
 	Events.area_blast.emit(HazardState.K_BLAST, 1.0, 1.0, 2.6)
 	Events.area_blast.emit(HazardState.K_STRIKE, 2.0, 1.0, 4.0)
-	assert_int(_blasts(vfx).flashes.live_count()).is_equal(0)  # no flash at all
+	assert_int(_blasts(vfx).flashes.live_count() + _blasts(vfx).flashes_cyan.live_count()).is_equal(0)  # no flash at all
 	assert_int(_blasts(vfx).rings_amber.live_count()).is_equal(1)  # the ring is still the information
 	assert_int(_blasts(vfx).rings_cyan.live_count()).is_equal(1)
 	vfx.set_reduced_flash(false)
@@ -163,13 +166,13 @@ func test_a_flash_is_short_and_small_enough_never_to_wash_out_an_optic() -> void
 	assert_float(FxBlasts.FLASH_LIFE_S).is_less_equal(0.25)  # GDD 6.7 / SPEC 5.6 rule 2: at most the 0.25 s of a blast flash
 	var vfx: VfxLayer = VarietyFKit.rig(self)[2]
 	Events.area_blast.emit(HazardState.K_STRIKE, 0.0, 0.0, 12.0)  # the biggest blast there is
-	var flash_progress: float = _blasts(vfx).flashes.progress(0)
+	var flash_progress: float = _blasts(vfx).flashes_cyan.progress(0)
 	assert_float(flash_progress).is_between(0.0, 0.2)
 	vfx.render(1.0, 0.0)
 	vfx.render(1.0, 0.1)
-	assert_int(_blasts(vfx).flashes.live_count()).is_equal(1)
+	assert_int(_blasts(vfx).flashes_cyan.live_count()).is_equal(1)
 	vfx.render(1.0, 0.1)
-	assert_int(_blasts(vfx).flashes.live_count()).is_equal(0)  # gone before 0.25 s
+	assert_int(_blasts(vfx).flashes_cyan.live_count()).is_equal(0)  # gone before 0.25 s
 	var arena: ArenaDef = TestContent.variety().arena
 	var yard_m2: float = (arena.max_x - arena.min_x) * (arena.max_z - arena.min_z)
 	var biggest: float = PI * 2.6 * 2.6  # the largest flash star, in square meters of ground

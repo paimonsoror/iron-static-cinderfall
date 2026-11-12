@@ -66,6 +66,7 @@ func setup(content: ContentSet) -> void:
 	add_child(boss_marker)
 	if _high_contrast:
 		_pool.set_contrast(true)
+		_minis.apply_look(_look, _quality, true)
 
 
 ## Resets the pools, adopts every enemy already alive in the store and starts listening to Events.
