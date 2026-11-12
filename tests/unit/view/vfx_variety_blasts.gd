@@ -200,6 +200,9 @@ func test_blasts_arcs_and_telegraphs_allocate_nothing_after_setup() -> void:
 	var ids: Array[int] = VarietyFKit.spawn(w, Ids.EN_SKITTER, 6)
 	layer.render(1.0, 0.016)
 	var nodes: int = ActorsTestKit.count_nodes(vfx)
+	# The `Sfx` autoload hears the same events on the real bus (blast, arc and strike sounds since the V2 merge) and
+	# every voice it starts is a new playback object: silence it, so the count below is the view's alone.
+	Sfx.disabled = true
 	for n: int in 200:  # warm up: lazy engine-side allocations settle here
 		Events.area_blast.emit(HazardState.K_BLAST, float(n % 9), 1.0, 2.6)
 		Events.chain_arc.emit(ids[n % 6], ids[(n + 1) % 6])
@@ -213,6 +216,7 @@ func test_blasts_arcs_and_telegraphs_allocate_nothing_after_setup() -> void:
 		Events.event_warned.emit(&"deadfall_strike", 40, float(n % 5), 3.0)
 		vfx.render(1.0, 0.016)
 	var grown: int = VarietyFKit.objects() - objects  # measured before the first assert: an assertion is an object too
+	Sfx.disabled = false
 	assert_int(ActorsTestKit.count_nodes(vfx)).is_equal(nodes)
 	assert_int(grown).is_less_equal(2)  # the counter test: 500 frames of chaos, nothing created
 	assert_int(_blasts(vfx).rings_amber.live_count() + _blasts(vfx).rings_cyan.live_count()).is_less_equal(32)

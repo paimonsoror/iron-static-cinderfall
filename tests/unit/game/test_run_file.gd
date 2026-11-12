@@ -41,7 +41,9 @@ func test_the_boundary_holds_the_wave_the_tick_the_hash_and_the_state() -> void:
 
 func test_compose_splits_the_log_at_the_boundary_tick() -> void:
 	var world: SimWorld = _world()
-	assert_bool(VarietyDKit.step_until_cleared(world, 2, 40000)).is_true()  # one CONTINUE before the boundary
+	assert_bool(VarietyDKit.step_until_cleared(world, 2, 40000)).is_true()
+	var logged: int = world.command_log.entries.size()  # the intermission after wave 1: the draft, the route, CONTINUE
+	assert_int(logged).is_equal(3)
 	var head: Dictionary = RunFile.header(world.config, "900-5")
 	var boundary: Dictionary = RunFile.boundary(world)
 	world.submit(SimCommand.purchase(9001, Ids.UP_DAMAGE))
@@ -51,7 +53,7 @@ func test_compose_splits_the_log_at_the_boundary_tick() -> void:
 	var doc: Dictionary = RunFile.compose(head, boundary, world.command_log.to_dicts(), -1)
 	var before: Array = doc["log"]
 	var tail: Array = doc["tail"]
-	assert_int(before.size()).is_equal(1)
+	assert_int(before.size()).is_equal(logged)
 	assert_int(tail.size()).is_equal(2)
 	var first: Dictionary = tail[0]
 	assert_int(first["id"]).is_equal(9001)

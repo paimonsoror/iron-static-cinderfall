@@ -168,11 +168,11 @@ func test_a_pick_at_wave_3_does_not_change_wave_7() -> void:
 	var b: SimWorld = VarietyAKit.world(13, c)
 	var before: String = _wave_hash(a.plan.wave(7))
 	for w: SimWorld in [a, b]:
-		VarietyAKit.run_to_await(w)  # wave 1 is cleared: the route of wave 2
+		VarietyAKit.run_to_route(w)  # wave 1 is cleared: the route of wave 2
 		assert_int(w.phase_state.awaiting).is_equal(PhaseState.Await.ROUTE)
 		w.submit(SimCommand.pick_route(1, 0))
 		w.step()
-		VarietyAKit.run_to_await(w)  # wave 2 is cleared: the route of wave 3
+		VarietyAKit.run_to_route(w)  # wave 2 is cleared: the route of wave 3
 		assert_int(w.phase_state.awaiting).is_equal(PhaseState.Await.ROUTE)
 	a.submit(SimCommand.pick_route(2, 0))
 	b.submit(SimCommand.pick_route(2, 1))

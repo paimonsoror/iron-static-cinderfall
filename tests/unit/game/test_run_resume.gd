@@ -352,7 +352,8 @@ func test_a_resume_inside_a_choice_lands_in_the_choice_and_thinking_costs_no_tic
 	var content: ContentSet = TestContent.variety()
 	var world: SimWorld = SimWorld.new(VarietyDKit.config(content, 6))
 	assert_bool(VarietyDKit.step_until_cleared(world, 1, 40000)).is_true()
-	world.phase_state.awaiting = PhaseState.Await.DRAFT  # what the wave clear of task V2-A will do
+	assert_int(world.phase_state.awaiting).is_equal(PhaseState.Await.DRAFT)  # the wave clear opened the draft
+	world.add_scrap(500)  # the reroll below is paid
 	var head: Dictionary = RunFile.header(world.config, "800-6")
 	var boundary: Dictionary = RunFile.boundary(world)
 	for thinking: int in 500:
@@ -370,7 +371,9 @@ func test_a_resume_inside_a_choice_lands_in_the_choice_and_thinking_costs_no_tic
 	var result: RunResumeResult = RunResume.rebuild(doc, content)
 	assert_int(result.mode).is_equal(RunResume.Mode.SNAPSHOT)
 	assert_int(result.world.tick).is_equal(world.tick)
-	assert_int(result.world.phase_state.awaiting).is_equal(PhaseState.Await.DRAFT)
+	assert_int(world.phase_state.awaiting).is_equal(PhaseState.Await.ROUTE)  # the pick closed the draft: the route is next
+	assert_int(result.world.phase_state.awaiting).is_equal(PhaseState.Await.ROUTE)
+	assert_int(result.world.draft.rerolls_paid).is_equal(1)
 	assert_str(result.world.state_hash()).is_equal(world.state_hash())
 	assert_int(result.world.events.event_hash).is_equal(world.events.event_hash)
 	assert_int(result.world.command_log.entries.size()).is_equal(world.command_log.entries.size())

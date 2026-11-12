@@ -12,9 +12,23 @@ func _boosted(content: ContentSet, run_seed: int) -> SimWorld:
 	return SimWorld.new(VarietyDKit.config(content, run_seed))
 
 
-## One step with the scripted player: CONTINUE from the sixth tick of an intermission on.
+## One step with the scripted player: CONTINUE from the sixth tick of an intermission on. In a generated run it answers
+## what the world waits for from the state alone (the crate into the second slot, the first directive, the route by
+## the wave number), so the original and a restored copy make the same choices.
 func _step(w: SimWorld) -> void:
-	if w.phase == GameState.Id.INTERMISSION and w.content.mission.intermission_ticks - w.phase_ticks_left >= 5:
+	if w.plan != null and w.phase == GameState.Id.INTERMISSION:
+		if w.command_queue.is_empty():
+			var command_id: int = 500000 + w.tick  # from the state: a restored world has no command log, and mints the same ids
+			match w.phase_state.awaiting:
+				PhaseState.Await.SALVAGE:
+					w.submit(SimCommand.salvage(command_id, 0, 1 if w.arsenal.slot_weapon[1] < 0 else SalvageSystem.ACTION_SCRAP))
+				PhaseState.Await.DRAFT:
+					w.submit(SimCommand.pick_directive(command_id, 0))
+				PhaseState.Await.ROUTE:
+					w.submit(SimCommand.pick_route(command_id, w.wave % 2))
+				_:
+					w.submit(SimCommand.skip(command_id))
+	elif w.phase == GameState.Id.INTERMISSION and w.content.mission.intermission_ticks - w.phase_ticks_left >= 5:
 		w.submit(SimCommand.skip(500000 + w.tick))
 	w.step()
 	w.events.drain()

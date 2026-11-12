@@ -60,7 +60,7 @@ func test_the_act_changes_when_the_first_wave_of_the_act_starts_not_before() -> 
 	var w: SimWorld = VarietyAKit.world(6, c)
 	var command_id: int = 1
 	for _n: int in 30:
-		if not VarietyAKit.run_to_await(w):
+		if not VarietyAKit.run_to_route(w):
 			break
 		if w.wave == 5:
 			assert_int(w.phase_state.awaiting).is_equal(PhaseState.Await.ROUTE)

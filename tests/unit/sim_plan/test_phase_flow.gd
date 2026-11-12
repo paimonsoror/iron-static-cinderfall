@@ -1,12 +1,13 @@
 extends GdUnitTestSuite
 ## V2-A: the intermission of a generated run (VARIETY_SPEC 2.5): ROUTE and BOSS_BRIEF awaits, PICK_ROUTE, the breather, the
-## DRAFT and SALVAGE steps (closed by hand here: the draft and salvage systems are other tasks), and that an await
-## holds the whole simulation.
+## DRAFT and SALVAGE steps, and that an await holds the whole simulation. Since the V2 merge the draft and salvage
+## systems are real: where a test is about the route, the draft and the crate before it are closed through their
+## systems (VarietyAKit.run_to_route); the chain with every step answered by command is in test_slice_intermission.gd.
 
 
 func _at_first_route(run_seed: int = 1) -> SimWorld:
 	var w: SimWorld = VarietyAKit.world(run_seed)
-	assert_bool(VarietyAKit.run_to_await(w)).is_true()
+	assert_bool(VarietyAKit.run_to_route(w)).is_true()  # the draft of wave 1 is skipped on the way
 	return w
 
 
@@ -175,11 +176,11 @@ func test_the_boss_briefing_comes_before_a_boss_wave_and_continue_starts_the_bre
 	var w: SimWorld = VarietyAKit.world(2)
 	var command_id: int = 1
 	for n: int in 3:  # the routes of waves 2, 3 and 4
-		assert_bool(VarietyAKit.run_to_await(w)).is_true()
+		assert_bool(VarietyAKit.run_to_route(w)).is_true()
 		assert_int(w.phase_state.awaiting).is_equal(PhaseState.Await.ROUTE)
 		VarietyAKit.answer(w, command_id)
 		command_id += 1
-	assert_bool(VarietyAKit.run_to_await(w)).is_true()
+	assert_bool(VarietyAKit.run_to_route(w)).is_true()
 	assert_int(w.wave).is_equal(4)
 	assert_int(w.phase_state.awaiting).is_equal(PhaseState.Await.BOSS_BRIEF)
 	var briefed: Array[SimEvent] = VarietyAKit.events_of(w, SimEventKind.Id.BOSS_BRIEFED)

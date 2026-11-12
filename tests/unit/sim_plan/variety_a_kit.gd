@@ -135,6 +135,31 @@ static func run_to_await(w: SimWorld, limit: int = 20000) -> bool:
 	return false
 
 
+## Like `run_to_await`, but a salvage or a draft on the way is closed (through its system, with no command, so the
+## command log and the tick stay those of the route tests): stops at the next ROUTE or BOSS_BRIEF await.
+static func run_to_route(w: SimWorld, limit: int = 20000) -> bool:
+	for _n: int in 12:
+		if not run_to_await(w, limit):
+			return false
+		if not close_choice(w):
+			return true
+	return false
+
+
+## Closes an open salvage (scrapped) or draft (skipped) through its system and moves the intermission on. False when
+## the world waits for something else (a route, a boss briefing) or for nothing.
+static func close_choice(w: SimWorld) -> bool:
+	match w.phase_state.awaiting:
+		PhaseState.Await.SALVAGE:
+			SalvageSystem.resolve(w, 0, SalvageSystem.ACTION_SCRAP)
+		PhaseState.Await.DRAFT:
+			DraftSystem.skip(w, 0)
+		_:
+			return false
+	PhaseSystem.advance_await(w)
+	return true
+
+
 static func kill_all(w: SimWorld) -> void:
 	for i: int in w.enemies.high_water:
 		if w.enemies.alive[i] == 1:
@@ -142,32 +167,28 @@ static func kill_all(w: SimWorld) -> void:
 
 
 ## One answer of a trivial bot to the current await: ROUTE picks `route_pick`, BOSS_BRIEF continues, DRAFT and SALVAGE
-## are closed by hand (the draft and salvage systems are other tasks' work). Returns false when nothing awaits.
+## are closed through their systems (`close_choice`: skipped, scrapped). Returns false when nothing awaits.
 static func answer(w: SimWorld, command_id: int, route_pick: int = 0) -> bool:
 	match w.phase_state.awaiting:
 		PhaseState.Await.ROUTE:
 			w.submit(SimCommand.pick_route(command_id, route_pick))
 		PhaseState.Await.BOSS_BRIEF:
 			w.submit(SimCommand.skip(command_id))
-		PhaseState.Await.DRAFT:
-			w.draft.open = false
-			PhaseSystem.advance_await(w)
-		PhaseState.Await.SALVAGE:
-			w.salvage.offer = PackedInt32Array()
-			PhaseSystem.advance_await(w)
+		PhaseState.Await.DRAFT, PhaseState.Await.SALVAGE:
+			close_choice(w)
 		_:
 			return false
 	w.step()
 	return true
 
 
-## Plays a whole run with a bot that answers every await at once; `think` ticks of waiting precede each answer.
-## Returns the number of waits answered.
+## Plays a whole run with a bot that answers every route and boss briefing at once (drafts and crates on the way are
+## closed, `run_to_route`); `think` ticks of waiting precede each answer. Returns the number of waits answered.
 static func play(w: SimWorld, think: int, route_pick: int = 0, max_waits: int = 60) -> int:
 	var answered: int = 0
 	var command_id: int = 1
 	while answered < max_waits and not w.is_over():
-		if not run_to_await(w):
+		if not run_to_route(w):
 			break
 		for _t: int in think:
 			w.step()
@@ -180,7 +201,8 @@ static func play(w: SimWorld, think: int, route_pick: int = 0, max_waits: int = 
 
 ## Like `play` but nothing is cheated: the Warden and the turrets fight the waves, and the bot only sends commands (so the
 ## command log is a complete record and `Replay.run` can reproduce the run). Stops at the first await it has answered
-## `answers` times or after `max_ticks`. Returns the answers sent.
+## `answers` routes or boss briefings or after `max_ticks` (a draft is skipped and a crate scrapped by command on the
+## way, and not counted). Returns the route and briefing answers sent.
 static func play_natural(w: SimWorld, think: int, route_pick: int, answers: int = 1, max_ticks: int = 60000) -> int:
 	var sent: int = 0
 	var command_id: int = 1
@@ -195,9 +217,14 @@ static func play_natural(w: SimWorld, think: int, route_pick: int, answers: int 
 		match w.phase_state.awaiting:
 			PhaseState.Await.ROUTE:
 				w.submit(SimCommand.pick_route(command_id, route_pick))
+				sent += 1
 			PhaseState.Await.BOSS_BRIEF:
 				w.submit(SimCommand.skip(command_id))
+				sent += 1
+			PhaseState.Await.DRAFT:
+				w.submit(SimCommand.skip_draft(command_id))
+			PhaseState.Await.SALVAGE:
+				w.submit(SimCommand.salvage(command_id, 0, SalvageSystem.ACTION_SCRAP))
 		command_id += 1
-		sent += 1
 		w.step()
 	return sent
