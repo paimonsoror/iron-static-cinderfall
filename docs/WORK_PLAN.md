@@ -864,6 +864,17 @@ Slice exit (V3-I acceptance): a `balanced` bot and a human finish a 5-wave run o
 visibly different runs (different packs, offers and outcomes); kill the app mid-wave and resume; `sim_run` over 20 seeds shows
 wins and losses.
 
+**Status (2026-11-12):** met on the desktop. The `balanced` bot wins 6 of 20 seeds (13 of the 14 defeats are in the boss wave),
+two seeds differ in packs, offers and outcomes, kill and resume works in process and through `Game`, and the debug APK exports.
+The phone, the emulator and a real OS-process kill and relaunch are NOT RUN; the owner playtest on the phone is the gate.
+
+**V3-I carry-overs.** V4-U: draft, route and corrupted hints on the choice screens; the empty band (about 140 px at 1080x2400)
+between the battlefield and the weapon bar; the combat HUD ghosting through the overlay header; a truncated weapon list on the
+draft build button; the wrapped pistol stat line in the salvage card; the boss ANSWER line may only name answers the run can have.
+V4-N: `SpawnSystem.begin_wave` uses an insertion sort (0.45 s for a 3,000-entry stress wave, fine for real waves); the elite
+stub system gets elites in waves 3 and 4 of seed 1 although elites are outside the slice. V4-X: death blasts of volatile
+skitters are small at the arena edge; motes are small at phone size.
+
 ### 8.4 Wave V1
 
 #### V1-S Contract scaffold
@@ -1081,7 +1092,7 @@ complete variety data set), a debug APK for the owner.
 | Wins and losses | `tools\sim_run.ps1 -Seed 1 -Policy balanced -Runs 20` shows at least 1 victory and 1 defeat | B01 |
 | Integration | `tools\test.ps1 -Path res://tests/integration` passes | B01, B08 |
 | The real process | `Godot --headless --fixed-fps 60 --path . -- --autoplay=balanced --seed=1 --mute --quit-after-run` ends with `[Game] quit after run` | A07 |
-| Device | `tools\deploy_android.ps1` and `tools\smoke_android.ps1 -SkipDeploy` -> `SMOKE OK` | A02 |
+| Device | `tools\deploy_android.ps1` and `tools\smoke_android.ps1 -SkipDeploy` -> `SMOKE OK` (V3-I: NOT RUN, no device) | A02 |
 
 **Gate: owner playtest** ("is the loop fun?"; short form in GDD 8.4).
 

@@ -1328,7 +1328,10 @@ No scripted tutorial. Hints stay one-line and event-tied, once per profile: firs
 GONE"), first route ("HOT ROUTES PAY MORE AND HIT HARDER"), first crate ("HOLD THE AREA CLEAR TO SECURE THE DROP"), first
 second weapon ("TAP THE HOLSTERED WEAPON TO SWAP"), first event warning ("WATCH THE TICKER"), first corrupted offer ("RED
 DIRECTIVES COST SOMETHING FOR GOOD"), and the handoff's first core hit ("SHIELD ABSORBS CORE DAMAGE"). The two hints tied to
-the old drawer ("TAP UPGRADES", "SAFE TO UPGRADE. CONTINUE WHEN READY") go with it. **[POST-SLICE]** a real FTUE.
+the old drawer ("TAP UPGRADES", "SAFE TO UPGRADE. CONTINUE WHEN READY") go with it. In a generated run the hint line shows
+`hint.crate`, `hint.event`, `hint.swap` and `hint.core_hit`, never `hint.tap_upgrades` or `hint.intermission`, and the wave banner
+names the pack and the modifier ("POWDER TRAIN // VOLATILE SWARM"). The draft, route and corrupted hints are not shown yet,
+because the choice screens cover the hint banner (V4-U). **[POST-SLICE]** a real FTUE.
 
 ### 10.5 Choice screens (over the frozen battlefield, dimmed)
 

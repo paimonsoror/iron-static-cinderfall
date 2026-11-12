@@ -652,7 +652,9 @@ wrapped as `#key#` (and logs once per missing key); `static func tf(key: String,
   the seed and the decisions only, never of thinking time.
 
 **(V) Streams.** `SimRng.stream(name)` creates a stream on first use from `hash("<seed>|<name>")` and hashes every stream state,
-so an indexed name such as `draft:7` needs no contract change. A stream is used for **one purpose and one index**, so the
+so an indexed name such as `draft:7` needs no contract change. The state hash and the snapshot rows order the streams by name
+**as text**, never by `StringName` order (that order follows pointers and changes once names are freed and made again, which would
+fail the hash check of a resumed run in a new process). A stream is used for **one purpose and one index**, so the
 decisions of one part of the run cannot shift the dice of another. Everything that can be decided before the run starts is
 decided at tick 0 and stored in the `RunPlan` (6.4). `spawn` and `steer` keep their draw order (it is pinned by existing hashes);
 new randomness never reuses them.
@@ -892,7 +894,7 @@ and `SimWorld.state_hash()` calls them in a fixed order. A field that affects ou
 | `ABILITY_ENDED` | ability index | | | | AbilitySystem |
 | `ABILITY_REJECTED` | ability index | Reason | command id | | AbilitySystem |
 | `ENEMY_STUNNED` | enemy id | ticks | | | AbilitySystem |
-| `ENEMY_REACHED_SLOT` | enemy id | slot index | | | MovementSystem |
+| `ENEMY_REACHED_SLOT` | enemy id | slot index | | | MovementSystem (relayed as `burster_armed` for an enemy with `fuse_s`) |
 | `ENEMY_STUCK` | enemy id | recovery count | | | MovementSystem |
 | `SPAWN_QUEUED` | pending count | | | | SpawnSystem |
 | `RUN_FINISHED` | RunResult | waves completed | core hp | | PhaseSystem |
@@ -1278,7 +1280,7 @@ compiling stub with the final signature until its owning task fills it (WORK_PLA
 ```gdscript
 class_name RunPlanSystem          # sim/systems/run_plan_system.gd
 static func build(world: SimWorld) -> void              # tick 0: the whole RunPlan from the plan.* streams; WaveBuilder turns packs into SpawnGroupDef
-class_name PhaseSystem            # EXT: awaits (4.1), acts, breather; wave count from the plan (content.waves.size() in the legacy fixture)
+class_name PhaseSystem            # EXT: awaits (4.1), acts, breather; wave count from the plan (content.waves.size() in the legacy fixture). Wave-count readers: `PhaseSystem.wave_count`, `RunApi.wave_count`, `RunRoster.wave_count` (`src/ui/screens/run_roster.gd`: the briefing and results rosters of a generated run)
 class_name DraftSystem            # offers (seeded, weighted, no duplicates, pity), reroll, buy-out, skip, patch
 class_name ModSystem              # interprets ops[]; recomputes ModState; applies kits, directives, modifiers, affixes
 class_name ArsenalSystem          # slots, swap, heat, vent; dispatches on WeaponDef.kind to sim/systems/fire/fire_*.gd
@@ -1416,6 +1418,7 @@ signal boss_phase(phase: int)
 signal charges_changed(id: StringName, n: int)
 signal command_rejected(command_id: int, reason: int)
 signal unlock_purchased(id: StringName)                           # emitted by Save/Game, not by the sim
+signal burster_armed(id: int)                                     # the relay makes it from ENEMY_REACHED_SLOT of an enemy with fuse_s
 ```
 
 `RunController` is the only emitter of the gameplay signals. It drains `sim.events` after the ticks of each
@@ -1496,6 +1499,10 @@ func build_tags() -> Dictionary
 func boss_phase() -> int
 func boss_phase_count() -> int
 func run_seed() -> int
+func draft_buyout_used() -> bool
+func draft_actions_locked() -> bool
+func crate_status() -> Dictionary
+func wave_route() -> Dictionary
 ```
 
 **(V)** The old upgrade queries (`upgrade_level`, `upgrade_cost`, `purchase_block_reason`, ...) stay and return the legacy values
@@ -1708,8 +1715,15 @@ command tail (6.7):
 { "schema_version": 1, "build": "0.1.0", "content_hash": "<12 chars>", "run_id": "<unix>-<seed>", "seed": 48211,
   "kit": "k_standard", "unlocked": ["u_w_lmg"], "daily": false,
   "boundary": { "wave": 6, "tick": 21480, "state_hash": "<sha256>", "state": { "...": "to_dict of every state class" } },
-  "tail": [ { "tick": 21481, "id": 311, "kind": 3, "arg": 1 } ], "resume_tick": 22950 }
+  "log": [ { "tick": 12, "id": 3, "kind": 1, "arg": 0 } ],
+  "tail": [ { "tick": 21481, "id": 311, "kind": 3, "arg": 1 } ], "resume_tick": 22950,
+  "debug": { "invulnerable": false, "damage_mult": 1.0, "start_scrap": 0 } }
 ```
+
+`log` is every command up to `boundary.tick`; `debug` is optional and only written by debug runs. `boundary.wave` is the number
+of waves cleared. The snapshot `VERSION` is 2. In the state dictionary, a float that is not a small whole number travels as `~`
+plus 16 hex digits (the exact bits), a 64-bit int as a decimal string, and a packed array as `f:`, `i:` or `b:` plus hex, so a
+JSON round trip cannot change a hashed value.
 
 `build` is the `config/version` of the exporting build. It is written (1) at every wave clear: the boundary snapshot, its
 `state_hash`, an empty tail; (2) after every intermission command: the tail grows; (3) when the app is paused or backgrounded
@@ -1885,7 +1899,7 @@ instantiates them, connects the signals and frees them.
 | Scene (`res://src/ui/...`) | `class_name` | `setup` | Signals |
 |---|---|---|---|
 | `screens/boot_screen.tscn` | `BootScreen` | `setup(version: String)` | `finished` |
-| `screens/main_menu_screen.tscn` | `MainMenuScreen` | `setup(profile: Profile)` | `start_pressed`, `settings_pressed`, `quit_pressed` |
+| `screens/main_menu_screen.tscn` | `MainMenuScreen` | `setup(profile: Profile)`, `set_resume_wave(wave: int)` | `start_pressed`, `resume_pressed`, `settings_pressed`, `quit_pressed` |
 | `screens/briefing_screen.tscn` | `BriefingScreen` | `setup(content: ContentSet)` | `deploy_pressed`, `back_pressed` |
 | `screens/results_screen.tscn` | `ResultsScreen` | `setup(summary: RunSummary, content: ContentSet, profile: Profile, reward_granted: bool)` | `retry_pressed`, `menu_pressed` |
 | `screens/settings_screen.tscn` | `SettingsScreen` | `setup()` (reads and writes `Save`) | `closed` |
@@ -1982,7 +1996,8 @@ User arguments come after `--`. On Android they are baked through the preset opt
 | Argument | Effect |
 |---|---|
 | `--seed=<int>` | Fixed run seed |
-| `--autoplay[=<policy>]` | Skip menus, start a run, `PolicyBot` plays. Default `greedy`; (V) accepts the 8 policies `none`, `greedy`, `random`, `hoarder`, `spammer`, `turret_rush`, `balanced`, `risk` |
+| `--autoplay[=<policy>]` | Skip menus, start a run, `PolicyBot` plays. Default `greedy`; (V) accepts the 8 policies `none`, `greedy`, `random`, `hoarder`, `spammer`, `turret_rush`, `balanced`, `risk` (every `PolicyBot.NAMES` entry) |
+| **(V)** `--shots=<abs dir>` | With `res://src/debug/game_shots.tscn` (`GameShots`): play a whole run through the real game and save a PNG at every draft, route, salvage, boss brief, strike, blast and results moment. `--capture-scene` is not supported on `scenes/main.tscn` |
 | `--scenario=hold<N>` | Debug run: invulnerable core, hold N enemies alive (perf) |
 | **(V)** `--scenario=hold<N>+<M>` | As `hold<N>` with M minis as well (N bodied + M minis; `hold50+40` is the perf scenario) |
 | **(V)** `--scenario=chain` | A burster line and a strike, for perf and the legibility capture |

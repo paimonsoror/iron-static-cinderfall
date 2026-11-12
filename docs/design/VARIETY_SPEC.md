@@ -922,8 +922,14 @@ New `Save` methods: `purchase_unlock(id) -> int` (a `Reason.Id`), `has_unlock(id
 { "schema_version": 1, "build": "0.2.0", "content_hash": "<12 chars>", "run_id": "<unix>-<seed>", "seed": 48211,
   "kit": "k_standard", "unlocked": ["u_w_lmg"], "daily": false,
   "boundary": { "wave": 6, "tick": 21480, "state_hash": "<sha256>", "state": { "...": "to_dict of every state class" } },
-  "tail": [ { "tick": 21481, "id": 311, "kind": 3, "arg": 1 } ], "resume_tick": 22950 }
+  "log": [ { "tick": 12, "id": 3, "kind": 1, "arg": 0 } ],
+  "tail": [ { "tick": 21481, "id": 311, "kind": 3, "arg": 1 } ], "resume_tick": 22950,
+  "debug": { "invulnerable": false, "damage_mult": 1.0, "start_scrap": 0 } }
 ```
+
+`log` is every command up to `boundary.tick`; `debug` is optional (debug runs only); `boundary.wave` is waves cleared; the snapshot
+`VERSION` is 2; non-trivial floats travel as `~` plus 16 hex digits, 64-bit ints as decimal strings, packed arrays as `f:`, `i:`
+or `b:` plus hex.
 
 ### 13.4 Game flow (`src/game/`, `src/core/`)
 

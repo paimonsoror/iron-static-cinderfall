@@ -304,7 +304,7 @@ unlock packs. 34 are DATA only (no new code per directive).
 | `borer` | B | 90 | 2.6 | 4 | 26 | 1.4 | 12 | 0.45 | 2.5 | II | 16 |
 | `ward_pylon` | S | 300 | 0 (orbits its boss) | 0 | 0 | - | 0 | 0.40 | 0 (boss part) | II | 3 |
 
-The Scrap values of the three old types drop (20 / 35 / 25 to 5 / 15 / 8) because a run now has about four times as many
+The Scrap values of the three old types drop (20 / 35 / 25 to 5 / 15 / 8; applied in the shipped `data/enemies.json` by V3-I) because a run now has about four times as many
 kills. The legacy 5-wave fixture keeps the old values (VARIETY_SPEC 13.9).
 
 ### 4.2 Behaviour fields
