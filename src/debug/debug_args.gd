@@ -35,6 +35,11 @@ var msaa: int = -1  ## --msaa=0|2|4: force the 3D viewport's MSAA (-1 = by look 
 var fxaa: int = -1  ## --fxaa=0|1: force FXAA off or on
 var glow: int = -1  ## --glow=0|1: force bloom off or on for the cost measurement (-1 = by look and tier)
 var tune: String = ""  ## --tune=name:value,name:value  shader parameter overrides of the stylised materials (look-dev)
+var env: String = ""  ## --env=off|only:a,b|no:a,b  switches single effects of the styled yard (EnvStyle) for the cost measurement
+var env_tune: String = ""  ## --env-tune=name:value,...  floor shader parameter overrides (EnvGround.overrides)
+var cam_pitch: float = 0.0  ## --cam-pitch=<degrees>  sandbox-only camera pitch experiment (0 = the game camera)
+var cam_persp: float = 0.0  ## --cam-persp=<fov degrees>  sandbox-only perspective camera for the camera study (0 = orthographic)
+var cam_report: bool = false  ## --cam-report: log one line of camera numbers shortly before the capture frame
 
 
 ## The user arguments after `--`, plus the words of the environment variable CINDERFALL_ARGS (desktop only). The
@@ -127,6 +132,18 @@ static func parse(args: PackedStringArray) -> DebugArgs:
 					a.fxaa = value.to_int()
 			"--tune":
 				a.tune = value
+			"--env":
+				a.env = value
+			"--env-tune":
+				a.env_tune = value
+			"--cam-pitch":
+				if value.is_valid_float():
+					a.cam_pitch = clampf(value.to_float(), 20.0, 89.0)
+			"--cam-report":
+				a.cam_report = true
+			"--cam-persp":
+				if value.is_valid_float():
+					a.cam_persp = clampf(value.to_float(), 0.0, 90.0)
 			"--solo":
 				a.solo = true
 			"--hide-warden":

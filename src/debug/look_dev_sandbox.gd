@@ -41,6 +41,12 @@ var _mode: String = "game"
 var _solo: bool = false
 var _reload_pose: bool = false
 var _hide_warden: bool = false
+var _cam_pitch: float = 0.0
+var _cam_persp: float = 0.0
+var _report_frame: int = -1
+var _frame: int = 0
+var _top_px: float = 0.0
+var _bottom_px: float = 0.0
 var _measure_s: float = 0.0
 var _elapsed: float = 0.0
 var _extra_cam: Camera3D
@@ -52,6 +58,8 @@ var _base_xf: Transform3D = Transform3D.IDENTITY
 func _ready() -> void:
 	_content = Content.db
 	var args: DebugArgs = DebugArgs.from_os()
+	if args.cam_pitch > 0.0:
+		_content.arena.pitch_down_deg = args.cam_pitch  # camera study: this process's copy of the arena, never data/
 	_fixed_step = args.wants_capture()
 	if not _fixed_step:
 		Engine.max_fps = 0  # the 60 fps cap would hide headroom when measuring
@@ -97,6 +105,16 @@ func _ready() -> void:
 		var kv: PackedStringArray = pair.split(":")
 		if kv.size() == 2 and kv[1].is_valid_float():
 			LookDevMat.overrides[StringName(kv[0])] = kv[1].to_float()
+	if args.env != "":
+		EnvStyle.set_override(args.env)
+	for pair2: String in args.env_tune.split(",", false):
+		var kv2: PackedStringArray = pair2.split(":")
+		if kv2.size() == 2 and kv2[1].is_valid_float():
+			EnvGround.overrides[StringName(kv2[0])] = kv2[1].to_float()
+	_cam_pitch = args.cam_pitch
+	_cam_persp = args.cam_persp
+	if args.cam_report:
+		_report_frame = maxi(1, args.capture_frames - 6)
 	LookDevStyle.glow_override = args.glow
 	LookDevStyle.msaa_override = args.msaa
 	LookDevStyle.fxaa_override = args.fxaa
@@ -129,6 +147,9 @@ func _process(delta: float) -> void:
 		_hide_enemies()
 	_update_camera(warden)
 	_elapsed += delta
+	_frame += 1
+	if _frame == _report_frame:
+		Log.info("camreport", EnvCamStudy.report(_view.camera_rig.camera, _content.arena, _view.get_viewport().get_visible_rect().size, _top_px, _bottom_px, _puppet.world))
 	if _measure_s > 0.0 and _elapsed >= _measure_s:
 		get_tree().quit(0)
 
@@ -192,8 +213,12 @@ func _refit() -> void:
 	var size: Vector2 = _view.get_viewport().get_visible_rect().size
 	var top: float = HudLayout.top_band_px(size, Vector4.ZERO, _content.tokens)
 	var bottom: float = HudLayout.bottom_band_px(size, Vector4.ZERO, _content.tokens)
+	_top_px = top
+	_bottom_px = bottom
 	_view.fit_camera(size, top, bottom)
 	var cam: Camera3D = _view.camera_rig.camera
+	if _cam_pitch > 0.0:
+		EnvCamStudy.apply(cam, _content.arena, size, top, bottom, _cam_pitch, _cam_persp)
 	_base_size = cam.size
 	_base_xf = cam.transform
 	cam.size = _base_size
