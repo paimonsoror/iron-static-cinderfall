@@ -16,13 +16,24 @@ static var flush_pending: bool = false
 static func grant(summary: RunSummary) -> bool:
 	if summary.result != RunResult.Id.VICTORY and summary.result != RunResult.Id.DEFEAT:
 		return false
-	var granted: bool = Save.grant_run_reward(summary.run_id, summary.result, summary.data_reward, summary.core_hp)
+	var granted: bool = Save.grant_run_reward(
+		summary.run_id, summary.result, summary.data_reward, summary.core_hp, extras_of(summary))
 	if not granted and Save.profile_dirty():
 		var _retried: bool = Save.flush()
 	flush_pending = Save.profile_dirty()
 	if flush_pending:
 		Log.warn("GameRewards", "profile flush failed after run %s; will retry" % summary.run_id)
 	return granted
+
+
+## The reward extras of VARIETY_SPEC 13.3 that a summary can give: what the profile's best wave, boss kills and victory
+## weapons are updated from. `Save` accepts them and reads them once profile v2 exists (task V4-M, which also adds the
+## milestones and the daily flags).
+static func extras_of(summary: RunSummary) -> Dictionary:
+	return {
+		"best_wave": summary.waves_completed, "act_reached": summary.act_reached, "boss_ids": Array(summary.boss_ids),
+		"weapons": Array(summary.weapons),
+	}
 
 
 ## Writes the profile now (app pause, quit). A failed write is remembered and retried later.

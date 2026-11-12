@@ -2,7 +2,8 @@ extends Node
 ## `Save` autoload (ARCH 7.5): the profile on disk. Crash-safe: flush writes a temp file, verifies it by reading it
 ## back, keeps the previous good file as .bak and renames the temp file over the main one. A damaged main file is
 ## recovered from .bak or set aside as .corrupt; a file from a newer schema is copied to .newer and never lost.
-## Rewards are granted once per run id. There is no mid-run save.
+## Rewards are granted once per run id. The run file of a run in progress (`user://run_v1.json`, RunStore) is written
+## through `save_run`, `load_run` and `clear_run`; a resumed run keeps its run id, so it is rewarded once.
 
 enum LoadStatus { OK, NEW_PROFILE, RECOVERED_FROM_BACKUP, RESET_AFTER_CORRUPTION, NEWER_SCHEMA_SET_ASIDE }
 
@@ -103,7 +104,10 @@ func profile_dirty() -> bool:
 ## False and no change if run_id was already awarded (or is not a usable id). Otherwise adds Data, counts the run,
 ## on VICTORY counts the mission and keeps the best core HP, remembers the id (newest 64), saves, emits
 ## `profile_changed`. If the save fails the grant still stands in memory (a second call stays false).
-func grant_run_reward(run_id: String, result: int, data_amount: int, core_hp: int) -> bool:
+## `extras` (VARIETY_SPEC 13.3: milestones, best wave, boss kills, daily flags) is accepted and not read yet: those
+## fields arrive with profile v2 (task V4-M).
+@warning_ignore("unused_parameter")
+func grant_run_reward(run_id: String, result: int, data_amount: int, core_hp: int, extras: Dictionary = {}) -> bool:
 	if run_id.is_empty() or run_id.length() > Profile.MAX_ID_LENGTH or profile.awarded_run_ids.has(run_id):
 		return false
 	profile.data = clampi(profile.data + maxi(data_amount, 0), 0, Profile.MAX_COUNT)
@@ -117,6 +121,26 @@ func grant_run_reward(run_id: String, result: int, data_amount: int, core_hp: in
 	_persist()
 	Events.profile_changed.emit()
 	return true
+
+
+## True when the profile holds the unlock `id` (the list is filled by the Archive purchases of task V4-M).
+func has_unlock(id: StringName) -> bool:
+	return profile.unlocks.has(String(id))
+
+
+## Writes the run file (atomic, as the profile). False leaves the previous run file as it was.
+func save_run(doc: Dictionary) -> bool:
+	return RunStore.save(_fs, doc)
+
+
+## The run file as a Dictionary; {} when there is none or it cannot be read.
+func load_run() -> Dictionary:
+	return RunStore.load(_fs)
+
+
+## Deletes the run file (the run ended).
+func clear_run() -> void:
+	RunStore.clear(_fs)
 
 
 ## Null for an unknown key.

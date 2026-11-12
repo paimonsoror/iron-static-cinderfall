@@ -1,13 +1,23 @@
 class_name GameRunFlow
 extends RefCounted
 ## The variety entry points of `Game` (VARIETY_SPEC 13.4): how a run is launched with a kit and the profile's unlocks,
-## the resume of a run that survived a process kill, and the Archive. `Game` keeps one-line delegates (its file is at
-## the line cap); the logic lives here.
-# TODO(V2-D): launch (kit, unlocks, daily seed) and resume. TODO(V4-U): the Archive overlay.
+## the resume of a run that survived a process kill (2.8), the choice overlays, and the Archive. `Game` keeps one-line
+## delegates (its file is at the line cap); the logic lives here. `Game` has no class_name (it is an autoload), so its
+## members are reached through get and call.
+# TODO(V4-U): the Archive overlay. TODO(V4-M): the daily seed.
+
+## The main menu's contract for RESUME RUN, used when the screen has it (the button is added by the UI task):
+## a signal `resume_pressed` and a method `set_resume_wave(wave: int)` (0 = no run to resume, hide the button).
+const MENU_RESUME_SIGNAL: StringName = &"resume_pressed"
+const MENU_RESUME_SETTER: StringName = &"set_resume_wave"
+const OVERLAYS_NAME: String = "ChoiceOverlays"
 
 ## What the next `Game.start_run` asked for; consumed by `apply_launch`.
 static var pending_kit: StringName = &""
 static var pending_daily: bool = false
+## The run file (and its rebuilt world) that the next `_begin_run` continues instead of starting a new run.
+static var pending_resume: Dictionary = {}
+static var pending_rebuild: RunResumeResult = null
 
 
 ## Remembers the kit and the daily flag of the run that is about to start.
@@ -17,19 +27,149 @@ static func set_launch(kit_id: StringName, daily: bool) -> void:
 
 
 ## Fills the variety fields of a new run's SimConfig (kit_index, unlocked, daily) from the pending launch and clears it.
-## An unknown or empty kit is the standard kit (index 0). The profile's unlock list is added by V2-D with profile v2.
-static func apply_launch(config: SimConfig, content: ContentSet) -> void:
-	config.kit_index = maxi(0, content.kit_index(pending_kit))
-	config.daily = pending_daily
+## The kit is the one asked for, else `--kit=<id>`, else the profile's; an unknown or empty kit is the standard kit
+## (index 0). The unlock list is the profile's (`--unlock=all|none|<id,id>` replaces it), sorted.
+static func apply_launch(config: SimConfig, content: ContentSet, args: DebugArgs = null) -> void:
+	var kit_id: StringName = pending_kit
+	if kit_id == &"" and args != null and args.kit != "":
+		kit_id = StringName(args.kit)
+	if kit_id == &"":
+		kit_id = Save.profile.kit
+	config.kit_index = maxi(0, content.kit_index(kit_id))
+	config.daily = pending_daily or (args != null and args.daily)
+	config.unlocked = unlocked_for(content, args.unlock if args != null else "")
 	pending_kit = &""
 	pending_daily = false
 
 
-## RESUME RUN: restores the run file and starts it. False when there is nothing to resume (the stub: always).
-static func resume_from_disk(_game: Node) -> bool:
-	return false
+## The unlock ids a run counts, sorted. `spec` is the `--unlock` argument: "" = the profile's unlocks that this
+## content knows (ids of a newer build are ignored), "all", "none", or a comma list of ids.
+static func unlocked_for(content: ContentSet, spec: String) -> PackedStringArray:
+	var out: PackedStringArray = PackedStringArray()
+	if spec == "none":
+		return out
+	var wanted: PackedStringArray = spec.split(",", false) if spec != "" and spec != "all" else Save.profile.unlocks
+	for u: UnlockDef in content.unlocks:
+		var id: String = String(u.id)
+		if (spec == "all" or wanted.has(id)) and not out.has(id):
+			out.append(id)
+	out.sort()
+	return out
+
+
+## The run id of the run `_begin_run` is about to start: the saved one for a resume (a resumed run keeps its id, so it
+## is rewarded once however often it is resumed), else a new "<unix>-<seed>".
+static func run_id_for(seed_value: int, used: Dictionary[String, bool]) -> String:
+	if pending_resume.is_empty():
+		return GameLaunch.make_run_id(seed_value, used, Save.profile.awarded_run_ids)
+	var id: String = RunFile.id_of(pending_resume)
+	used[id] = true
+	return id
+
+
+## Starts the run of `_begin_run`: a new one, or the pending resume. Also gives the run its choice overlays.
+static func start(game: Node, config: SimConfig, run_id: String) -> void:
+	var run: RunController = _run(game)
+	var view_o: Object = game.get(&"battle_view")
+	var view: BattleView = view_o as BattleView
+	if pending_resume.is_empty():
+		run.start(config, run_id, view)
+	else:
+		run.start_resumed(pending_resume, view, config.content, pending_rebuild)
+	pending_resume = {}
+	pending_rebuild = null
+	var layers_o: Object = game.get(&"_layers")
+	var layers: GameLayers = layers_o as GameLayers
+	if layers != null and run.sim != null:
+		var overlays: GameChoiceOverlays = GameChoiceOverlays.new()
+		overlays.name = OVERLAYS_NAME
+		run.add_child(overlays)
+		overlays.setup(run.api, config.content, layers.hud_root)
+
+
+## The wave RESUME RUN would continue (0 = nothing to resume). A run file of another build or other content is closed
+## here: paid once as a defeat at its last saved wave and deleted.
+static func resumable_wave(content: ContentSet) -> int:
+	var doc: Dictionary = Save.load_run()
+	match RunFile.check(doc, content):
+		RunFile.Verdict.RESUMABLE:
+			return RunFile.resume_wave(doc)
+		RunFile.Verdict.STALE:
+			RunResume.close(doc, content)
+	return 0
+
+
+## Sets the main menu up: closes a stale run file first (so the menu shows the Data it paid), then tells the menu
+## which wave can be resumed and listens to its RESUME RUN button, when the screen has them.
+static func setup_menu(game: Node, menu: MainMenuScreen) -> void:
+	var content_o: Object = game.get(&"content")
+	var wave: int = resumable_wave(content_o as ContentSet) if content_o != null else 0
+	menu.setup(Save.profile)
+	if menu.has_method(MENU_RESUME_SETTER):
+		menu.call(MENU_RESUME_SETTER, wave)
+	if menu.has_signal(MENU_RESUME_SIGNAL):
+		menu.connect(MENU_RESUME_SIGNAL, Callable(game, &"resume_run_from_disk"))
+
+
+## RESUME RUN (from the menu): rebuilds the run of the run file and continues it, paused, with the pause overlay up.
+## False when there is nothing to resume; a run that cannot be rebuilt is closed and paid once (RunResume.close).
+static func resume_from_disk(game: Node) -> bool:
+	if game == null:
+		return false
+	var content_o: Object = game.get(&"content")
+	var content: ContentSet = content_o as ContentSet
+	var state: int = game.call(&"state")
+	if content == null or state != GameState.Id.MENU or resumable_wave(content) == 0:
+		return false
+	var doc: Dictionary = Save.load_run()
+	var rebuilt: RunResumeResult = RunResume.rebuild(doc, content)
+	if not rebuilt.ok():
+		Log.warn("Game", "run %s cannot be resumed: %s" % [rebuilt.run_id, rebuilt.reason])
+		RunResume.close(doc, content)
+		return false
+	if rebuilt.world.is_over():  # the process died between the end of the run and the deletion of its file
+		GameRewards.grant(rebuilt.world.summary(rebuilt.run_id))
+		Save.clear_run()
+		return false
+	var entered: bool = game.call(&"_set_state", GameState.Id.BRIEFING)
+	if not entered:
+		return false
+	pending_resume = doc
+	pending_rebuild = rebuilt
+	game.call(&"_begin_run", rebuilt.config.run_seed)
+	pending_resume = {}
+	pending_rebuild = null
+	var run: RunController = _run(game)
+	if run == null or run.sim == null:
+		game.call(&"goto_menu")
+		return false
+	for phase: int in _phases_up_to(run.sim.phase):
+		game.call(&"_set_state", phase)
+	var overlays: GameChoiceOverlays = run.get_node_or_null(OVERLAYS_NAME) as GameChoiceOverlays
+	if overlays != null:
+		overlays.sync()
+	run.api.pause()
+	Log.info("Game", "run resumed id=%s wave=%d tick=%d" % [run.run_id, run.sim.wave, run.sim.tick])
+	return true
+
+
+## True while the run waits for a choice (BackPolicy: back on a choice overlay pauses, it never dismisses).
+static func choice_open(run: RunController) -> bool:
+	return run != null and run.api.awaiting() != RunApi.AWAIT_NONE
 
 
 ## Opens the Archive as an overlay on the menu. False when it could not be shown (the stub: always).
 static func open_archive(_game: Node) -> bool:
 	return false
+
+
+## The application states from PREPARING (where `_begin_run` leaves the machine) to the phase of a resumed sim.
+static func _phases_up_to(phase: int) -> Array[int]:
+	var order: Array[int] = [GameState.Id.SPAWNING, GameState.Id.CLEARING, GameState.Id.INTERMISSION]
+	var at: int = order.find(phase)
+	return order.slice(0, at + 1)
+
+
+static func _run(game: Node) -> RunController:
+	var o: Object = game.get(&"run")
+	return o as RunController

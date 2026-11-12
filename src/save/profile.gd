@@ -5,6 +5,8 @@ extends RefCounted
 const SCHEMA_VERSION: int = 1
 const MAX_AWARDED: int = 64  ## awarded_run_ids keeps the newest 64
 const MAX_HINTS: int = 128
+const MAX_UNLOCKS: int = 256
+const DEFAULT_KIT: StringName = &"k_standard"
 const MAX_ID_LENGTH: int = 128  ## longer run ids or hint keys are not ids; they are dropped on load
 const MAX_FILE_CHARS: int = 1000000  ## a real profile is under 5 KB; a larger file is treated as damaged
 const MAX_COUNT: int = 2147483647  ## counters never exceed this (JSON numbers are doubles; stay far below 2^53)
@@ -19,6 +21,9 @@ var runs_played: int = 0
 var awarded_run_ids: PackedStringArray = PackedStringArray()  ## newest last, capped at 64
 var hints_seen: PackedStringArray = PackedStringArray()
 var settings: Dictionary[StringName, Variant] = {}
+# --- variety milestone (ARCH 7.5 profile v2, read ahead of the migration of task V4-M) ---
+var unlocks: PackedStringArray = PackedStringArray()  ## unlock ids; unknown ids are kept (a newer build's file)
+var kit: StringName = DEFAULT_KIT  ## the kit picked for the next run
 
 
 static func defaults() -> Profile:

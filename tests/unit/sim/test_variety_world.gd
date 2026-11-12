@@ -301,6 +301,6 @@ func test_world_snapshot_captures_and_reapplies_the_variety_states() -> void:
 	var doc: Dictionary = JSON.parse_string(JSON.stringify(WorldSnapshot.capture(w)))
 	var fresh: SimWorld = _world(5)
 	assert_str(fresh.state_hash()).is_not_equal(w.state_hash())
-	assert_bool(WorldSnapshot.restore(fresh, doc)).is_false()  # the stub: the frozen stores are V2-D's part
+	assert_bool(WorldSnapshot.restore(fresh, doc)).is_true()  # V2-D: the snapshot is complete (was false for the stub)
 	assert_str(fresh.state_hash()).is_equal(w.state_hash())  # at tick 0 the variety states are the whole difference
 	assert_bool(WorldSnapshot.restore(fresh, {"version": 99})).is_false()

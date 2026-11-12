@@ -27,6 +27,12 @@ static func encode(p: Profile) -> String:
 		"hints_seen": hints,
 		"settings": settings,
 	}
+	# The two profile v2 fields this build reads are written only when they hold something, so the file of a profile
+	# without unlocks stays exactly the v1 file.
+	if not p.unlocks.is_empty():
+		doc["unlocks"] = Array(p.unlocks)
+	if p.kit != Profile.DEFAULT_KIT and p.kit != &"":
+		doc["kit"] = String(p.kit)
 	return JSON.stringify(doc, "\t") + "\n"
 
 
@@ -64,6 +70,12 @@ static func decode(text: String) -> ProfileDecodeResult:
 	p.awarded_run_ids = _ids(doc.get("awarded_run_ids"), Profile.MAX_AWARDED)
 	p.hints_seen = _ids(doc.get("hints_seen"), Profile.MAX_HINTS)
 	_settings(p, doc.get("settings"))
+	p.unlocks = _ids(doc.get("unlocks"), Profile.MAX_UNLOCKS)
+	var kit_v: Variant = doc.get("kit")
+	if typeof(kit_v) == TYPE_STRING:
+		var kit_text: String = kit_v
+		if not kit_text.is_empty() and kit_text.length() <= Profile.MAX_ID_LENGTH:
+			p.kit = StringName(kit_text)
 	r.profile = p
 	return r
 
