@@ -78,6 +78,40 @@ static func tracer(mat_id: StringName) -> ArrayMesh:
 	return b.build([mat_id], 1.0)
 
 
+## Arc bolt ribbon, 1 wide and 1 long: the tracer hexagon in `outer_mat` with a core a third as wide in `core_mat` (V2-F; the pool draws
+## it thin, so a friendly arc is always narrower than a danger decal).
+static func bolt(outer_mat: StringName, core_mat: StringName, scale: float = 1.0) -> ArrayMesh:
+	var b: Builder = Builder.new()
+	var outline: Array[Vector3] = [
+		Vector3(0.0, 0.0, -0.5), Vector3(0.5, 0.0, -0.4), Vector3(0.5, 0.0, 0.3),
+		Vector3(0.0, 0.0, 0.5), Vector3(-0.5, 0.0, 0.3), Vector3(-0.5, 0.0, -0.4),
+	]
+	for layer: int in 2:
+		var w: float = 1.0 if layer == 0 else 0.34
+		for i: int in outline.size():
+			var p: Vector3 = outline[i]
+			var q: Vector3 = outline[(i + 1) % outline.size()]
+			b.tri(layer, Vector3.ZERO, Vector3(p.x * w, 0.0, p.z), Vector3(q.x * w, 0.0, q.z))
+	return b.build([outer_mat, core_mat], scale)
+
+
+## The red ring under an elite (VARIETY_SPEC 5.2): a band of radius 1 with four chevrons pointing at the centre.
+static func elite_ring(mat_id: StringName) -> ArrayMesh:
+	var b: Builder = Builder.new()
+	b.add_band(0.84, 1.0, 28, 0)
+	for k: int in 4:
+		var a: float = TAU * float(k) / 4.0 + PI * 0.25
+		var dir: Vector3 = Vector3(cos(a), 0.0, sin(a))
+		var side: Vector3 = Vector3(-sin(a), 0.0, cos(a))
+		b.tri(0, dir * 0.84 + side * 0.13, dir * 0.84 - side * 0.13, dir * 0.58)
+	return b.build([mat_id], 1.0)
+
+
+## A filled disc of radius 1 with planar UVs (a texture is mapped 0..1 across the diameter): the red hatch of a danger decal.
+static func hatch_disc(mat_id: StringName, sides: int = 32) -> ArrayMesh:
+	return MeshKit.begin().disc(1.0, sides, Transform3D.IDENTITY, mat_id).build()
+
+
 ## Unit cube (debris).
 static func cube(mat_id: StringName) -> ArrayMesh:
 	return MeshKit.begin().box(Vector3.ONE, Transform3D.IDENTITY, mat_id).build()

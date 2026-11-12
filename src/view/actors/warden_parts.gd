@@ -19,7 +19,7 @@ const EXTRAS: Array = [
 
 var legs: MeshInstance3D
 var torso: MeshInstance3D
-var weapons: Array[MeshInstance3D] = []  ## pistol, smg (their Muzzle markers are children)
+var weapons: Array[MeshInstance3D] = []  ## pistol, smg, arc projector (`ActorMeshes.WARDEN_WEAPON_NODES`; their Muzzle markers are children)
 var extras: Array[MeshInstance3D] = []  ## in EXTRAS order
 var look: int = LookDevStyle.Look.CURRENT
 var tier: int = VisualQuality.Tier.HIGH
@@ -57,8 +57,8 @@ func apply(new_look: int, new_tier: int) -> void:
 	var styled: bool = LookDevStyle.styled_geometry(look)
 	_dress(legs, &"legs")
 	_dress(torso, &"torso")
-	_dress(weapons[0], &"pistol")
-	_dress(weapons[1], &"smg")
+	for w: int in weapons.size():
+		_dress(weapons[w], ActorMeshes.WARDEN_WEAPON_NODES[w])
 	for i: int in extras.size():
 		var part: StringName = EXTRAS[i][1]
 		extras[i].visible = styled

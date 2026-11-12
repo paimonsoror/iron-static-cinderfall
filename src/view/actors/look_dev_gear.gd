@@ -22,15 +22,22 @@ const SMG_GRIP_L: Vector3 = Vector3(0.0, -0.065, -0.2)
 const SMG_MAG: Vector3 = Vector3(0.0, -0.17, -0.2)
 
 
+## `weapon` is the index of the weapon node (`ActorMeshes.WARDEN_WEAPON_NODES`): 0 pistol, 1 SMG, 2 arc projector.
 static func grip_r(weapon: int) -> Vector3:
+	if weapon == WeaponMeshes.NODE_ARC:
+		return WeaponMeshes.ARC_GRIP_R
 	return SMG_GRIP_R if weapon == 1 else PISTOL_GRIP_R
 
 
 static func grip_l(weapon: int) -> Vector3:
+	if weapon == WeaponMeshes.NODE_ARC:
+		return WeaponMeshes.ARC_GRIP_L
 	return SMG_GRIP_L if weapon == 1 else PISTOL_GRIP_L
 
 
 static func mag_point(weapon: int) -> Vector3:
+	if weapon == WeaponMeshes.NODE_ARC:
+		return WeaponMeshes.ARC_MAG
 	return SMG_MAG if weapon == 1 else PISTOL_MAG
 
 

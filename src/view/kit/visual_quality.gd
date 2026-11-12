@@ -63,3 +63,40 @@ static func apply_render_scale(viewport: Viewport, tier: int) -> void:
 		return
 	viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 	viewport.scaling_3d_scale = render_scale(tier)
+
+
+# --- VARIETY_SPEC 10.3 and 10.4: what each tier draws of the chaos effects. The pools are allocated once for the HIGH size and
+# limited below it (`VfxPool.set_limit`), so a tier change never allocates; the sim is identical on every tier. ---
+
+## Blast rings (FLAT, one pool per colour), blast flashes (BILLBOARD, none on LOW), debris streaks per blast (HIGH only), arc
+## segments (3 per jump), telegraph decals (never tier-gated: what can hurt you is always drawn), mini bodies (one MultiMesh per type).
+const BLAST_RING_CAP: Array[int] = [8, 12, 16]
+const BLAST_FLASH_CAP: Array[int] = [0, 8, 12]
+const BLAST_STREAKS: Array[int] = [0, 0, 4]
+const ARC_SEGMENT_CAP: Array[int] = [18, 30, 45]
+const TELEGRAPH_CAP: Array[int] = [8, 8, 8]
+const MINI_CAP: Array[int] = [40, 40, 40]
+
+
+static func blast_rings(tier: int) -> int:
+	return BLAST_RING_CAP[clampi(tier, Tier.LOW, Tier.HIGH)]
+
+
+static func blast_flashes(tier: int) -> int:
+	return BLAST_FLASH_CAP[clampi(tier, Tier.LOW, Tier.HIGH)]
+
+
+static func blast_streaks(tier: int) -> int:
+	return BLAST_STREAKS[clampi(tier, Tier.LOW, Tier.HIGH)]
+
+
+static func arc_segments(tier: int) -> int:
+	return ARC_SEGMENT_CAP[clampi(tier, Tier.LOW, Tier.HIGH)]
+
+
+static func telegraph_decals(tier: int) -> int:
+	return TELEGRAPH_CAP[clampi(tier, Tier.LOW, Tier.HIGH)]
+
+
+static func mini_bodies(tier: int) -> int:
+	return MINI_CAP[clampi(tier, Tier.LOW, Tier.HIGH)]

@@ -6,6 +6,8 @@ extends RefCounted
 ## W1-E additions (arena only): concrete_light (pale painted concrete for barriers); pool_amber, pool_lamp,
 ## pool_cyan, pool_red (additive light pools with a radial falloff, UV 0..1 across a quad); rain (faint additive
 ## streaks). All colors still come from the palette tokens.
+## V2-F addition: hatch_red, the red hatched ground decal of every zone that can hurt the player's side (VARIETY_SPEC 5.6 rule 4,
+## 12.2): unshaded, alpha blended, a diagonal stripe texture that repeats over the decal. ShaderWarmup draws it with the rest.
 
 const IDS: Array[StringName] = [
 	&"ceramic",
@@ -31,6 +33,7 @@ const IDS: Array[StringName] = [
 	&"pool_cyan",
 	&"pool_red",
 	&"rain",
+	&"hatch_red",
 ]
 
 ## Palette defaults (data/visual_tokens.json) used until configure() supplies the real tokens.
@@ -46,6 +49,7 @@ const DEFAULT_PALETTE: Dictionary = {
 static var _tokens: VisualTokens = null
 static var _mats: Dictionary[StringName, StandardMaterial3D] = {}
 static var _glow: ImageTexture = null
+static var _hatch: ImageTexture = null
 
 
 ## Same instance for the same id. Unknown ids give a magenta material so mistakes are visible.
@@ -70,6 +74,24 @@ static func glow_texture() -> ImageTexture:
 	if _glow == null:
 		_glow = ImageTexture.create_from_image(glow_image())
 	return _glow
+
+
+## Diagonal stripes (white, alpha 0.8 on the stripe and 0.14 between) that tile seamlessly: the red hatch of the danger decals. Built once.
+static func hatch_texture() -> ImageTexture:
+	if _hatch == null:
+		_hatch = ImageTexture.create_from_image(hatch_image())
+	return _hatch
+
+
+## The CPU image behind `hatch_texture` (also what the tests read): 64 px, a period of 16 px along the diagonal.
+static func hatch_image() -> Image:
+	var n: int = 64
+	var img: Image = Image.create(n, n, false, Image.FORMAT_RGBA8)
+	for y: int in n:
+		for x: int in n:
+			var on: bool = (x + y) % 16 < 7
+			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, 0.8 if on else 0.14))
+	return img
 
 
 ## The CPU image behind `glow_texture` (also what the tests read).
@@ -158,6 +180,8 @@ static func _paint(m: StandardMaterial3D, id: StringName) -> void:
 		&"rain":
 			_additive(m, _pal(&"bone_ceramic").lerp(_pal(&"warden_cyan"), 0.45))
 			m.albedo_color.a = 0.2
+		&"hatch_red":
+			_hatch_decal(m, _pal(&"chorus_red"))
 		_:
 			m.albedo_color = Color.MAGENTA
 
@@ -175,6 +199,20 @@ static func _additive(m: StandardMaterial3D, c: Color) -> void:
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	m.albedo_color = Color(c.r, c.g, c.b, 0.6)
+	m.no_depth_test = false
+	m.disable_receive_shadows = true
+
+
+static func _hatch_decal(m: StandardMaterial3D, c: Color) -> void:
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_MIX
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.albedo_color = Color(c.r, c.g, c.b, 0.85)
+	m.albedo_texture = hatch_texture()
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+	m.texture_repeat = true
+	m.uv1_scale = Vector3(3.0, 3.0, 1.0)
 	m.no_depth_test = false
 	m.disable_receive_shadows = true
 
