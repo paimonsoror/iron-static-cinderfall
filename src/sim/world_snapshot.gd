@@ -238,11 +238,9 @@ static func _open(v: Variant) -> Variant:
 
 ## One row per stream, sorted by name: [name, state as a decimal string].
 static func _rng_rows(rng: SimRng) -> Array:
-	var names: Array = rng._streams.keys()
-	names.sort()
 	var rows: Array = []
-	for n: StringName in names:
-		rows.append([String(n), str(rng._streams[n].state)])
+	for n: String in rng.names_sorted():  # by text, never by StringName (pointer order)
+		rows.append([n, str(rng._streams[StringName(n)].state)])
 	return rows
 
 
