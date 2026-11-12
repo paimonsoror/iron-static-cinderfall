@@ -1,4 +1,4 @@
-"""The 29 sound effects of ARCH 10 as DSP recipes (noise bursts, filtered sweeps, FM tones, inharmonic partials).
+"""The 29 legacy sound effects of ARCH 10 as DSP recipes (noise bursts, filtered sweeps, FM tones, inharmonic partials).
 
 Each recipe takes its own fixed-seed `random.Random` and returns a finished mono signal (see dsp.finish).
 Bleak industrial: dry, metallic, close. No melody; the stingers are stacked fifths and pulses.
@@ -9,65 +9,11 @@ import math
 import random
 from typing import Callable
 
+from blocks import bell, nbp, nhp, nlp, rand_gate, scatter, thump
 from dsp import (
-    SR, Track, bpf, count, env_bump, env_exp, env_line, env_swell, exp_curve, finish, fm_sweep, hpf, lp1, lpf, mul,
-    noise, partials, saw_sweep, scale, sine_sweep, softclip, square_sweep,
+    SR, Track, bpf, count, env_bump, env_exp, env_line, env_swell, exp_curve, finish, fm_sweep, hpf, lpf, mul,
+    noise, partials, saw_sweep, sine_sweep, softclip, square_sweep,
 )
-
-# ---------------------------------------------------------------------------------------------------------
-# building blocks
-# ---------------------------------------------------------------------------------------------------------
-
-
-def nhp(r: random.Random, dur: float, tau: float, fc: float) -> list[float]:
-    """High-passed noise burst with an exponential decay."""
-    n = count(dur)
-    return mul(hpf(noise(r, n), fc), env_exp(n, tau))
-
-
-def nlp(r: random.Random, dur: float, tau: float, fc: float) -> list[float]:
-    n = count(dur)
-    return mul(lpf(noise(r, n), fc), env_exp(n, tau))
-
-
-def nbp(r: random.Random, dur: float, tau: float, fc: float, q: float = 2.0) -> list[float]:
-    """Band-passed noise burst. A narrow band carries little energy, so the gain is compensated."""
-    n = count(dur)
-    comp = min(5.0, math.sqrt(SR * 0.5 / max(fc / q, 1.0)) * 0.6)
-    return scale(mul(bpf(noise(r, n), fc, q), env_exp(n, tau)), comp)
-
-
-def thump(dur: float, f0: float, f1: float, tau: float) -> list[float]:
-    n = count(dur)
-    return mul(sine_sweep(n, f0, f1), env_exp(n, tau, 0.001))
-
-
-def bell(f: float, dur: float, tau: float, ratio: float = 1.41, index: float = 1.6) -> list[float]:
-    """Metallic FM tone (inharmonic modulator) with a decaying index."""
-    n = count(dur)
-    return mul(fm_sweep(n, f, f, ratio, index, 0.0), env_exp(n, tau, 0.001))
-
-
-def scatter(r: random.Random, t: Track, n: int, t0: float, t1: float, fc: tuple[float, float], q: float,
-            tau: float, gain: float, power: float = 1.0) -> None:
-    """n short band-passed clicks at random times in [t0, t1] (power > 1 clusters them toward t0)."""
-    for _ in range(n):
-        at = t0 + (t1 - t0) * (r.random() ** power)
-        f = r.uniform(fc[0], fc[1])
-        amp = gain * r.uniform(0.5, 1.0)
-        t.add(nbp(r, 0.05, tau, f, q), at, amp)
-
-
-def rand_gate(r: random.Random, n: int, on_ms: tuple[float, float], off_ms: tuple[float, float]) -> list[float]:
-    """Smoothed on/off gate with random segment lengths (electrical stutter)."""
-    g: list[float] = []
-    on = True
-    while len(g) < n:
-        lo, hi = on_ms if on else off_ms
-        g.extend([1.0 if on else 0.0] * max(1, int(r.uniform(lo, hi) * SR / 1000.0)))
-        on = not on
-    return lp1(g[:n], 700.0)
-
 
 # ---------------------------------------------------------------------------------------------------------
 # weapons

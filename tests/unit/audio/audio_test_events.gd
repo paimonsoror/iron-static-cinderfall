@@ -22,4 +22,17 @@ signal ability_activated(id: StringName)
 signal ability_ended(id: StringName)
 signal reload_started(ticks: int)
 signal reload_finished
+# --- variety milestone (VARIETY_SPEC 13.4) ---
+signal act_started(act: int)
+signal await_changed(kind: int)
+signal draft_offered(ids: Array[StringName])
+signal directive_picked(id: StringName, stacks: int)
+signal route_offered
+signal route_picked(option: int)
+signal crate_secured
+signal weapon_swapped(slot: int, id: StringName)
+signal area_blast(kind: int, x: float, z: float, radius: float)
+signal chain_arc(from_id: int, to_id: int)
+signal delayed_hit(kind: int, x: float, z: float, ticks: int)
+signal event_warned(id: StringName, ticks: int, x: float, z: float)
 @warning_ignore_restore("unused_signal")

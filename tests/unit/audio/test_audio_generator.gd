@@ -36,6 +36,8 @@ func test_two_generator_runs_are_byte_identical_and_match_the_committed_files() 
 	var last_line: String = result["last_line"]
 	assert_int(code).override_failure_message(output).is_equal(0)
 	assert_str(last_line).starts_with("AUDIO CHECK OK")
+	# 29 legacy + 14 variety sounds + the 2 beds: the generator and the catalog know the same files
+	assert_str(last_line).contains("(%d files" % (AudioCatalog.all_ids().size() + 2))
 
 
 func test_the_generator_report_finds_no_problem_in_the_committed_files() -> void:

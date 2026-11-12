@@ -8,6 +8,9 @@ extends Node
 ##  - `pause_all` / `resume_all` freeze and release every voice and bed; while paused only `ui_*` sounds start.
 ##  - Settings `sound_on` / `music_on` come from `Save` and apply at once (`Events.settings_changed`); `disabled` is
 ##    the `--mute` switch (Game sets it at boot).
+##  - Voice classes (VARIETY_SPEC 10.5, AudioVoicePool): alerts keep their own voices and always start, weapon sounds are
+##    capped at 8 voices, blasts may not take the voices reserved for alerts.
+##  - `hold(id, slot)` / `release(slot)`: a looping voice per weapon slot (AudioHeldVoices), outside the 16 voices.
 ## Read-only with respect to the simulation: it listens to `Events` and nothing else.
 
 const VOICES: int = 16
@@ -31,6 +34,7 @@ var music_on: bool = true  ## Save setting: the two loop beds
 var auto_route: bool = true  ## false: do not create the Events router in _ready (tests)
 var gate: AudioVoiceGate = AudioVoiceGate.new()
 var pool: AudioVoicePool = AudioVoicePool.new()
+var held: AudioHeldVoices = AudioHeldVoices.new()
 var router: AudioEventRouter = null
 var loop_ambience: AudioStreamPlayer = null
 var loop_drone: AudioStreamPlayer = null
@@ -47,6 +51,7 @@ var loop_off: bool = false  ## the beds play once instead of looping
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _streams: Dictionary[StringName, AudioStream] = {}
+var _held_streams: Dictionary[StringName, AudioStream] = {}  ## looping copies, made when an id is first held
 var _warned: Dictionary[StringName, bool] = {}
 var _paused: bool = false
 var _ambience_wanted: bool = false
@@ -60,9 +65,10 @@ func _ready() -> void:
 	_rng.randomize()
 	AudioMix.ensure_buses()
 	pool.build(self, VOICES, AudioMix.BUS_SFX)
+	held.build(self, AudioMix.BUS_SFX)
 	loop_ambience = _make_loop_player()
 	loop_drone = _make_loop_player()
-	for id: StringName in AudioCatalog.IDS:
+	for id: StringName in AudioCatalog.all_ids():
 		@warning_ignore("return_value_discarded")
 		_stream_for(id)
 	@warning_ignore("return_value_discarded")
@@ -81,6 +87,7 @@ func _exit_tree() -> void:
 		router.unbind()
 	_silence()
 	_streams.clear()
+	_held_streams.clear()
 
 
 func _process(delta: float) -> void:
@@ -96,6 +103,7 @@ func advance(dt: float) -> void:
 	var level_before: float = _drone_level
 	_amb_gain = move_toward(_amb_gain, target, dt / LOOP_FADE_SECONDS)
 	_drone_level = move_toward(_drone_level, _intensity, dt / INTENSITY_SECONDS)
+	held.advance(dt)
 	if _amb_gain != gain_before or _drone_level != level_before:
 		_apply_loop_volumes()
 	if target == 0.0 and _amb_gain <= 0.0 and (loop_ambience.playing or loop_drone.playing):
@@ -127,13 +135,14 @@ func try_play(id: StringName) -> bool:
 	var stream: AudioStream = _stream_for(id)
 	if stream == null:
 		return false
-	var priority: int = AudioCatalog.priority(id)
-	var voice: int = pool.acquire(priority)
+	var priority: int = AudioCatalog.effective_priority(id)
+	var voice_class: int = AudioCatalog.voice_class(id)
+	var voice: int = pool.acquire(priority, voice_class)
 	if voice < 0:
 		return false
 	var jitter: float = AudioCatalog.pitch_jitter(id)
 	last_pitch = 1.0 + jitter * _rng.randf_range(-1.0, 1.0)
-	pool.start(voice, id, stream, AudioCatalog.volume_db(id), last_pitch, priority, now)
+	pool.start(voice, id, stream, AudioCatalog.volume_db(id), last_pitch, priority, now, voice_class)
 	if trace:
 		Log.info("Sfx", "t=%d play %s voice=%d pitch=%.3f" % [now, String(id), voice, last_pitch])
 	started_total += 1
@@ -146,6 +155,49 @@ func try_play(id: StringName) -> bool:
 ## Makes the pitch jitter reproducible (tests).
 func seed_rng(value: int) -> void:
 	_rng.seed = value
+
+
+# --- held voices ----------------------------------------------------------------------------------------------
+
+## Starts a looping voice for `id` on weapon slot 0 or 1, or keeps the one that already plays it. The voice is not one of
+## the 16: it lasts until `release(slot)` or `release_all_held`, and stops at once when sound is switched off or `disabled`.
+## An unknown id or a bad slot logs once and is ignored; nothing starts while paused.
+func hold(id: StringName, slot: int) -> void:
+	@warning_ignore("return_value_discarded")
+	try_hold(id, slot)
+
+
+## `hold` that says whether the slot now holds `id`.
+func try_hold(id: StringName, slot: int) -> bool:
+	if disabled or not sound_on or _paused:
+		return false
+	if slot < 0 or slot >= AudioHeldVoices.SLOTS:
+		_warn_once(id, "hold of '%s' on bad slot %d" % [String(id), slot])
+		return false
+	if not AudioCatalog.has_sound(id):
+		_warn_once(id, "unknown sound id '%s'" % String(id))
+		return false
+	var stream: AudioStream = _held_stream_for(id)
+	if stream == null:
+		return false
+	return held.start(slot, id, stream, AudioCatalog.volume_db(id))
+
+
+## Fades the slot's held voice out (about 80 ms). Nothing happens for a free slot.
+func release(slot: int) -> void:
+	held.release(slot)
+
+
+func release_all_held() -> void:
+	held.release_all()
+
+
+func is_held(slot: int) -> bool:
+	return held.is_held(slot)
+
+
+func held_id(slot: int) -> StringName:
+	return held.held_id(slot)
 
 
 # --- beds -----------------------------------------------------------------------------------------------------
@@ -187,6 +239,7 @@ func drone_level() -> float:
 func pause_all() -> void:
 	_paused = true
 	pool.set_paused(true)
+	held.set_paused(true)
 	for p: AudioStreamPlayer in [loop_ambience, loop_drone]:
 		if p.playing:
 			p.stream_paused = true  # Godot reports a paused player as not playing
@@ -195,6 +248,7 @@ func pause_all() -> void:
 func resume_all() -> void:
 	_paused = false
 	pool.set_paused(false)
+	held.set_paused(false)
 	for p: AudioStreamPlayer in [loop_ambience, loop_drone]:
 		p.stream_paused = false
 	if _ambience_wanted and _bed_allowed():
@@ -211,6 +265,7 @@ func apply_settings() -> void:
 	music_on = _setting(&"music_on")
 	if not sound_on:
 		pool.stop_all()
+		held.release_all(true)
 	if not music_on:
 		_amb_gain = 0.0
 		_stop_loops()
@@ -302,8 +357,21 @@ func _silence() -> void:
 	if pool.players.is_empty():
 		return
 	pool.stop_all()
+	held.release_all(true)
 	_amb_gain = 0.0
 	_stop_loops()
+
+
+func _held_stream_for(id: StringName) -> AudioStream:
+	if _held_streams.has(id):
+		return _held_streams[id]
+	var source: AudioStream = _stream_for(id)
+	var wav: AudioStreamWAV = source as AudioStreamWAV
+	if wav == null:
+		return null
+	var looped: AudioStream = AudioLoopPad.looped_copy(wav)
+	_held_streams[id] = looped
+	return looped
 
 
 func _stream_for(id: StringName) -> AudioStream:

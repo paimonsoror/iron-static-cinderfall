@@ -33,7 +33,7 @@ func test_the_catalog_lists_the_arch_ids_in_order_and_the_folder_holds_nothing_e
 			on_disk.append(file.get_basename())
 	on_disk.sort()
 	var wanted: Array[String] = []
-	for id: StringName in AudioTestKit.ARCH_IDS:
+	for id: StringName in AudioTestKit.ARCH_IDS + AudioCatalog.VARIETY_IDS:  # the variety files are pinned in test_variety_audio_*
 		wanted.append(String(id))
 	wanted.sort()
 	assert_array(on_disk).is_equal(wanted)
@@ -46,7 +46,7 @@ func test_every_id_has_mix_parameters() -> void:
 		assert_float(AudioCatalog.pitch_jitter(id)).is_between(0.0, 0.1)
 		assert_int(AudioCatalog.min_interval_ms(id)).is_between(20, 5000)
 		assert_int(AudioCatalog.priority(id)).is_between(AudioCatalog.PRIORITY_LOW, AudioCatalog.PRIORITY_HIGH)
-	assert_int(AudioCatalog.PARAMS.size()).is_equal(29)
+	assert_int(AudioCatalog.PARAMS.size()).is_equal(AudioTestKit.ARCH_IDS.size() + AudioCatalog.VARIETY_IDS.size())
 
 
 func test_sfx_are_mono_16_bit_at_22050_or_44100_and_under_1_5_s_except_stingers() -> void:

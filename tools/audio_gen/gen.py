@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generates every sound of IRON STATIC: CINDERFALL into assets/audio/ (ARCH 10). Python 3.12, standard library only.
 
-    py -3.12 -I tools/audio_gen/gen.py                 write the 29 SFX and 2 loops into assets/audio/
+    py -3.12 -I tools/audio_gen/gen.py                 write every SFX (registry.py) and the 2 loops
     py -3.12 -I tools/audio_gen/gen.py --out <dir>     write into <dir> instead
     py -3.12 -I tools/audio_gen/gen.py --check         regenerate twice into temp dirs, require both runs to be
                                                        byte-identical to each other and to the committed files
@@ -27,11 +27,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # -I removes the scrip
 
 import beds  # noqa: E402
 import dsp  # noqa: E402
-import voices  # noqa: E402
+import registry  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = REPO / "assets" / "audio"
-MAX_SFX_SECONDS = 1.5  # stingers (voices.STINGERS) are exempt
+MAX_SFX_SECONDS = 1.5  # stingers (registry.STINGERS) are exempt
 MAX_STINGER_SECONDS = 4.0
 LOOP_RANGE_SECONDS = (12.0, 24.0)
 MAX_SEAM_RATIO = 3.0
@@ -40,7 +40,7 @@ MAX_SEAM_RATIO = 3.0
 def outputs() -> dict[str, str]:
     """relative path -> kind ('sfx' or 'loop')."""
     out: dict[str, str] = {}
-    for sid in voices.RECIPES:
+    for sid in registry.RECIPES:
         out[f"sfx/{sid}.wav"] = "sfx"
     for name in beds.LOOPS:
         out[f"loops/{name}.wav"] = "loop"
@@ -50,7 +50,7 @@ def outputs() -> dict[str, str]:
 def generate(out_dir: Path) -> list[str]:
     """Writes every file; returns the relative paths written."""
     written: list[str] = []
-    for sid, recipe in voices.RECIPES.items():
+    for sid, recipe in registry.RECIPES.items():
         sig = recipe(dsp.rng_for(sid))
         dsp.write_wav(out_dir / "sfx" / f"{sid}.wav", sig)
         written.append(f"sfx/{sid}.wav")
@@ -134,7 +134,7 @@ def format_problems(rel: str, kind: str, path: Path) -> list[str]:
             issues.append(f"loop length {dur:.2f}s outside {LOOP_RANGE_SECONDS}")
         if seam_ratio(x) > MAX_SEAM_RATIO:
             issues.append(f"loop seam ratio {seam_ratio(x):.2f} exceeds {MAX_SEAM_RATIO}")
-    elif sid in voices.STINGERS:
+    elif sid in registry.STINGERS:
         if dur > MAX_STINGER_SECONDS:
             issues.append(f"stinger length {dur:.2f}s")
     elif dur >= MAX_SFX_SECONDS:

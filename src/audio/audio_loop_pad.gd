@@ -9,6 +9,23 @@ extends RefCounted
 const PAD_FRAMES: int = 256  ## frames of the loop start copied behind the loop end
 
 
+## A looping copy of `wav` for a held voice (AudioHeldVoices): a one-shot sound loops over its whole length, a stream that
+## already loops keeps its loop points, and the copy is padded like every loop. The shared source resource is never
+## touched. Only 8 and 16 bit PCM can be looped here; any other format comes back as a plain copy that plays once.
+static func looped_copy(wav: AudioStreamWAV) -> AudioStreamWAV:
+	var copy: AudioStreamWAV = wav.duplicate() as AudioStreamWAV
+	var width: int = 2 if copy.format == AudioStreamWAV.FORMAT_16_BITS else (1 if copy.format == AudioStreamWAV.FORMAT_8_BITS else 0)
+	if width == 0:
+		return copy
+	if copy.loop_mode == AudioStreamWAV.LOOP_DISABLED:
+		copy.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		copy.loop_begin = 0
+		copy.loop_end = floori(float(copy.data.size()) / float(width * (2 if copy.stereo else 1)))
+	@warning_ignore("return_value_discarded")
+	pad(copy)
+	return copy
+
+
 ## Pads `wav` once. True when data was appended. Only 8 and 16 bit PCM loops are handled (the beds are 16 bit mono);
 ## a stream that does not loop, or whose data already extends far enough, is left alone.
 static func pad(wav: AudioStreamWAV) -> bool:

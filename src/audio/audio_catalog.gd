@@ -7,6 +7,10 @@ extends RefCounted
 ##  - pitch_jitter: pitch_scale varies by +/- this fraction (from the director's own RNG);
 ##  - min_interval_ms: the same id may not start again sooner than this;
 ##  - priority: when all 16 voices are busy a sound may take the voice of an equal or lower priority (oldest first).
+##
+## CLASSES maps an id to its voice class (VARIETY_SPEC 10.5); an id that is not listed is CLASS_OTHER. The class decides
+## how many voices the sound may hold and whether it may take a reserved one (AudioVoicePool). The 29 legacy ids stay
+## CLASS_OTHER, except `core_low` (an alert) and the `ui_*` sounds (CLASS_UI), so their behaviour is unchanged.
 
 const SFX_DIR: String = "res://assets/audio/sfx/"
 const LOOP_AMBIENCE: String = "res://assets/audio/loops/ambience.wav"
@@ -15,14 +19,29 @@ const LOOP_DRONE: String = "res://assets/audio/loops/combat_drone.wav"
 const PRIORITY_LOW: int = 0
 const PRIORITY_MID: int = 1
 const PRIORITY_HIGH: int = 2
+const PRIORITY_ALERT: int = 3  ## effective priority of the alert class: no other class can take an alert's voice
 
-## ARCH 10, in that order.
+const CLASS_OTHER: int = 0  ## hits, deaths, abilities, stingers: no limit of their own
+const CLASS_WEAPON: int = 1  ## the new weapon sounds: at most AudioVoicePool.WEAPON_MAX voices
+const CLASS_BLAST: int = 2  ## blasts: may not take the voices reserved for alerts
+const CLASS_ALERT: int = 3  ## event warnings, boss telegraphs, core low: reserved voices, always start
+const CLASS_UI: int = 4  ## interface feedback: never limited, works while paused
+
+## ARCH 10, in that order (the 29 legacy sounds).
 const IDS: Array[StringName] = [
 	&"shot_pistol", &"shot_smg", &"shot_turret", &"reload_start", &"reload_done", &"hit_ceramic", &"hit_armor",
 	&"death_small", &"death_heavy", &"death_boss", &"core_hit_light", &"core_hit_heavy", &"boss_stomp", &"emp",
 	&"shield_up", &"shield_break", &"overdrive_on", &"overdrive_off", &"ui_tap", &"ui_purchase", &"ui_deny",
 	&"ui_drawer", &"wave_start", &"wave_clear", &"intermission_tick", &"core_low", &"boss_stinger", &"victory",
 	&"defeat",
+]
+
+## VARIETY_SPEC 12.1 / ARCH 10 (V), the 14 sounds of the slice (task V2-G). Task V4-A appends the other 46.
+const VARIETY_IDS: Array[StringName] = [
+	&"shot_arc", &"arc_chain", &"weapon_swap",
+	&"burster_arm", &"blast_small", &"blast_big", &"mote_burn",
+	&"warn_harm", &"strike_call", &"strike_impact", &"crate_secured",
+	&"draft_open", &"draft_pick", &"route_pick",
 ]
 
 ## Sounds that may be longer than 1.5 s.
@@ -58,11 +77,53 @@ const PARAMS: Dictionary = {
 	&"boss_stinger": [-1.0, 0.000, 2000, 2],
 	&"victory": [-2.0, 0.000, 3000, 2],
 	&"defeat": [-2.0, 0.000, 3000, 2],
+	# --- variety (V2-G). The arc projector fires 1.6 times a second, so its shot may repeat after 120 ms.
+	&"shot_arc": [-6.0, 0.035, 120, 0],
+	&"arc_chain": [-9.0, 0.060, 70, 0],
+	&"weapon_swap": [-6.0, 0.020, 250, 2],
+	&"burster_arm": [-5.0, 0.030, 400, 2],
+	&"blast_small": [-5.0, 0.060, 45, 1],
+	&"blast_big": [-2.0, 0.030, 150, 2],
+	&"mote_burn": [-13.0, 0.080, 45, 0],
+	&"warn_harm": [-2.0, 0.000, 600, 2],
+	&"strike_call": [-3.0, 0.000, 800, 2],
+	&"strike_impact": [-1.0, 0.020, 400, 2],
+	&"crate_secured": [-6.0, 0.000, 500, 2],
+	&"draft_open": [-6.0, 0.000, 300, 2],
+	&"draft_pick": [-5.0, 0.000, 200, 2],
+	&"route_pick": [-5.0, 0.000, 200, 2],
+}
+
+const CLASSES: Dictionary = {
+	&"core_low": CLASS_ALERT,
+	&"ui_tap": CLASS_UI,
+	&"ui_purchase": CLASS_UI,
+	&"ui_deny": CLASS_UI,
+	&"ui_drawer": CLASS_UI,
+	&"shot_arc": CLASS_WEAPON,
+	&"arc_chain": CLASS_WEAPON,
+	&"weapon_swap": CLASS_WEAPON,
+	&"blast_small": CLASS_BLAST,
+	&"blast_big": CLASS_BLAST,
+	&"strike_impact": CLASS_BLAST,
+	&"warn_harm": CLASS_ALERT,
+	&"strike_call": CLASS_ALERT,
+	&"crate_secured": CLASS_UI,
+	&"draft_open": CLASS_UI,
+	&"draft_pick": CLASS_UI,
+	&"route_pick": CLASS_UI,
 }
 
 
 static func has_sound(id: StringName) -> bool:
 	return PARAMS.has(id)
+
+
+## Every id that has a file: the 29 legacy sounds, then the variety ones.
+static func all_ids() -> Array[StringName]:
+	var ids: Array[StringName] = IDS.duplicate()
+	ids.append_array(VARIETY_IDS)
+	return ids
 
 
 static func volume_db(id: StringName) -> float:
@@ -81,9 +142,20 @@ static func priority(id: StringName) -> int:
 	return _row(id)[3]
 
 
+## CLASS_*; CLASS_OTHER for an id the table does not list.
+static func voice_class(id: StringName) -> int:
+	var cls: int = CLASSES.get(id, CLASS_OTHER)
+	return cls
+
+
+## The priority the voice pool compares: the row, except that an alert outranks everything else.
+static func effective_priority(id: StringName) -> int:
+	return PRIORITY_ALERT if voice_class(id) == CLASS_ALERT else priority(id)
+
+
 ## UI sounds keep working while the game is paused.
 static func is_ui(id: StringName) -> bool:
-	return String(id).begins_with("ui_")
+	return String(id).begins_with("ui_") or voice_class(id) == CLASS_UI
 
 
 static func sfx_path(id: StringName) -> String:
