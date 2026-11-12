@@ -1,16 +1,21 @@
 # Headless whole-run sim runner wrapper. Runs Godot headless on tools/sim_run.gd and judges by its output text.
 # stdout is deterministic (RUN lines, SIM VIOLATION lines, "SIM SUMMARY: runs=N victories=V defeats=D" last); the
 # TIMING line and engine noise go to stderr, so two executions diff clean.
-# Exit 0 every run finished and kept every invariant, 1 a run hit -MaxTicks or broke an invariant (or no summary),
-# 2 script/parse error, bad arguments or unreadable content.
-# Usage: .\tools\sim_run.ps1 [-Seed 1] [-Runs 20] [-Policy greedy|none|both] [-MaxTicks 60000]
+# Exit 0 every run finished and kept every invariant, 1 a run hit -MaxTicks, stalled on a choice or broke an invariant
+# (or no summary), 2 script/parse error, bad arguments or unreadable content.
+# Each RUN line carries the death wave (0 unless the core fell) and the build signature (primary weapon + two tags).
+# Usage: .\tools\sim_run.ps1 [-Seed 1] [-Runs 20]
+#        [-Policy greedy|none|random|hoarder|spammer|turret_rush|balanced|risk|both] [-MaxTicks N]
 #        [-DamageMult 1.0] [-StartScrap 0] [-Data res://data]
+# Run k plays seed -Seed + k; "both" plays none and greedy, as before. On the shipped data the runs follow a generated
+# plan, with drafts, routes and crates, only once the sim tasks of the variety milestone (V2-A to V2-C) have landed:
+# until then the plan is the legacy five waves and the bots have no intermission choice to make.
 [CmdletBinding(PositionalBinding = $false)]
 param(
     [int]$Seed = 1,
     [int]$Runs = 20,
     [string]$Policy = "greedy",
-    [int]$MaxTicks = 60000,
+    [int]$MaxTicks = 0,   # 0 = the default of the content: 60000 for the legacy waves, 108000 for a generated run
     [double]$DamageMult = 1.0,
     [int]$StartScrap = 0,
     [string]$Data = "res://data",
@@ -35,8 +40,9 @@ if ($impBad.Count -gt 0) {
 
 $inv = [System.Globalization.CultureInfo]::InvariantCulture
 $argList = @("--headless", "-s", "res://tools/sim_run.gd", "--",
-    "--runs", "$Runs", "--seed", "$Seed", "--policy", $Policy, "--max-ticks", "$MaxTicks",
+    "--runs", "$Runs", "--seed", "$Seed", "--policy", $Policy,
     "--damage-mult", $DamageMult.ToString($inv), "--start-scrap", "$StartScrap", "--data", $Data)
+if ($MaxTicks -gt 0) { $argList += @("--max-ticks", "$MaxTicks") }
 if ($Extra.Count -gt 0) { $argList += $Extra }   # forwarded raw: the script rejects unknown flags itself
 $r = Invoke-Godot $argList -TimeoutSec 1800
 $text = $r.Output -replace $ansi, ""

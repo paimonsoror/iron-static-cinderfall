@@ -6,23 +6,53 @@ extends RefCounted
 
 ## No run of the shipped waves lasts this long (WORK_PLAN seed sweep: every run ends before tick 60,000).
 const DEFAULT_MAX_TICKS: int = 60000
+## A generated run is longer: a win is 780 to 1,020 s of combat (VARIETY_SPEC 2.2) plus the breathers, about 64,000
+## ticks, and a slow one more. 30 minutes of simulated time.
+const VARIETY_MAX_TICKS: int = 108000
+## A choice that is still open after this many calls of the bot is a stall: an intermission needs a handful of
+## commands (rerolls, a patch, the pick), and the tick advances one step per command, so a run that never leaves an
+## await would otherwise spin until `max_ticks` on commands the sim keeps refusing.
+const MAX_AWAIT_CALLS: int = 400
 
 
-## One run with `policy` (a PolicyBot.Policy). Stops at VICTORY or DEFEAT, or at `max_ticks` (timed_out).
-static func run(config: SimConfig, policy: int, max_ticks: int = DEFAULT_MAX_TICKS) -> HarnessReport:
+## The tick limit of a content when the caller gives none.
+static func default_max_ticks(content_set: ContentSet) -> int:
+	return VARIETY_MAX_TICKS if content_set.is_variety() else DEFAULT_MAX_TICKS
+
+
+## One run with `policy` (a PolicyBot.Policy). Stops at VICTORY or DEFEAT, at `max_ticks` (timed_out; 0 or less means
+## `default_max_ticks` of the content), or when the world waits for a choice the bot leaves open (`stalled`, also
+## timed_out). `bot_override` (tests) replaces the bot the policy would make.
+static func run(config: SimConfig, policy: int, max_ticks: int = DEFAULT_MAX_TICKS, bot_override: PolicyBot = null) -> HarnessReport:
+	var limit: int = max_ticks if max_ticks > 0 else default_max_ticks(config.content)
 	var world: SimWorld = SimWorld.new(config)
-	var bot: PolicyBot = PolicyBot.new(policy)
+	var bot: PolicyBot = bot_override if bot_override != null else PolicyBot.new(policy)
 	var checker: HarnessChecker = HarnessChecker.new(world)
-	while not world.is_over() and world.tick < max_ticks:
+	var tally: WeaponDamageTally = WeaponDamageTally.new()
+	var await_calls: int = 0
+	var stalled_on: int = PhaseState.Await.NONE
+	while not world.is_over() and world.tick < limit:
 		bot.act(world)
+		if world.phase_state.awaiting == PhaseState.Await.NONE:
+			await_calls = 0
+		else:
+			await_calls += 1
+			if await_calls > MAX_AWAIT_CALLS or world.command_queue.is_empty():
+				stalled_on = world.phase_state.awaiting
+				break
 		world.step()
-		checker.after_step(world, world.events.drain())
+		var events: Array[SimEvent] = world.events.drain()
+		checker.after_step(world, events)
+		tally.feed(world, events)
 	checker.finish(world, bot.commands_submitted)
-	return report_of(world, policy, checker)
+	var report: HarnessReport = report_of(world, policy, checker, tally)
+	report.stalled = stalled_on != PhaseState.Await.NONE
+	report.stalled_on = stalled_on
+	return report
 
 
-## The numbers of a finished (or stopped) world.
-static func report_of(world: SimWorld, policy: int, checker: HarnessChecker) -> HarnessReport:
+## The numbers of a finished (or stopped) world. `tally` (optional) names the weapon that dealt the most damage.
+static func report_of(world: SimWorld, policy: int, checker: HarnessChecker, tally: WeaponDamageTally = null) -> HarnessReport:
 	var r: HarnessReport = HarnessReport.new()
 	r.run_seed = world.config.run_seed
 	r.policy = policy
@@ -60,6 +90,10 @@ static func report_of(world: SimWorld, policy: int, checker: HarnessChecker) -> 
 	r.violations = checker.violations.duplicate()
 	r.log = world.command_log
 	r.world = world
+	r.death_wave = world.wave if world.phase == GameState.Id.DEFEAT else 0
+	r.signature = BuildSignature.of(world, tally)
+	if tally != null:
+		r.damage_by_weapon = tally.damage.duplicate()
 	return r
 
 
