@@ -338,7 +338,7 @@ func _build_lights() -> void:
 	sun.light_energy = 1.05
 	sun.shadow_enabled = false
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-	sun.directional_shadow_max_distance = 90.0
+	sun.directional_shadow_max_distance = 150.0 if CameraFit.FOV_DEG > 0.0 else 90.0  # a perspective camera stands farther from the yard
 	add_child(sun)
 
 	var env: Environment = Environment.new()

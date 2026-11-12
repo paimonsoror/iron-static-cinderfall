@@ -4,12 +4,15 @@ extends RefCounted
 ##
 ## `solve` fits the playable rectangle plus the outer ends of the spawn regions (plus `frame_margin_m` on every
 ## side) into the band between `top_px` and `viewport_h - bottom_px`, centered in that band, at the largest scale
-## that fits both the width and the band height. Works for any yaw; pitch is clamped to the allowed 55..65 degrees.
-## `project` and `unproject_ground` are the same math the rig uses, so tests can check it without a Camera3D.
+## that fits both the width and the band height. Works for any yaw; pitch is clamped to the allowed 40..65 degrees.
+## The camera is a perspective camera of `FOV_DEG` (the maths of `CameraPersp`); `solve_with_fov` with 0 gives the orthographic
+## fit of the first slice. `project` and `unproject_ground` are the same math the rig uses, so tests can check it without a Camera3D.
 
 const CAMERA_DISTANCE: float = 60.0
-const PITCH_MIN_DEG: float = 55.0
+const PITCH_MIN_DEG: float = 40.0
 const PITCH_MAX_DEG: float = 65.0
+## Vertical field of view of the battle camera in degrees (KEEP_HEIGHT); 0 = the orthographic camera of the first slice.
+const FOV_DEG: float = 30.0
 
 
 ## The pitch actually used: the arena's `pitch_down_deg` clamped to the allowed band.
@@ -33,6 +36,13 @@ static func fit_rect(arena: ArenaDef) -> Vector4:
 
 
 static func solve(arena: ArenaDef, viewport_size: Vector2, top_px: float, bottom_px: float) -> CameraFitResult:
+	return solve_with_fov(arena, viewport_size, top_px, bottom_px, FOV_DEG)
+
+
+## The fit for a camera of `fov_deg` degrees (0 = orthographic).
+static func solve_with_fov(
+	arena: ArenaDef, viewport_size: Vector2, top_px: float, bottom_px: float, fov_deg: float
+) -> CameraFitResult:
 	var pitch: float = deg_to_rad(effective_pitch_deg(arena))
 	var basis: Basis = Basis(Vector3.RIGHT, -pitch) * Basis(Vector3.UP, deg_to_rad(arena.yaw_deg))
 	var right: Vector3 = basis * Vector3.RIGHT
@@ -48,6 +58,8 @@ static func solve(arena: ArenaDef, viewport_size: Vector2, top_px: float, bottom
 	var corners: Array[Vector3] = [
 		Vector3(x0, 0.0, z0), Vector3(x1, 0.0, z0), Vector3(x1, 0.0, z1), Vector3(x0, 0.0, z1)
 	]
+	if fov_deg > 0.0:
+		return CameraPersp.solve(basis, corners, viewport_size, top_px, bottom_px, fov_deg)
 	var lo: Vector2 = Vector2(INF, INF)
 	var hi: Vector2 = Vector2(-INF, -INF)
 	for c: Vector3 in corners:
@@ -74,6 +86,8 @@ static func solve(arena: ArenaDef, viewport_size: Vector2, top_px: float, bottom
 
 ## Screen position in pixels (origin top-left, y down) of a world point under a solved fit.
 static func project(res: CameraFitResult, viewport_size: Vector2, world: Vector3) -> Vector2:
+	if res.fov_deg > 0.0:
+		return CameraPersp.project(res, viewport_size, world)
 	var cam: Vector3 = res.basis.inverse() * (world - res.position)
 	return Vector2(
 		viewport_size.x * 0.5 + cam.x * res.px_per_meter,
@@ -85,6 +99,8 @@ static func project(res: CameraFitResult, viewport_size: Vector2, world: Vector3
 static func unproject_ground(
 	res: CameraFitResult, viewport_size: Vector2, screen_px: Vector2, ground_y: float = 0.0
 ) -> Vector3:
+	if res.fov_deg > 0.0:
+		return CameraPersp.unproject_ground(res, viewport_size, screen_px, ground_y)
 	var cam_x: float = (screen_px.x - viewport_size.x * 0.5) / res.px_per_meter
 	var cam_y: float = (viewport_size.y * 0.5 - screen_px.y) / res.px_per_meter
 	var origin: Vector3 = res.position + res.basis * Vector3(cam_x, cam_y, 0.0)

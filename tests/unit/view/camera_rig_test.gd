@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## CameraRig: an orthographic KEEP_HEIGHT camera at the arena pitch, fitted by CameraFit, whose pure world_to_screen
+## CameraRig: a perspective KEEP_HEIGHT camera at the arena pitch, fitted by CameraFit, whose pure world_to_screen
 ## agrees with Godot's own Camera3D projection.
 
 var _content: ContentSet
@@ -15,10 +15,11 @@ func _rig() -> CameraRig:
 	return rig
 
 
-func test_setup_builds_an_orthogonal_keep_height_camera() -> void:
+func test_setup_builds_a_perspective_keep_height_camera() -> void:
 	var rig: CameraRig = _rig()
 	assert_object(rig.camera).is_not_null()
-	assert_int(rig.camera.projection).is_equal(Camera3D.PROJECTION_ORTHOGONAL)
+	assert_int(rig.camera.projection).is_equal(Camera3D.PROJECTION_PERSPECTIVE)
+	assert_float(rig.camera.fov).is_equal(CameraFit.FOV_DEG)
 	assert_int(rig.camera.keep_aspect).is_equal(Camera3D.KEEP_HEIGHT)
 	assert_float(rig.pitch_down_deg()).is_between(55.0, 65.0)
 	assert_float(rig.pitch_down_deg()).is_equal(_content.arena.pitch_down_deg)

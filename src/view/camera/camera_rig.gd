@@ -1,6 +1,6 @@
 class_name CameraRig
 extends Node3D
-## Orthographic camera looking down at the arena (ARCH 8, GDD 4.1): fixed, no zoom, pan or rotation. `fit` places it
+## Perspective camera (narrow field of view, `CameraFit.FOV_DEG`) looking down at the arena (ARCH 8, GDD 4.1): fixed, no zoom, pan or rotation. `fit` places it
 ## with CameraFit so the whole playable rectangle sits between the top HUD and the bottom controls.
 ## `world_to_screen` uses the same pure math (in the viewport size passed to `fit`), so it works before the camera
 ## enters the tree and always matches what the HUD layer uses.
@@ -35,6 +35,15 @@ func fit(viewport_size: Vector2, top_px: float, bottom_px: float) -> void:
 		return
 	_viewport = viewport_size
 	_fit = CameraFit.solve(_arena, viewport_size, top_px, bottom_px)
+	if _fit.fov_deg > 0.0:
+		camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+		camera.fov = _fit.fov_deg
+		camera.near = CameraPersp.NEAR
+		camera.far = CameraPersp.FAR
+	else:
+		camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+		camera.near = 0.1
+		camera.far = 200.0
 	camera.size = _fit.ortho_size
 	camera.transform = Transform3D(_fit.basis, _fit.position)
 
