@@ -182,12 +182,24 @@ static func _spawn_capped(world: SimWorld) -> int:
 	var per_tick: int = content.mission.max_spawns_per_tick
 	var spawned: int = 0
 	var kept: PackedInt32Array = PackedInt32Array()
-	for k: int in range(nav.pending_head, nav.pending.size()):
-		var e: int = nav.pending[k]
-		if spawned >= per_tick or (bodied >= bodied_cap and minis >= run.swarm_cap):
+	# The walk is the cost of a long queue (it runs every tick), so an entry whose class is full is passed over with
+	# two array reads, and once nothing more can spawn the rest of the queue is kept in one copy (V3-I; same result).
+	var mini_type: PackedByteArray = PackedByteArray()
+	mini_type.resize(content.enemies.size())
+	for t: int in content.enemies.size():
+		mini_type[t] = 1 if content.enemies[t].is_mini() else 0
+	var pending: PackedInt32Array = nav.pending
+	var sched_type: PackedInt32Array = nav.sched_type
+	var swarm_cap: int = run.swarm_cap
+	for k: int in range(nav.pending_head, pending.size()):
+		if spawned >= per_tick or (bodied >= bodied_cap and minis >= swarm_cap):
+			kept.append_array(pending.slice(k))
+			break
+		var e: int = pending[k]
+		var type_index: int = sched_type[e]
+		if (minis >= swarm_cap) if mini_type[type_index] == 1 else (bodied >= bodied_cap):
 			kept.append(e)
 			continue
-		var type_index: int = nav.sched_type[e]
 		var def: EnemyDef = content.enemies[type_index]
 		var mask: int = _elite_mask(world, e)
 		var full: bool = minis >= run.swarm_cap if def.is_mini() else bodied >= bodied_cap
