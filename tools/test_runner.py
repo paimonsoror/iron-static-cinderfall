@@ -291,7 +291,7 @@ def main() -> int:
     ap.add_argument("--self-test", action="store_true", help="run parser unit checks")
     # Per Godot invocation; only a hang guard. The full suite (stress and seed-sweep tests included) needs ~200 s
     # and keeps growing, so the original 300 s left too little margin.
-    ap.add_argument("--timeout", type=int, default=900)
+    ap.add_argument("--timeout", type=int, default=1800)
     a = ap.parse_args()
     if a.self_test:
         return self_test()
