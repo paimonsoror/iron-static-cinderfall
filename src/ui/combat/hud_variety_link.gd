@@ -41,7 +41,7 @@ func refresh() -> void:
 		return
 	_hud.top_bar.set_act_wave(_api.act(), _api.wave(), _api.wave_count())
 	_hud.bottom.weapon_bar.refresh()
-	_hud.banners.ticker.refresh(_api.active_events(), _content)
+	_hud.banners.ticker.refresh(_api.active_events(), _content, _api.crate_status())
 	_hud.banners.boss_bar.pips.set_phase(_api.boss_phase(), _api.boss_phase_count())
 	var def: BossDef = _content.boss(_boss_kind)
 	_hud.banners.boss_bar.title_text = Strings.t(def.name_key) if def != null else ""
@@ -50,7 +50,7 @@ func refresh() -> void:
 ## Counts the ticker's notices down.
 func process(delta: float) -> void:
 	if active and _hud.banners.ticker.tick(delta):
-		_hud.banners.ticker.refresh(_api.active_events(), _content)
+		_hud.banners.ticker.refresh(_api.active_events(), _content, _api.crate_status())
 
 
 ## Connects the variety signals through `bind` (CombatHud._bind: signal, handler).
@@ -65,6 +65,9 @@ func bind_events(bind: Callable) -> void:
 	bind.call(Events.event_ended, refresh.unbind(1))
 	bind.call(Events.boss_phase, refresh.unbind(1))
 	bind.call(Events.await_changed, refresh.unbind(1))
+	bind.call(Events.crate_dropped, refresh.unbind(2))
+	bind.call(Events.crate_secured, refresh)
+	bind.call(Events.crate_lost, refresh)
 	bind.call(Events.act_started, on_act_started)
 	bind.call(Events.elite_spawned, on_elite)
 
@@ -83,7 +86,7 @@ func on_elite(_id: int, kind: StringName, affixes: int) -> void:
 			words.append(Strings.t(def.name_key))
 	words.append(Strings.t("enemy.%s.name" % String(kind)).to_upper())
 	_hud.banners.ticker.push_notice(Strings.tf("hud.ticker.elite", [" ".join(words)]))
-	_hud.banners.ticker.refresh(_api.active_events(), _content)
+	_hud.banners.ticker.refresh(_api.active_events(), _content, _api.crate_status())
 
 
 ## The boss banner of the variety run (NODE n // NAME over its CHORUS log line). False when the boss has no BossDef.

@@ -81,12 +81,11 @@ func test_a_run_killed_in_the_background_twice_resumes_paused_and_is_paid_once()
 	# second launch: the menu is told the wave and its RESUME RUN button resumes
 	_launch(files)
 	assert_int(_h.state()).is_equal(GameState.Id.MENU)
-	var menu: VarietyDMenu = VarietyDMenu.new()
-	auto_free(menu)
-	add_child(menu)
-	GameRunFlow.setup_menu(_h.game, menu)
-	assert_int(menu.resume_wave).is_equal(1)  # RESUME RUN (WAVE 1)
-	menu.resume_pressed.emit()
+	var menu: MainMenuScreen = _h.find_in("ScreenRoot", &"MainMenuScreen") as MainMenuScreen  # the real menu (V3-I)
+	assert_int(menu.resume_wave).is_equal(1)
+	assert_bool(menu.resume_button.visible).is_true()
+	assert_str(menu.resume_button.text).is_equal(Strings.tf("menu.resume", [1]))  # RESUME RUN (WAVE 1)
+	menu.resume_button.pressed.emit()
 	_h.freeze()
 	assert_int(_h.state()).is_equal(GameState.Id.PAUSED)
 	assert_object(_pause_overlay()).is_not_null()  # the player comes back to the pause overlay
@@ -169,7 +168,9 @@ func test_a_run_file_of_another_build_is_closed_at_the_menu_and_paid_once() -> v
 func test_overlays_pauses_restart_and_quit_in_one_visit() -> void:
 	_launch()
 	assert_int(GameRunFlow.resumable_wave(_h.content)).is_equal(0)
-	assert_bool(_resume_from_menu()).is_false()  # no run file: nothing to resume
+	var menu: MainMenuScreen = _h.find_in("ScreenRoot", &"MainMenuScreen") as MainMenuScreen
+	assert_bool(menu.resume_button.visible).is_false()  # no run file: no RESUME RUN button
+	assert_bool(_resume_from_menu()).is_false()  # nothing to resume
 	assert_int(_h.state()).is_equal(GameState.Id.MENU)
 	assert_object(_h.find_in("ScreenRoot", &"MainMenuScreen")).is_not_null()
 	assert_object(_h.rc()).is_null()

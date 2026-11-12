@@ -6,10 +6,6 @@ extends RefCounted
 ## members are reached through get and call.
 # TODO(V4-U): the Archive overlay. TODO(V4-M): the daily seed.
 
-## The main menu's contract for RESUME RUN, used when the screen has it (the button is added by the UI task):
-## a signal `resume_pressed` and a method `set_resume_wave(wave: int)` (0 = no run to resume, hide the button).
-const MENU_RESUME_SIGNAL: StringName = &"resume_pressed"
-const MENU_RESUME_SETTER: StringName = &"set_resume_wave"
 const OVERLAYS_NAME: String = "ChoiceOverlays"
 
 ## What the next `Game.start_run` asked for; consumed by `apply_launch`.
@@ -100,15 +96,13 @@ static func resumable_wave(content: ContentSet) -> int:
 
 
 ## Sets the main menu up: closes a stale run file first (so the menu shows the Data it paid), then tells the menu
-## which wave can be resumed and listens to its RESUME RUN button, when the screen has them.
+## which wave can be resumed and listens to its RESUME RUN button.
 static func setup_menu(game: Node, menu: MainMenuScreen) -> void:
 	var content_o: Object = game.get(&"content")
 	var wave: int = resumable_wave(content_o as ContentSet) if content_o != null else 0
 	menu.setup(Save.profile)
-	if menu.has_method(MENU_RESUME_SETTER):
-		menu.call(MENU_RESUME_SETTER, wave)
-	if menu.has_signal(MENU_RESUME_SIGNAL):
-		menu.connect(MENU_RESUME_SIGNAL, Callable(game, &"resume_run_from_disk"))
+	menu.set_resume_wave(wave)  # 0 hides RESUME RUN
+	menu.resume_pressed.connect(Callable(game, &"resume_run_from_disk"))
 
 
 ## RESUME RUN (from the menu): rebuilds the run of the run file and continues it, paused, with the pause overlay up.

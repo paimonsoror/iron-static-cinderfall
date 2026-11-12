@@ -6,7 +6,10 @@ extends Control
 signal start_pressed
 signal settings_pressed
 signal quit_pressed
+signal resume_pressed  ## RESUME RUN: continue the run the run file holds (V3-I)
 
+var resume_button: Button
+var resume_wave: int = 0  ## 0 = no run to resume (the button is hidden)
 var title_block: UiTitleBlock
 var tagline_label: Label
 var data_cell: UiStatCell
@@ -27,6 +30,16 @@ func setup(profile: Profile) -> void:
 	data_cell.set_value(UiKit.group(profile.data))
 	best_core_cell.set_value(UiKit.group(profile.best_core_hp) if profile.best_core_hp > 0 else Strings.t("menu.none"))
 	missions_cell.set_value(UiKit.group(profile.missions_completed))
+
+
+## RESUME RUN (VARIETY_SPEC 2.8): `wave` is the wave the saved run would continue; 0 hides the button. START MISSION
+## stays below it and starts a new run, which replaces the saved one.
+func set_resume_wave(wave: int) -> void:
+	_ensure_built()
+	resume_wave = maxi(wave, 0)
+	resume_button.visible = resume_wave > 0
+	if resume_wave > 0:
+		resume_button.text = Strings.tf("menu.resume", [resume_wave])
 
 
 func _ensure_built() -> void:
@@ -54,6 +67,10 @@ func _ensure_built() -> void:
 	missions_cell = UiStatCell.new(Strings.t("menu.missions"), "0")
 	for cell: UiStatCell in [data_cell, best_core_cell, missions_cell]:
 		stats.add_child(cell)
+	resume_button = UiKit.button("menu.start")
+	resume_button.pressed.connect(func() -> void: resume_pressed.emit())
+	resume_button.visible = false
+	frame.footer.add_child(resume_button)
 	start_button = UiKit.button_primary("menu.start")
 	start_button.pressed.connect(func() -> void: start_pressed.emit())
 	frame.footer.add_child(start_button)

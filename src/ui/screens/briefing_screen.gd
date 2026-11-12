@@ -96,12 +96,13 @@ func _fill_objectives(content: ContentSet) -> void:
 	_clear(_objectives_col)
 	objective_labels.clear()
 	var lines: Array[String] = [
-		Strings.tf("briefing.obj.waves", [content.waves.size()]),
+		Strings.tf("briefing.obj.waves", [RunRoster.wave_count(content)]),
 		Strings.tf("briefing.obj.core", [UiKit.group(roundi(content.mission.core_max_hp))]),
 	]
-	for enemy: EnemyDef in content.enemies:
-		if enemy.is_boss and enemy.index < Ids.LEGACY_ENEMY_COUNT:  # TODO(V4-U): the boss of the run plan
-			lines.append(Strings.tf("briefing.obj.boss", [Strings.t(enemy.name_key), content.waves.size()]))
+	for entry: Dictionary in RunRoster.boss_waves(content):
+		var boss: EnemyDef = entry["enemy"]
+		var boss_wave: int = entry["wave"]
+		lines.append(Strings.tf("briefing.obj.boss", [Strings.t(boss.name_key), boss_wave]))
 	for line: String in lines:
 		var row: HBoxContainer = HBoxContainer.new()
 		row.add_theme_constant_override("separation", 16)
@@ -120,8 +121,7 @@ func _fill_objectives(content: ContentSet) -> void:
 func _fill_threats(content: ContentSet) -> void:
 	_clear(_threats_col)
 	threat_rows.clear()
-	# TODO(V4-U): the threats of the run plan. Until then the briefing keeps the four legacy rows.
-	var ordered: Array[EnemyDef] = content.enemies.slice(0, Ids.LEGACY_ENEMY_COUNT)
+	var ordered: Array[EnemyDef] = RunRoster.enemies(content)  # the legacy four, or what the generated run can field
 	ordered.sort_custom(func(a: EnemyDef, b: EnemyDef) -> bool: return a.hp < b.hp)
 	for i: int in ordered.size():
 		var row: BriefingThreatRow = BriefingThreatRow.new(ordered[i], i + 1, ordered.size())

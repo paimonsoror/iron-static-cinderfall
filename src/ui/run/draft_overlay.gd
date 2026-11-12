@@ -210,10 +210,11 @@ func refresh() -> void:
 
 func _refresh_prices() -> void:
 	var reroll_cost: int = _api.draft_reroll_cost()
+	var open: bool = not _api.draft_actions_locked()  # NO BREATHER: neither a reroll nor a patch in this draft
 	reroll_button.text = Strings.t("draft.reroll_free") if reroll_cost <= 0 else Strings.tf("draft.reroll", [reroll_cost])
-	reroll_button.modulate = _dim(reroll_cost <= 0 or _api.scrap() >= reroll_cost)
+	reroll_button.modulate = _dim(open and (reroll_cost <= 0 or _api.scrap() >= reroll_cost))
 	patch_button.text = Strings.tf("draft.patch", [_patch_pct(), _api.patch_cost()])
-	patch_button.modulate = _dim(_api.scrap() >= _api.patch_cost())
+	patch_button.modulate = _dim(open and _api.scrap() >= _api.patch_cost())
 	skip_button.text = Strings.tf("draft.skip", [_skip_scrap()])
 
 
@@ -245,7 +246,7 @@ func _sync() -> void:
 func _sync_buyouts() -> void:
 	var cost: int = _api.draft_buyout_cost()
 	for card: DirectiveCard in cards:
-		var show: bool = selected_slot >= 0 and card.slot != selected_slot and card.def != null and cost > 0
+		var show: bool = selected_slot >= 0 and card.slot != selected_slot and card.def != null and cost > 0 and not _api.draft_buyout_used()
 		card.set_buyout(show, cost, card.slot == buyout_slot, _api.scrap() >= cost)
 
 
@@ -282,7 +283,9 @@ func _on_skip() -> void:
 
 func _on_buyout(slot: int) -> void:
 	var cost: int = _api.draft_buyout_cost()
-	if buyout_slot == slot:
+	if _api.draft_buyout_used():
+		buyout_slot = -1
+	elif buyout_slot == slot:
 		buyout_slot = -1
 	elif _api.scrap() < cost:
 		deny(cards[slot].buyout_button, RunUi.opt("reason.insufficient_scrap"))
@@ -311,6 +314,9 @@ func _on_confirm() -> void:
 
 
 func _on_reroll() -> void:
+	if _api.draft_actions_locked():
+		deny(reroll_button, RunUi.opt("reason.locked_by_event"))
+		return
 	var cost: int = _api.draft_reroll_cost()
 	if cost > 0 and _api.scrap() < cost:
 		deny(reroll_button, RunUi.opt("reason.insufficient_scrap"))
@@ -323,6 +329,9 @@ func _on_reroll() -> void:
 
 
 func _on_patch() -> void:
+	if _api.draft_actions_locked():
+		deny(patch_button, RunUi.opt("reason.locked_by_event"))
+		return
 	if _api.scrap() < _api.patch_cost():
 		deny(patch_button, RunUi.opt("reason.insufficient_scrap"))
 		return

@@ -80,7 +80,11 @@ func test_each_menu_button_emits_its_signal_once() -> void:
 	s.settings_button.pressed.emit()
 	s.quit_button.pressed.emit()
 	assert_array(hits).is_equal(["start", "settings", "quit"])
-	assert_int(UiKit.buttons(s).size()).is_equal(3)
+	var shown: int = 0
+	for button: Button in UiKit.buttons(s):
+		shown += 1 if button.visible else 0
+	assert_int(shown).is_equal(3)  # RESUME RUN (V3-I) is the fourth button and stays hidden without a saved run
+	assert_int(UiKit.buttons(s).size()).is_equal(4)
 
 
 func test_menu_and_boot_buttons_are_at_least_132_px_and_the_primary_148() -> void:
