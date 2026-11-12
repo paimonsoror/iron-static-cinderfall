@@ -997,7 +997,7 @@ lamp posts with a lit lens and a halo; a vignette; rain; a reactor with lit ring
 
 ### Tests and commands
 
-- `tools\check.ps1` on the environment commits (before the camera commit): `CHECK OK`, `TEST SUMMARY: tests=1172 failures=0 errors=0 skipped=0 exit=0`. With the camera commit on top: CHECK_CAMERA.
+- `tools\check.ps1` on the environment commits (before the camera commit): `CHECK OK`, `TEST SUMMARY: tests=1172 failures=0 errors=0 skipped=0 exit=0`. With the camera commit on top: `CHECK OK`, `TEST SUMMARY: tests=1176 failures=0 errors=0 skipped=0 exit=0` (the camera commit adds four tests and rewrites the tolerances of three).
 - New suites in `tests/unit/view/`: `env_style_test.gd` (the tier gates, the overrides), `env_tex_test.gd` (the tile is deterministic, tileable, has its channels; checksum pinned),
   `env_arena_test.gd` (CURRENT meshes pinned by hash, the originals come back after a styled round trip, 50 look switches add no node, no material, no object, every prop keeps its footprint
   from the data, the decor keeps DecorKit's layout and stays outside the playable rectangle and clear of the spawn edges, the boot warm-up covers the new materials, the lamp and core gains),
