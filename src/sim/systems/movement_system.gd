@@ -7,6 +7,9 @@ extends RefCounted
 ## refreshed every RESAMPLE_TICKS ticks per enemy, staggered by id, and the cached per-tick displacement is applied
 ## in between. Slot claims are collected and made at the end of the tick in ascending id order. Stunned enemies are
 ## frozen. Attackers stand on their slot and are neither pushed nor pushing. Nothing here removes an enemy.
+## Minis (EnemyExtState.F_MINI, VARIETY_SPEC 5.4) take the cheap path: the flow heading (straight at the core inside the
+## approach circle), no weave, no separation (they neither push nor are pushed), no slot. They wait just inside their
+## burnout range (MINI_HOLD_MARGIN_M) for CoreAttackSystem, and keep the stuck window so a wedged mini cannot stall a wave.
 
 ## Within this distance of its slot a seeking enemy is captured: ST_ATTACKING, then it settles onto the slot.
 const SNAP_M: float = 0.25
@@ -19,6 +22,9 @@ const SEP_MAX_NEIGHBORS: int = 6
 const MAX_STEP_MULT: float = 1.5
 const GOLDEN_ANGLE: float = 2.399963229728653
 const PUSH_EPS: float = 0.000001
+## A mini stops this far inside its burnout range (`burnout_m`, CONTENT 4.2: 0.6 m from the cage), so CoreAttackSystem
+## always reaches it.
+const MINI_HOLD_MARGIN_M: float = 0.1
 
 
 static func step(world: SimWorld) -> void:
@@ -58,6 +64,7 @@ static func step(world: SimWorld) -> void:
 	var bmin_z: float = nav.bound_min_z
 	var bmax_z: float = nav.bound_max_z
 	var app2: float = arena.approach_radius * arena.approach_radius
+	var xflags: PackedInt32Array = world.ext.flags
 	for i: int in es.high_water:
 		if alive[i] == 0:
 			continue
@@ -88,14 +95,20 @@ static func step(world: SimWorld) -> void:
 		var cdx: float = px - core_x
 		var cdz: float = pz - core_z
 		var core_d2: float = cdx * cdx + cdz * cdz
+		var is_mini: bool = (xflags[i] & EnemyExtState.F_MINI) != 0
+		if is_mini:
+			var hold: float = core_radius + maxf(0.1, world.content.enemies[t].beh(&"burnout_m", 0.6) - MINI_HOLD_MARGIN_M)
+			if core_d2 <= hold * hold:
+				es.path_dist[i] = 0.0
+				continue
 		var left: int = ttl[i] - 1
 		ttl[i] = left
 		var mx: float
 		var mz: float
 		if st == EnemyStore.ST_MOVING:
-			if core_d2 <= app2:
+			if core_d2 <= app2 and not is_mini:
 				nav.claims.append(i)
-			if left <= 0 and _resample(world, es, nav, arena, i, t, enemy_id, st, px, pz, cdx, cdz, core_d2, 0.0):
+			if left <= 0 and _resample(world, es, nav, arena, i, t, enemy_id, st, px, pz, cdx, cdz, core_d2, 0.0, is_mini):
 				continue
 			mx = c_vx[i]
 			mz = c_vz[i]
@@ -108,7 +121,7 @@ static func step(world: SimWorld) -> void:
 				_capture(world, es, nav, arena, i, t, slot_i, px, pz, spd)
 				continue
 			es.path_dist[i] = d
-			if left <= 0 and _resample(world, es, nav, arena, i, t, enemy_id, st, px, pz, cdx, cdz, core_d2, d):
+			if left <= 0 and _resample(world, es, nav, arena, i, t, enemy_id, st, px, pz, cdx, cdz, core_d2, d, false):
 				continue
 			var reach: float = minf(spd, d)
 			mx = vx / d * reach + c_vx[i]
@@ -199,7 +212,8 @@ static func _resample(
 	cdx: float,
 	cdz: float,
 	core_d2: float,
-	seek_d: float
+	seek_d: float,
+	mini: bool
 ) -> bool:
 	var fresh: bool = nav.c_ttl[i] < -1
 	nav.c_ttl[i] = (1 + enemy_id % NavState.RESAMPLE_TICKS) if fresh else NavState.RESAMPLE_TICKS
@@ -211,7 +225,8 @@ static func _resample(
 		var sample: Vector3 = nav.flow.sample_flow(px, pz)
 		var hx: float = sample.x
 		var hz: float = sample.y
-		if nav.t_direct[t] == 1 and core_d2 > 0.0001:
+		var seek_core: bool = nav.t_direct[t] == 1 or (mini and core_d2 <= arena.approach_radius * arena.approach_radius)
+		if seek_core and core_d2 > 0.0001:
 			if NavGeometry.segment_clear(arena.obstacles, px, pz, arena.core_x, arena.core_z, nav.t_clear[t] + 0.1):
 				var inv: float = 1.0 / sqrt(core_d2)
 				hx = -cdx * inv
@@ -222,7 +237,7 @@ static func _resample(
 		vx = hx * spd
 		vz = hz * spd
 		var amp: float = nav.t_weave_amp[t]
-		if amp > 0.0:
+		if amp > 0.0 and not mini:
 			var rate: float = nav.t_weave_rate[t]
 			var phase: float = rate * float(world.tick - es.spawn_tick[i]) + float(enemy_id) * GOLDEN_ANGLE
 			var lateral: float = amp * rate * cos(phase)
@@ -231,8 +246,8 @@ static func _resample(
 		path = es.path_dist[i] if is_inf(sample.z) else sample.z + nav.tail_m
 		es.path_dist[i] = path
 	var sepw: float = nav.t_sepw[t]
-	if sepw > 0.0 and nav.sep_off[i] == 0:
-		var push: Vector2 = _separation(es, nav, i, t, enemy_id, px, pz, sepw, spd)
+	if sepw > 0.0 and nav.sep_off[i] == 0 and not mini:
+		var push: Vector2 = _separation(es, nav, i, t, enemy_id, px, pz, sepw, spd, world.ext.flags)
 		vx += push.x
 		vz += push.y
 	var limit: float = spd * MAX_STEP_MULT
@@ -260,7 +275,8 @@ static func _resample(
 ## capped at the enemy's own speed per tick. Attackers are not in the hash and are ignored; a zero weight (the boss)
 ## is never pushed. Heavy movers (the boss) are tested from a short list instead of the cells.
 static func _separation(
-	es: EnemyStore, nav: NavState, i: int, t: int, enemy_id: int, px: float, pz: float, sepw: float, spd: float
+	es: EnemyStore, nav: NavState, i: int, t: int, enemy_id: int, px: float, pz: float, sepw: float, spd: float,
+	xflags: PackedInt32Array
 ) -> Vector2:
 	var r_i: float = nav.t_radius[t]
 	var m_i: float = nav.t_mass[t]
@@ -283,7 +299,7 @@ static func _separation(
 	var used: int = 0
 	for q: int in cnt:
 		var j: int = neigh[q]
-		if j == i or states[j] == EnemyStore.ST_ATTACKING:
+		if j == i or states[j] == EnemyStore.ST_ATTACKING or (xflags[j] & EnemyExtState.F_MINI) != 0:
 			continue
 		var tj: int = types[j]
 		var space: float = SEP_SPACE * (r_i + radii[tj])
