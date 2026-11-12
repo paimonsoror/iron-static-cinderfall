@@ -3,13 +3,16 @@ extends RefCounted
 ## The weapon slots of the Warden (VARIETY_SPEC 3.1, 13.2). WardenState.weapon_index, magazine and reload_ticks_left
 ## stay and mirror the active slot, so the HUD, the view and the legacy tests keep reading them. Written by
 ## ArsenalSystem and SalvageSystem (slot contents) only; hashed.
-# TODO(V2-C): the stub mirrors nothing yet; slot 0 holds the pistol.
+## Units: magazines in rounds, reloads, vents and swaps in ticks, heat in the units of WeaponDef.heat_cap (0..cap). The
+## two `*_acc` arrays carry the fractions that keep heat and timers integers (VARIETY_SPEC 9.5 rule 4): a holstered
+## reload advances by `holster_reload_mult` x 1000 per tick and a reload tick costs 1000; cooling adds `cool_per_s` per
+## tick and one unit of heat costs 60.
 
 const MAX_SLOTS: int = 3
 const FIELDS: PackedStringArray = [
 	"slot_count", "slot_weapon", "slot_level", "slot_magazine", "slot_reload_left", "slot_heat", "slot_vent_left", "active",
 	"swap_left", "charge_left", "charge_x", "charge_z", "spin_ticks", "idle_ticks", "beam_target", "beam_hits",
-	"shots_since_proc", "offhand_acc_milli",
+	"shots_since_proc", "offhand_acc_milli", "slot_reload_acc", "slot_cool_acc",
 ]
 
 var slot_count: int = 2  ## 3 with the third sling
@@ -30,6 +33,8 @@ var beam_target: int = 0  ## enemy id the beam is locked on
 var beam_hits: int = 0  ## consecutive hits on beam_target (the ramp)
 var shots_since_proc: int = 0  ## shock_rounds and the pistol level-3 perk
 var offhand_acc_milli: int = 0  ## twin_link cadence accumulator
+var slot_reload_acc: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## holstered reload progress, thousandths of a tick
+var slot_cool_acc: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## cooling progress, sixtieths of a heat unit
 
 
 func hash_into(h: StateHasher) -> void:

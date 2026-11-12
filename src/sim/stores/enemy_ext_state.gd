@@ -4,7 +4,8 @@ extends RefCounted
 ## Integers only (9.5 rule 4): `*_milli` fields are thousandths. SimWorld.spawn_enemy resets a row; writers are
 ## StatusSystem (slow, burn, ward, aux), EliteSystem (flags, affix_mask, hp_scale), DamageResolver (ward, shred) and
 ## CoreAttackSystem (fuse). Everything is hashed.
-# TODO(V2-C): burn, fuse and the mini flag for the slice. TODO(V4-N): the rest.
+## The slice (V2-C) uses the mini flag, burn (StatusSystem), and F_ARMED with fuse_ticks (CoreAttackSystem).
+# TODO(V4-N): the rest.
 
 const F_ELITE: int = 1
 const F_MINI: int = 2

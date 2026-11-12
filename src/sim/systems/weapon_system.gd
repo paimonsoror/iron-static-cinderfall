@@ -5,11 +5,17 @@ extends RefCounted
 ## Per tick, in this order: reload countdown (a finished reload refills the magazine and the Warden may
 ## fire the same tick), cadence accumulator += sps_milli, lock/target refresh, fire while a shot is
 ## allowed, then clamp the accumulator to one shot so a pause never banks a burst.
+##
+## Variety content (a generated run, VARIETY_SPEC 3) delegates the whole step to ArsenalSystem: slots, swapping and
+## heat live there, with the same cadence rule. The legacy 5-wave content keeps the code below unchanged.
 
 const MILLI_PER_SHOT: int = 60000  ## sps_milli is shots per second x 1000; 60 ticks x 1000
 
 
 static func step(world: SimWorld) -> void:
+	if world.content.run != null:
+		ArsenalSystem.step(world)
+		return
 	var w: WardenState = world.warden
 	var def: WeaponDef = world.content.weapons[w.weapon_index]
 	_advance_reload(world, w, def)
@@ -27,14 +33,9 @@ static func step(world: SimWorld) -> void:
 
 
 ## Warden shots per second x 1000 for this tick: the weapon's rate with the fire_rate level and, while
-## overdrive is active, the overdrive multiplier (Formulas.sps_milli).
+## overdrive is active, the overdrive multiplier (Formulas.sps_milli); on variety content also ModState.w_rate_mul.
 static func current_sps_milli(world: SimWorld) -> int:
-	var def: WeaponDef = world.content.weapons[world.warden.weapon_index]
-	var rate_up: UpgradeDef = world.content.upgrades[Ids.UP_FIRE_RATE]
-	var mult_milli: int = 1000
-	if world.abilities.is_active(Ids.AB_OVERDRIVE):
-		mult_milli = world.content.abilities[Ids.AB_OVERDRIVE].fire_rate_mult_milli
-	return Formulas.sps_milli(def.sps_milli, world.upgrade_levels[Ids.UP_FIRE_RATE], rate_up.per_level, mult_milli)
+	return ArsenalSystem.sps_milli(world, world.content.weapons[world.warden.weapon_index])
 
 
 static func _advance_reload(world: SimWorld, w: WardenState, def: WeaponDef) -> void:
