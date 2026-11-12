@@ -5,8 +5,9 @@ extends RefCounted
 ## .bak, rename the temp file over the main one). This class only moves a Dictionary to and from JSON text; what the
 ## document means (build, content hash, snapshot, tail) is decided in the game layer (RunFile).
 ##
-## The text is compact JSON with sorted keys and full float precision, so the doubles of the snapshot come back
-## bit for bit. A document that does not survive its own round trip (a non-finite number) is not written.
+## The text is compact JSON with sorted keys. JSON numbers are doubles and the engine's writer rounds some of them, so
+## the game layer puts everything that must come back bit for bit into the document as text (WorldSnapshot). A
+## document that `decode` would not accept (no schema_version, no run id) is not written.
 
 const PATH_MAIN: String = "user://run_v1.json"
 const PATH_TMP: String = "user://run_v1.json.tmp"

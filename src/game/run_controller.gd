@@ -84,8 +84,8 @@ func start_resumed(doc: Dictionary, view: BattleView, content: ContentSet = null
 		finalize()  # the file was written before the end and the process died before it was deleted
 
 
-## Takes `world` as the run: the relay, the driver, the view. The relay learns the enemies that are already alive (a
-## resumed wave), so their deaths carry a type like any other.
+## Takes `world` as the run: the relay, the driver, the view. For a resumed world the command id counter moves past
+## every id the run has seen, and the relay learns the enemies that are already alive, so their deaths carry a type.
 func _adopt(world: SimWorld, run_id_value: String, view: BattleView) -> void:
 	run_id = run_id_value
 	paused = false
@@ -99,6 +99,8 @@ func _adopt(world: SimWorld, run_id_value: String, view: BattleView) -> void:
 	sim = world
 	_relay = GameEventRelay.new(world.content)
 	_relay.world = sim
+	for seen_id: int in sim.phase_state.seen_command_ids:
+		api._next_command_id = maxi(api._next_command_id, seen_id)  # a resumed run never mints an id it used before
 	for i: int in sim.enemies.high_water:
 		if sim.enemies.alive[i] == 1:
 			var e: SimEvent = SimEvent.new()

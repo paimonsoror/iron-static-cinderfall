@@ -5,8 +5,9 @@ extends RefCounted
 ##  1. `begin` (the start of the run) and every wave clear: a new boundary snapshot, its `state_hash`, an empty tail.
 ##     The wave clear is seen before the next tick runs (`before_tick`) or at the end of the frame, so the snapshot is
 ##     the state of exactly the tick that cleared the wave.
-##  2. after a command outside combat (the draft, route and salvage choices, a purchase in the intermission): the tail
-##     grows. Commands given during a wave are not written one by one (no disk work in a combat frame);
+##  2. after a command outside combat (the draft, route and salvage choices, a purchase in the intermission, and the
+##     CONTINUE that starts the wave): the tail grows. Commands given during a wave are not written one by one (no
+##     disk work in a combat frame);
 ##  3. `on_pause` (the pause button, the back gesture, the app going to the background): the tail including the
 ##     running wave's commands, and `resume_tick`.
 ##
@@ -23,6 +24,7 @@ var _waves: int = -1  ## waves_completed at the boundary held
 var _logged: int = 0  ## command log size at the last write
 var _last_key: String = ""  ## what the last successful write held (a repeat is skipped)
 var _open: bool = false
+var _was_combat: bool = false  ## the phase at the end of the previous frame
 
 
 ## A fresh run: the snapshot of the start (wave 0) and the first file.
@@ -41,6 +43,7 @@ func adopt(doc: Dictionary, world: SimWorld) -> void:
 	_boundary = RunFile.boundary_of(doc)
 	_waves = RunFile.waves_cleared(doc)
 	_logged = world.command_log.entries.size()
+	_was_combat = GameState.is_combat(world.phase)
 	_open = true
 	check_boundary(world)
 
@@ -56,8 +59,10 @@ func after_frame(world: SimWorld) -> void:
 	if not _open or world.is_over():
 		return
 	check_boundary(world)
-	if world.command_log.entries.size() != _logged and not GameState.is_combat(world.phase):
+	var combat: bool = GameState.is_combat(world.phase)
+	if world.command_log.entries.size() != _logged and not (combat and _was_combat):
 		write(world, -1)
+	_was_combat = combat
 
 
 ## The run was paused or the app left the foreground.

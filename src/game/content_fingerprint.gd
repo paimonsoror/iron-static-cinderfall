@@ -5,6 +5,9 @@ extends RefCounted
 ## closed instead. The hash walks the def objects themselves, so it is the same for `Content.db`, for a fixture and
 ## for a set a test has changed in memory. Texts (`strings`) and the visual tokens are left out: they never reach
 ## the sim, and a wording fix must not end a run.
+##
+## The walk writes one token per value into a list and hashes the joined text once (a float is written as its exact
+## bit pattern). It runs at the start of every run and when the menu looks at a run file.
 
 const SKIP: PackedStringArray = ["strings", "tokens"]
 const MAX_DEPTH: int = 12
@@ -14,15 +17,18 @@ const LENGTH: int = 12
 static func of(content: ContentSet) -> String:
 	if content == null:
 		return ""
-	var h: StateHasher = StateHasher.new()
-	_put_object(h, content, SKIP, 0)
-	return h.finish().substr(0, LENGTH)
+	var out: PackedStringArray = PackedStringArray()
+	var buf: PackedByteArray = PackedByteArray()
+	buf.resize(8)
+	_put_object(out, buf, content, SKIP, 0)
+	return "\n".join(out).sha256_text().substr(0, LENGTH)
 
 
-static func _put_object(h: StateHasher, o: Object, skip: PackedStringArray, depth: int) -> void:
+static func _put_object(out: PackedStringArray, buf: PackedByteArray, o: Object, skip: PackedStringArray, depth: int) -> void:
 	if o == null or depth > MAX_DEPTH:
-		h.put_int(0)
+		out.append("null")
 		return
+	out.append("{")
 	for p: Dictionary in o.get_property_list():
 		var usage: int = p["usage"]
 		if (usage & PROPERTY_USAGE_SCRIPT_VARIABLE) == 0:
@@ -30,52 +36,40 @@ static func _put_object(h: StateHasher, o: Object, skip: PackedStringArray, dept
 		var field: String = p["name"]
 		if skip.has(field):
 			continue
-		_put_text(h, field)
-		_put(h, o.get(field), depth + 1)
+		out.append(field)
+		_put(out, buf, o.get(field), depth + 1)
+	out.append("}")
 
 
-static func _put(h: StateHasher, v: Variant, depth: int) -> void:
-	var type: int = typeof(v)
-	h.put_int(type)
-	match type:
+static func _put(out: PackedStringArray, buf: PackedByteArray, v: Variant, depth: int) -> void:
+	match typeof(v):
 		TYPE_NIL:
-			pass
-		TYPE_BOOL:
-			var b: bool = v
-			h.put_int(1 if b else 0)
-		TYPE_INT:
-			var i: int = v
-			h.put_int(i)
+			out.append("nil")
 		TYPE_FLOAT:
 			var f: float = v
-			h.put_float(f)
-		TYPE_VECTOR2:
-			var v2: Vector2 = v
-			h.put_float(v2.x)
-			h.put_float(v2.y)
+			buf.encode_double(0, f)
+			out.append("f%d" % buf.decode_s64(0))
 		TYPE_ARRAY:
 			var list: Array = v
-			h.put_int(list.size())
+			out.append("[%d" % list.size())
 			for item: Variant in list:
-				_put(h, item, depth + 1)
+				_put(out, buf, item, depth + 1)
 		TYPE_DICTIONARY:
 			var d: Dictionary = v
 			var keys: Array = d.keys()
 			keys.sort_custom(_by_text)
-			h.put_int(keys.size())
+			out.append("<%d" % keys.size())
 			for key: Variant in keys:
-				_put_text(h, str(key))
-				_put(h, d[key], depth + 1)
+				out.append(str(key))
+				_put(out, buf, d[key], depth + 1)
 		TYPE_OBJECT:
 			var o: Object = v
-			_put_object(h, o, PackedStringArray(), depth)
+			_put_object(out, buf, o, PackedStringArray(), depth)
+		TYPE_PACKED_FLOAT32_ARRAY, TYPE_PACKED_FLOAT64_ARRAY, TYPE_PACKED_VECTOR2_ARRAY, TYPE_VECTOR2:
+			out.append(var_to_bytes(v).hex_encode())  # exact, where the text form would round
 		_:
-			_put_text(h, var_to_str(v))  # strings, string names, packed arrays, colors: the text form is stable
+			out.append("%d:%s" % [typeof(v), str(v)])  # bool, int, strings, string names, packed int and string arrays
 
 
 static func _by_text(a: Variant, b: Variant) -> bool:
 	return str(a) < str(b)
-
-
-static func _put_text(h: StateHasher, text: String) -> void:
-	h.put_bytes(text.to_utf8_buffer())

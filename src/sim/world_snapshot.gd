@@ -11,8 +11,14 @@ extends RefCounted
 ## and are not saved; the command queue, the command log and the undrained event buffer are not part of it (the run
 ## file keeps the log next to the snapshot).
 ##
-## 64-bit integers (RNG states, the event hash) are saved as decimal strings: JSON numbers are doubles. Floats need a
-## full-precision JSON writer (`JSON.stringify(doc, "", true, true)`), which the run file uses.
+## Numbers that a JSON writer would not give back bit for bit travel as text (the engine's writer rounds the last digit
+## of some doubles and drops the sign of -0.0, either of which would change the state hash):
+##  - 64-bit integers (RNG states, the event hash): decimal strings;
+##  - a float that is not a small whole number: "~" plus the 16 hex digits of its IEEE bits;
+##  - the packed arrays of the frozen classes: one string per array, "f:", "i:" or "b:" plus the hex of its bytes
+##    (also what keeps a capture cheap: no per-element work in script for the large stores).
+## The variety state classes come through their own `to_dict` (SnapUtil: plain arrays); their floats are sealed one
+## by one afterwards.
 
 const VERSION: int = 2  ## 1 was the V1-S stub (variety states only)
 
@@ -27,36 +33,42 @@ const WORLD_FIELDS: PackedStringArray = [
 	"tick", "phase", "wave", "waves_completed", "phase_ticks_left", "core_hp", "core_max_hp", "shield_hp", "scrap",
 	"upgrade_levels", "next_enemy_id",
 ]
-## Sections that hold a plain field dump of one object (the key is the property of SimWorld).
+## Sections that hold a field dump of one object (the key is the property of SimWorld).
 const DUMPED: PackedStringArray = ["enemies", "turrets", "warden", "abilities", "combat", "stats"]
 ## Sections of the variety state classes, which bring their own to_dict and from_dict.
 const VARIETY: PackedStringArray = ["mods", "arsenal", "draft", "salvage", "ext", "hazards", "events_state", "boss"]
 const DICT_SECTIONS: PackedStringArray = ["world", "nav", "slots", "phase_state", "events", "plan"]
+const FLOAT_MARK: String = "~"
+const PACK_FLOATS: String = "f:"
+const PACK_INTS: String = "i:"
+const PACK_BYTES: String = "b:"
+const WHOLE_LIMIT: float = 9007199254740992.0  ## 2^53: whole floats below it survive JSON as they are
 const SUPPORTED: Array[int] = [
 	TYPE_INT, TYPE_BOOL, TYPE_FLOAT, TYPE_PACKED_INT32_ARRAY, TYPE_PACKED_FLOAT64_ARRAY, TYPE_PACKED_BYTE_ARRAY,
 ]
 
 
 static func capture(world: SimWorld) -> Dictionary:
+	var buf: PackedByteArray = PackedByteArray()
+	buf.resize(8)
 	var doc: Dictionary = {"version": VERSION}
-	doc["world"] = SnapUtil.to_dict(world, WORLD_FIELDS)
+	doc["world"] = _dump(world, WORLD_FIELDS, buf)
 	for key: String in DUMPED:
 		var part: Object = world.get(key)
-		doc[key] = SnapUtil.to_dict(part, fields_of(part))
-	doc["nav"] = SnapUtil.to_dict(world.nav, NAV_FIELDS)
-	doc["slots"] = SnapUtil.to_dict(world.nav.slots, SLOT_FIELDS) if world.nav.slots != null else {}
-	var phase_doc: Dictionary = SnapUtil.to_dict(world.phase_state, fields_of(world.phase_state))
+		doc[key] = _dump(part, fields_of(part), buf)
+	doc["nav"] = _dump(world.nav, NAV_FIELDS, buf)
+	doc["slots"] = _dump(world.nav.slots, SLOT_FIELDS, buf) if world.nav.slots != null else {}
+	var phase_doc: Dictionary = _dump(world.phase_state, fields_of(world.phase_state), buf)
 	phase_doc["seen_command_ids"] = world.phase_state.seen_command_ids.keys()
 	doc["phase_state"] = phase_doc
 	doc["rng"] = _rng_rows(world.rng)
 	doc["events"] = {
 		"hash": str(world.events.event_hash), "total": world.events.total, "tick": world.events.current_tick,
 	}
-	doc["plan"] = world.plan.to_dict() if world.plan != null else {}
+	doc["plan"] = _seal(world.plan.to_dict(), buf) if world.plan != null else {}
 	for key: String in VARIETY:
 		var state: Object = world.get(key)
-		var part_doc: Variant = state.call("to_dict")
-		doc[key] = part_doc
+		doc[key] = _seal(state.call("to_dict"), buf)
 	return doc
 
 
@@ -72,18 +84,18 @@ static func restore(world: SimWorld, doc: Dictionary) -> bool:
 	if typeof(doc.get("rng")) != TYPE_ARRAY:
 		return false
 	var world_doc: Dictionary = doc["world"]
-	SnapUtil.from_dict(world, WORLD_FIELDS, world_doc)
+	_load(world, WORLD_FIELDS, world_doc)
 	for key: String in DUMPED:
 		var part: Object = world.get(key)
 		var part_doc: Dictionary = doc[key]
-		SnapUtil.from_dict(part, fields_of(part), part_doc)
+		_load(part, fields_of(part), part_doc)
 	var nav_doc: Dictionary = doc["nav"]
-	SnapUtil.from_dict(world.nav, NAV_FIELDS, nav_doc)
+	_load(world.nav, NAV_FIELDS, nav_doc)
 	var slot_doc: Dictionary = doc["slots"]
 	if world.nav.slots != null:
-		SnapUtil.from_dict(world.nav.slots, SLOT_FIELDS, slot_doc)
+		_load(world.nav.slots, SLOT_FIELDS, slot_doc)
 	var phase_doc: Dictionary = doc["phase_state"]
-	SnapUtil.from_dict(world.phase_state, fields_of(world.phase_state), phase_doc)
+	_load(world.phase_state, fields_of(world.phase_state), phase_doc)
 	world.phase_state.seen_command_ids.clear()
 	for command_id: int in SnapUtil.ints(phase_doc.get("seen_command_ids", [])):
 		world.phase_state.seen_command_ids[command_id] = true
@@ -94,19 +106,19 @@ static func restore(world: SimWorld, doc: Dictionary) -> bool:
 	world.events.event_hash = _int64(events_doc.get("hash", "0"))
 	world.events.total = roundi(SnapUtil.num(events_doc.get("total", 0)))
 	world.events.current_tick = roundi(SnapUtil.num(events_doc.get("tick", 0)))
-	var plan_doc: Dictionary = doc["plan"]
+	var plan_doc: Dictionary = _open(doc["plan"])
 	world.plan = null if plan_doc.is_empty() else RunPlan.from_dict(plan_doc)
 	for key: String in VARIETY:
 		var state: Object = world.get(key)
-		var part_doc: Dictionary = doc[key]
+		var part_doc: Dictionary = _open(doc[key])
 		state.call("from_dict", part_doc)
 	world.command_queue.clear()
 	return true
 
 
-## The script variables of `o` that SnapUtil can save (numbers, flags and packed arrays), in declaration order. Used
-## for the classes whose every such variable is per-run state (the frozen stores, CombatState, PhaseState, RunStats),
-## so a field added to one of them later is captured without a change here.
+## The script variables of `o` that can be saved (numbers, flags and packed arrays), in declaration order. Used for the
+## classes whose every such variable is per-run state (the frozen stores, CombatState, PhaseState, RunStats), so a
+## field added to one of them later is captured without a change here.
 static func fields_of(o: Object) -> PackedStringArray:
 	var out: PackedStringArray = PackedStringArray()
 	for p: Dictionary in o.get_property_list():
@@ -116,6 +128,112 @@ static func fields_of(o: Object) -> PackedStringArray:
 			var field: String = p["name"]
 			out.append(field)
 	return out
+
+
+## `fields` of `o` as JSON-safe values that come back bit for bit (see the header).
+static func _dump(o: Object, fields: PackedStringArray, buf: PackedByteArray) -> Dictionary:
+	var out: Dictionary = {}
+	for f: String in fields:
+		var v: Variant = o.get(f)
+		match typeof(v):
+			TYPE_FLOAT:
+				out[f] = _seal(v, buf)
+			TYPE_PACKED_FLOAT64_ARRAY:
+				var fa: PackedFloat64Array = v
+				out[f] = PACK_FLOATS + fa.to_byte_array().hex_encode()
+			TYPE_PACKED_INT32_ARRAY:
+				var ia: PackedInt32Array = v
+				out[f] = PACK_INTS + ia.to_byte_array().hex_encode()
+			TYPE_PACKED_BYTE_ARRAY:
+				var ba: PackedByteArray = v
+				out[f] = PACK_BYTES + ba.hex_encode()
+			_:
+				out[f] = v
+	return out
+
+
+## Sets every field of `fields` that `d` holds (the reverse of `_dump`); a missing key keeps the current value.
+static func _load(o: Object, fields: PackedStringArray, d: Dictionary) -> void:
+	for f: String in fields:
+		if not d.has(f):
+			continue
+		var src: Variant = d[f]
+		match typeof(o.get(f)):
+			TYPE_INT:
+				o.set(f, roundi(SnapUtil.num(src)))
+			TYPE_BOOL:
+				o.set(f, typeof(src) == TYPE_BOOL and src == true)
+			TYPE_FLOAT:
+				o.set(f, SnapUtil.num(_open(src)))
+			TYPE_PACKED_FLOAT64_ARRAY:
+				o.set(f, _packed(src, PACK_FLOATS).to_float64_array())
+			TYPE_PACKED_INT32_ARRAY:
+				o.set(f, _packed(src, PACK_INTS).to_int32_array())
+			TYPE_PACKED_BYTE_ARRAY:
+				o.set(f, _packed(src, PACK_BYTES))
+
+
+## The bytes of a packed array saved by `_dump`; empty for anything else.
+static func _packed(v: Variant, mark: String) -> PackedByteArray:
+	if typeof(v) != TYPE_STRING:
+		return PackedByteArray()
+	var s: String = v
+	if not s.begins_with(mark):
+		return PackedByteArray()
+	return s.substr(mark.length()).hex_decode()
+
+
+## A copy of `v` in which every float that JSON could damage is text (see the header). Whole floats stay numbers. An
+## array that starts with an integer is taken to hold integers only (true of everything `to_dict` gives) and is not
+## walked.
+static func _seal(v: Variant, buf: PackedByteArray) -> Variant:
+	match typeof(v):
+		TYPE_FLOAT:
+			var f: float = v
+			buf.encode_double(0, f)
+			if f == floorf(f) and absf(f) < WHOLE_LIMIT and (f != 0.0 or buf.decode_s64(0) == 0):
+				return f
+			return FLOAT_MARK + buf.hex_encode()
+		TYPE_ARRAY:
+			var list: Array = v
+			if list.is_empty() or typeof(list[0]) == TYPE_INT:
+				return list
+			var out: Array = []
+			out.resize(list.size())
+			for i: int in list.size():
+				out[i] = _seal(list[i], buf)
+			return out
+		TYPE_DICTIONARY:
+			var d: Dictionary = v
+			var copy: Dictionary = {}
+			for key: Variant in d:
+				copy[key] = _seal(d[key], buf)
+			return copy
+	return v
+
+
+## The reverse of `_seal`.
+static func _open(v: Variant) -> Variant:
+	match typeof(v):
+		TYPE_STRING:
+			var s: String = v
+			if s.length() == 17 and s.begins_with(FLOAT_MARK) and s.substr(1).is_valid_hex_number():
+				return s.substr(1).hex_decode().decode_double(0)
+			return s
+		TYPE_ARRAY:
+			var list: Array = v
+			var out: Array = []
+			out.resize(list.size())
+			for i: int in list.size():
+				out[i] = _open(list[i])
+			return out
+		TYPE_DICTIONARY:
+			var d: Dictionary = v
+			var copy: Dictionary = {}
+			for key: Variant in d:
+				copy[key] = _open(d[key])
+			return copy
+	return v
 
 
 ## One row per stream, sorted by name: [name, state as a decimal string].
