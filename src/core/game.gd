@@ -64,7 +64,7 @@ func boot(root: Node) -> void:
 		Log.error("Game", "no content loaded, cannot start")
 		return
 	GameViewSettings.apply_look(args)  # before any BattleView is built (W3-C look; `--look=` overrides)
-	Sfx.disabled = args.mute
+	GameAudioDebug.apply(args)  # --mute and the audio debug switches
 	Sfx.apply_settings()
 	_layers = GameLayers.build(root, content.tokens, GameViewSettings.bool_setting(&"high_contrast", false))
 	_layers.shell.app_paused.connect(pause_run)

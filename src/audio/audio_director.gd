@@ -38,6 +38,12 @@ var started_total: int = 0  ## voices started since creation
 var recent_ids: Array[StringName] = []  ## the last RECENT_MAX started ids, oldest first
 var last_pitch: float = 1.0  ## pitch_scale of the last started voice
 var warn_count: int = 0  ## warnings logged (unknown id, missing file), each at most once per id
+## Debug switches for bisecting an audio problem on a device (GameAudioDebug sets them from the debug arguments).
+var trace: bool = false  ## log every started sound and bed start
+var force_sound: int = -1  ## 0 or 1 overrides the saved `sound_on` (-1 = the saved setting)
+var force_music: int = -1  ## 0 or 1 overrides the saved `music_on`
+var loop_trim: int = 0  ## frames pulled off the loop end of the two beds when they start
+var loop_off: bool = false  ## the beds play once instead of looping
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _streams: Dictionary[StringName, AudioStream] = {}
@@ -128,6 +134,8 @@ func try_play(id: StringName) -> bool:
 	var jitter: float = AudioCatalog.pitch_jitter(id)
 	last_pitch = 1.0 + jitter * _rng.randf_range(-1.0, 1.0)
 	pool.start(voice, id, stream, AudioCatalog.volume_db(id), last_pitch, priority, now)
+	if trace:
+		Log.info("Sfx", "t=%d play %s voice=%d pitch=%.3f" % [now, String(id), voice, last_pitch])
 	started_total += 1
 	recent_ids.append(id)
 	if recent_ids.size() > RECENT_MAX:
@@ -211,6 +219,10 @@ func apply_settings() -> void:
 
 
 func _setting(key: StringName) -> bool:
+	if key == &"sound_on" and force_sound >= 0:
+		return force_sound == 1
+	if key == &"music_on" and force_music >= 0:
+		return force_music == 1
 	var value: Variant = Save.get_setting(key)
 	if typeof(value) != TYPE_BOOL:
 		return true  # missing or odd value: stay audible
@@ -242,12 +254,29 @@ func _start_loops() -> void:
 		loop_ambience.stream = load(AudioCatalog.LOOP_AMBIENCE) as AudioStream
 	if loop_drone.stream == null:
 		loop_drone.stream = load(AudioCatalog.LOOP_DRONE) as AudioStream
+	_tune_loop(loop_ambience.stream)
+	_tune_loop(loop_drone.stream)
 	if _paused:
 		return  # resume_all starts them
 	for p: AudioStreamPlayer in [loop_ambience, loop_drone]:
 		if p.stream != null and not p.playing and not p.stream_paused:
 			p.play()
+			if trace:
+				Log.info("Sfx", "t=%d bed start %s" % [Time.get_ticks_msec(), p.stream.resource_path])
 	_apply_loop_volumes()
+
+
+## Device-debug tuning of a bed's loop points (`loop_trim`, `loop_off`); does nothing by default. The stream is a shared
+## cached resource, so it is tuned once (a meta flag marks it).
+func _tune_loop(stream: AudioStream) -> void:
+	var wav: AudioStreamWAV = stream as AudioStreamWAV
+	if wav == null or (loop_trim <= 0 and not loop_off) or wav.has_meta(&"loop_tuned"):
+		return
+	wav.set_meta(&"loop_tuned", true)
+	if loop_off:
+		wav.loop_mode = AudioStreamWAV.LOOP_DISABLED
+	else:
+		wav.loop_end = maxi(wav.loop_begin + 1, wav.loop_end - loop_trim)
 
 
 func _stop_loops() -> void:

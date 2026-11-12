@@ -35,6 +35,18 @@ var msaa: int = -1  ## --msaa=0|2|4: force the 3D viewport's MSAA (-1 = by look 
 var fxaa: int = -1  ## --fxaa=0|1: force FXAA off or on
 var glow: int = -1  ## --glow=0|1: force bloom off or on for the cost measurement (-1 = by look and tier)
 var tune: String = ""  ## --tune=name:value,name:value  shader parameter overrides of the stylised materials (look-dev)
+## Sound switches for bisecting an audio problem on a device (GameAudioDebug): --sfx=0|1 and --music=0|1 override the saved
+## settings (-1 = not forced), --loop-trim=<frames> pulls the beds' loop end back, --loop-off plays the beds once,
+## --audio-trace logs every started sound.
+var sfx: int = -1
+var music: int = -1
+var loop_trim: int = 0
+var loop_off: bool = false
+var audio_trace: bool = false
+
+## Extra arguments for a DEBUG build on a device (one line, blank separated), read when the file exists: the way to change
+## the flags of an exported APK without rebuilding it (`adb shell run-as <package> ...` writes it into the app's files).
+const ARGS_FILE: String = "user://cinderfall_args.txt"
 
 
 ## The user arguments after `--`, plus the words of the environment variable CINDERFALL_ARGS (desktop only). The
@@ -43,6 +55,8 @@ var tune: String = ""  ## --tune=name:value,name:value  shader parameter overrid
 static func from_os() -> DebugArgs:
 	var all: PackedStringArray = OS.get_cmdline_user_args()
 	all.append_array(OS.get_environment("CINDERFALL_ARGS").split(" ", false))
+	if OS.is_debug_build() and FileAccess.file_exists(ARGS_FILE):
+		all.append_array(FileAccess.get_file_as_string(ARGS_FILE).replace("\n", " ").replace("\r", " ").split(" ", false))
 	return parse(all)
 
 
@@ -82,6 +96,19 @@ static func parse(args: PackedStringArray) -> DebugArgs:
 				a.debug_perf = true
 			"--mute":
 				a.mute = true
+			"--sfx":
+				if value == "0" or value == "1":
+					a.sfx = value.to_int()
+			"--music":
+				if value == "0" or value == "1":
+					a.music = value.to_int()
+			"--loop-trim":
+				if value.is_valid_int():
+					a.loop_trim = maxi(0, value.to_int())
+			"--loop-off":
+				a.loop_off = true
+			"--audio-trace":
+				a.audio_trace = true
 			"--quality":
 				if value.is_valid_int():
 					a.quality = clampi(value.to_int(), 0, 2)
