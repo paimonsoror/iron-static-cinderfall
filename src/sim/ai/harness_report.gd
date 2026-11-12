@@ -39,6 +39,12 @@ var event_hash: int = 0
 var violations: PackedStringArray = PackedStringArray()  ## broken invariants (HarnessChecker); empty = clean
 var log: CommandLog = null
 var world: SimWorld = null
+# --- variety milestone (sim_run prints these; the scorecard reads them) ---
+var death_wave: int = 0  ## world.wave when the core fell; 0 for a victory or an unfinished run
+var signature: String = ""  ## BuildSignature: primary weapon by damage dealt plus the two tags with most stacks
+var damage_by_weapon: PackedFloat64Array = PackedFloat64Array()  ## enemy hp removed per ContentSet.weapons index
+var stalled: bool = false  ## the run waited for a choice the bot did not (or could not) answer; see SimHarness
+var stalled_on: int = 0  ## the PhaseState.Await it was stuck on
 
 
 func seconds() -> float:

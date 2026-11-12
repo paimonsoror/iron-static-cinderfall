@@ -9,6 +9,12 @@ extends RefCounted
 ## while anything is alive or queued, the core never heals, the shield is never negative or alive without its
 ## ability. Per event: Scrap equals the sum of kill rewards, a kill happens once per enemy, every purchase command
 ## is answered once and a success debits exactly its price, every ability command is answered, RUN_FINISHED once.
+##
+## Runs on a generated plan (variety content with a real RunPlan, VARIETY_SPEC 9) drop the invariants that only a
+## scripted wave list satisfies: spawns equal to the schedule (minis, splits and escorts enter outside it), Scrap equal
+## to the base price of each kill (elites, relay windows and directives change it), Scrap spent equal to purchases
+## (rerolls, buy-outs and patches spend it), and a core that never heals (repairs exist). Their place is taken by
+## the invariants that still hold: every kill is of a spawned enemy and happens once, Scrap balances, caps hold.
 
 const MAX_VIOLATIONS: int = 24
 
@@ -43,11 +49,14 @@ var _wave_total: int = 0
 var _wave_spawned: int = 0
 var _last_core: float = 0.0
 var _start_scrap: int = 0
+## True for the scripted legacy waves (no plan, or the stub plan of V1-S): every invariant applies.
+var _scripted: bool = true
 
 
 func _init(world: SimWorld) -> void:
 	_last_core = world.core_hp
 	_start_scrap = world.scrap
+	_scripted = world.plan == null or world.plan.boss_ids.is_empty()
 
 
 func after_step(world: SimWorld, events: Array[SimEvent]) -> void:
@@ -59,11 +68,11 @@ func after_step(world: SimWorld, events: Array[SimEvent]) -> void:
 ## End-of-run totals. `commands_submitted` is what the bot (or test) handed to world.submit.
 func finish(world: SimWorld, commands_submitted: int) -> void:
 	var stats: RunStats = world.stats
-	if stats.scrap_earned != reward_sum:
+	if _scripted and stats.scrap_earned != reward_sum:
 		_bad(world, "Scrap earned %d != sum of kill rewards %d" % [stats.scrap_earned, reward_sum])
 	if world.scrap != _start_scrap + stats.scrap_earned - stats.scrap_spent:
 		_bad(world, "scrap %d != start + earned - spent" % world.scrap)
-	if stats.scrap_spent != spent_expected:
+	if _scripted and stats.scrap_spent != spent_expected:
 		_bad(world, "Scrap spent %d != price of the %d successful purchases (%d)" % [stats.scrap_spent, purchases_ok, spent_expected])
 	var level_sum: int = 0
 	for level: int in world.upgrade_levels:
@@ -95,6 +104,12 @@ func finish(world: SimWorld, commands_submitted: int) -> void:
 
 
 func _check_victory(world: SimWorld) -> void:
+	if not _scripted:
+		if spawned != killed or world.alive_count() != 0 or world.waves_completed != world.plan.wave_count():
+			_bad(world, "VICTORY with %d spawned, %d killed, %d alive, %d of %d waves" % [spawned, killed, world.alive_count(), world.waves_completed, world.plan.wave_count()])
+		if world.core_hp <= 0.0:
+			_bad(world, "VICTORY with a dead core")
+		return
 	var total: int = 0
 	for w: WaveDef in world.content.waves:
 		total += w.total_count()
@@ -176,13 +191,13 @@ func _wave_cleared(world: SimWorld, wave: int) -> void:
 		_bad(world, "wave %d cleared with %d enemies alive" % [wave, world.alive_count()])
 	if SpawnSystem.pending_count(world) != 0 or not SpawnSystem.is_wave_fully_spawned(world):
 		_bad(world, "wave %d cleared with spawns still scheduled or queued" % wave)
-	if _wave_spawned != _wave_total:
+	if _scripted and _wave_spawned != _wave_total:
 		_bad(world, "wave %d cleared with %d spawned of %d scheduled" % [wave, _wave_spawned, _wave_total])
 
 
 func _state(world: SimWorld) -> void:
 	var store: EnemyStore = world.enemies
-	var cap: int = world.content.mission.enemy_cap
+	var cap: int = world.content.mission.enemy_cap + world.content.mission.swarm_cap
 	var alive: int = 0
 	for i: int in store.high_water:
 		if store.alive[i] == 0:
@@ -195,7 +210,7 @@ func _state(world: SimWorld) -> void:
 	if store.high_water > store.capacity:
 		_bad(world, "store high_water %d above capacity %d" % [store.high_water, store.capacity])
 	var nav: NavState = world.nav
-	if nav.wave_begun > 0:
+	if _scripted and nav.wave_begun > 0:
 		var due_later: int = nav.sched_due.size() - nav.sched_next
 		if _wave_spawned + nav.pending_count() + due_later != _wave_total:
 			_bad(world, "spawned %d + pending %d + not due %d != scheduled %d" % [_wave_spawned, nav.pending_count(), due_later, _wave_total])
@@ -204,7 +219,8 @@ func _state(world: SimWorld) -> void:
 	if world.phase == GameState.Id.CLEARING and not SpawnSystem.is_wave_fully_spawned(world):
 		_bad(world, "CLEARING while spawns are still scheduled or queued")
 	if world.core_hp > _last_core:
-		_bad(world, "core healed %.1f -> %.1f" % [_last_core, world.core_hp])
+		if _scripted:
+			_bad(world, "core healed %.1f -> %.1f" % [_last_core, world.core_hp])
 	else:
 		core_lost_by_wave[clampi(world.wave, 0, 5)] += _last_core - world.core_hp
 	_last_core = world.core_hp
