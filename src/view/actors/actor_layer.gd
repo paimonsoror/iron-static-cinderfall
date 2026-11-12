@@ -21,14 +21,16 @@ var _sim: SimWorld
 var _pool: EnemyPool
 var _decals: ActorDecals
 var _quality: int = VisualQuality.Tier.HIGH
+var _look: int = LookDevStyle.Look.CURRENT
 var _high_contrast: bool = false
 var _boss_id: int = 0
 var _frame: int = 0
 
 
 func setup(content: ContentSet) -> void:
+	_look = LookDevStyle.current()
 	_pool = EnemyPool.new()
-	_pool.setup(self, content)
+	_pool.setup(self, content, _look, _quality)
 	_decals = ActorDecals.new()
 	_decals.setup(self, content.arena)
 	warden = WardenView.new()
@@ -39,6 +41,7 @@ func setup(content: ContentSet) -> void:
 		var t: TurretView = TurretView.new()
 		t.setup(p)
 		add_child(t)
+		t.apply_look(_look, _quality)
 		turrets.append(t)
 	boss_marker = BossMarker.new()
 	boss_marker.setup(content.arena.pitch_down_deg, content.arena.yaw_deg)
@@ -147,13 +150,16 @@ func set_quality(tier: int) -> void:
 	_quality = VisualQuality.from_setting(tier)
 	if warden != null:
 		warden.set_quality(_quality)
+	_dress_actors()
 
 
-## Look of the Warden (LookDevStyle.Look; W3-C look-dev). Also becomes the process-wide current look.
+## Look of the Warden, the turrets and the enemies (LookDevStyle.Look; W3-C and W3-D). Also becomes the process-wide current look.
 func set_look(look: int) -> void:
 	LookDevStyle.set_current(look)
+	_look = LookDevStyle.current()
 	if warden != null:
-		warden.set_look(LookDevStyle.current())
+		warden.set_look(_look)
+	_dress_actors()
 
 
 func quality() -> int:
@@ -220,6 +226,14 @@ func is_flashing(enemy_id: int) -> bool:
 		var actor: EnemyActor = _pool.by_id[enemy_id]
 		return actor.is_flashing()
 	return false
+
+
+## Dresses the pooled enemies and the turrets for the current look and tier (shared meshes and materials: nothing is created).
+func _dress_actors() -> void:
+	if _pool != null:
+		_pool.set_look(_look, _quality)
+	for t: TurretView in turrets:
+		t.apply_look(_look, _quality)
 
 
 func _render_friends(a: float, delta: float) -> void:

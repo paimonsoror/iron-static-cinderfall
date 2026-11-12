@@ -46,6 +46,7 @@ static func refresh() -> void:
 		var parts: PackedStringArray = key.split("|")
 		var m: Material = _cache[key]
 		_paint(m, StringName(parts[0]), parts[1].to_int(), VisualQuality.Tier.MID if parts[2] == "1" else VisualQuality.Tier.LOW)
+	LookActorsMat.refresh()  # the enemies' materials repaint with the palette too (W3-D)
 
 
 ## The colour of the cyan accents at brightness `energy` (the WardenView dims and flashes it): the palette cyan lifted toward
@@ -66,6 +67,7 @@ static func warm_materials(look: int) -> Array[Material]:
 			var m: Material = surface(role, look, tier)
 			if not out.has(m):
 				out.append(m)
+	out.append_array(LookActorsMat.warm_materials(look))  # the enemies' materials and the hit flash over a coloured mesh (W3-D)
 	return out
 
 

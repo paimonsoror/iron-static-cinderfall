@@ -10,6 +10,9 @@ extends Node
 ##   --solo                                  hide the enemies, their blob shadows and health bars
 ##   --reload-pose                           hold the Warden's reload pose
 ##   --hide-warden                           draw everything but the Warden (pair with a normal capture: look_dev_legibility.gd)
+##   --focus=warden|skitter|hollow_warden|rusher|siege_hulk|turret   the close-up and solo cameras follow that actor (W3-D);
+##                                           with --solo and an enemy the other enemies and the Warden are hidden
+##   --rollout=0|1                           0 keeps the turret and the enemies in CURRENT while the Warden is styled (cost measurement)
 ##   --scenario=hold10|hold28|hold50|boss    crowd (default hold28)   --seed=<n>
 ##   --render-size=1080x1920                 live runs: render in a SubViewport of that size (a desktop window cannot be taller
 ##                                           than the screen), so the GPU cost is that of a phone-sized frame
@@ -41,6 +44,7 @@ var _mode: String = "game"
 var _solo: bool = false
 var _reload_pose: bool = false
 var _hide_warden: bool = false
+var _focus: LookActorsFocus = LookActorsFocus.new()
 var _measure_s: float = 0.0
 var _elapsed: float = 0.0
 var _extra_cam: Camera3D
@@ -92,6 +96,8 @@ func _ready() -> void:
 	_solo = args.solo
 	_reload_pose = args.reload_pose
 	_hide_warden = args.hide_warden
+	_focus.kind = args.focus if args.focus != "" else "warden"
+	LookActorsStyle.rollout_override = args.rollout
 	_measure_s = args.measure_s
 	for pair: String in args.tune.split(",", false):
 		var kv: PackedStringArray = pair.split(":")
@@ -127,6 +133,9 @@ func _process(delta: float) -> void:
 		warden.visible = false  # the Warden still moves and fires, so the effects around it stay identical
 	if _solo:
 		_hide_enemies()
+		if _focus.is_enemy():
+			_focus.hide_others(_view.actor_layer)
+			warden.visible = false
 	_update_camera(warden)
 	_elapsed += delta
 	if _measure_s > 0.0 and _elapsed >= _measure_s:
@@ -200,25 +209,36 @@ func _refit() -> void:
 	cam.transform = _base_xf
 	if _mode == "close":
 		cam.size = _base_size / _zoom
-		var focus: Vector3 = Vector3(_puppet.world.warden.x, 0.95, _puppet.world.warden.z)
-		var local: Vector3 = _base_xf.affine_inverse() * focus
-		cam.transform = Transform3D(_base_xf.basis, _base_xf.origin + _base_xf.basis * Vector3(local.x, local.y, 0.0))
+		_follow_close()
 	if CAM_AZIMUTH.has(_mode):
 		_extra_cam.make_current()
 	else:
 		cam.make_current()
 
 
-## The low solo cameras orbit the Warden at a fixed azimuth from its facing and look at its chest.
-func _update_camera(warden: WardenView) -> void:
+## The top-down close-up: the game camera shifted sideways and up so the focused actor is in the middle.
+func _follow_close() -> void:
+	var pose: LookActorsFocus.Pose = _focus.resolve(_view.actor_layer, _puppet.world)
+	var cam: Camera3D = _view.camera_rig.camera
+	var local: Vector3 = _base_xf.affine_inverse() * pose.at
+	cam.transform = Transform3D(_base_xf.basis, _base_xf.origin + _base_xf.basis * Vector3(local.x, local.y, 0.0))
+
+
+## The low solo cameras orbit the focused actor (the Warden by default) at a fixed azimuth from its facing, at a distance that
+## scales with its height, and look at its middle.
+func _update_camera(_warden: WardenView) -> void:
+	if _mode == "close":
+		_follow_close()
+		return
 	if not CAM_AZIMUTH.has(_mode):
 		return
-	var yaw: float = warden.upper_yaw() + deg_to_rad(CAM_AZIMUTH[_mode])
+	var pose: LookActorsFocus.Pose = _focus.resolve(_view.actor_layer, _puppet.world)
+	var yaw: float = pose.yaw + deg_to_rad(CAM_AZIMUTH[_mode])
 	var forward: Vector3 = Vector3(-sin(yaw), 0.0, -cos(yaw))
 	var elev: float = deg_to_rad(CAM_ELEVATION_DEG)
-	var focus: Vector3 = warden.position + Vector3(0.0, 1.0, 0.0)
-	var from: Vector3 = focus + forward * (CAM_DISTANCE * cos(elev)) + Vector3(0.0, CAM_DISTANCE * sin(elev), 0.0)
-	_extra_cam.look_at_from_position(from, focus, Vector3.UP)
+	var dist: float = CAM_DISTANCE * maxf(pose.height, 0.9) / 1.9
+	var from: Vector3 = pose.at + forward * (dist * cos(elev)) + Vector3(0.0, dist * sin(elev), 0.0)
+	_extra_cam.look_at_from_position(from, pose.at, Vector3.UP)
 
 
 func _hide_enemies() -> void:

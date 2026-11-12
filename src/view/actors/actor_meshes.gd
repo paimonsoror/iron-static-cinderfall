@@ -2,18 +2,19 @@ class_name ActorMeshes
 extends RefCounted
 ## Single entry point for the procedural actor meshes (WORK_PLAN 6). Every mesh is built once and cached; an
 ## authored asset replaces a placeholder by changing the function that returns it (`enemy`, `warden_*`, `turret*`).
-## Budgets: skitter 300, hollow warden 400, rusher 400, hulk 900, warden 2500 (every body part plus the weapon in
-## hand; W3-C raised it from 700 to 2000 because the Warden is a single instance, and to 2500 in v3 for the smooth rounded
-## silhouette), turret 300 triangles, each mesh at most
-## 3 surfaces. The CURRENT look of the Warden (legs + torso, 312 triangles) is unchanged.
+## Budgets (the hard-surface looks; CURRENT meshes are far below them): skitter 450, hollow warden 500, rusher 500,
+## hulk 1500 (W3-D raised them from 300, 400, 400 and 900), warden 2500 (every body part plus the weapon in hand; W3-C
+## raised it from 700 to 2000 because the Warden is a single instance, and to 2500 in v3 for the smooth rounded silhouette),
+## turret 600 (base plus head; was 300) triangles, each mesh at most 3 surfaces. The CURRENT look of every actor is unchanged
+## (the hash-pinned baseline of `look_dev_meshes_test.gd`); the styled meshes are cached under separate keys.
 
 const TRI_BUDGET: Dictionary[StringName, int] = {
-	&"skitter": 300,
-	&"hollow_warden": 400,
-	&"rusher": 400,
-	&"siege_hulk": 900,
+	&"skitter": 450,
+	&"hollow_warden": 500,
+	&"rusher": 500,
+	&"siege_hulk": 1500,
 	&"warden": 2500,
-	&"turret": 300,
+	&"turret": 600,
 }
 const MAX_SURFACES: int = 3
 ## The body parts of the Warden (one MeshInstance3D each) and the weapons.
@@ -35,6 +36,30 @@ static func enemy(enemy_id: StringName) -> ArrayMesh:
 		&"siege_hulk":
 			return _cached(enemy_id, EnemyMeshes.siege_hulk)
 	return _cached(&"skitter", EnemyMeshes.skitter)
+
+
+## The merged mesh of an enemy in a look (`LookDevStyle.Look`; W3-D). CURRENT, or a rollout that is switched off, gives the old
+## mesh (`enemy`); the hard-surface looks share one geometry per enemy, cached under its own key.
+static func enemy_look(enemy_id: StringName, look: int) -> ArrayMesh:
+	if not LookActorsStyle.enabled(look):
+		return enemy(enemy_id)
+	match enemy_id:
+		&"hollow_warden":
+			return _cached(&"styled_hollow_warden", LookActorsHollow.build)
+		&"rusher":
+			return _cached(&"styled_rusher", LookActorsRusher.build)
+		&"siege_hulk":
+			return _cached(&"styled_siege_hulk", LookActorsHulk.build)
+	return _cached(&"styled_skitter", LookActorsSkitter.build)
+
+
+## The turret's static `base` or yawing `head` in a look (W3-D); the old meshes for CURRENT.
+static func turret_part(part: StringName, look: int) -> ArrayMesh:
+	if not LookActorsStyle.enabled(look):
+		return turret_base() if part == &"base" else turret_head()
+	if part == &"base":
+		return _cached(&"styled_turret_base", LookActorsTurret.base)
+	return _cached(&"styled_turret_head", LookActorsTurret.head)
 
 
 static func warden_legs() -> ArrayMesh:
