@@ -151,7 +151,9 @@ func test_the_tables_only_name_known_enemies_abilities_and_sounds() -> void:
 		assert_bool(Ids.ENEMIES.has(kind)).is_true()
 		var sound: StringName = AudioEventRouter.DEATH_SOUNDS[kind]
 		assert_bool(AudioCatalog.has_sound(sound)).is_true()
-	assert_int(AudioEventRouter.DEATH_SOUNDS.size()).is_equal(Ids.LEGACY_ENEMY_COUNT)
+	assert_int(AudioEventRouter.DEATH_SOUNDS.size()).is_equal(Ids.ENEMIES.size())  # the 4 legacy kinds and the 14 variety kinds
+	for kind: StringName in Ids.ENEMIES:
+		assert_bool(AudioEventRouter.DEATH_SOUNDS.has(kind)).override_failure_message("no death sound for %s" % String(kind)).is_true()
 	for ability: StringName in AudioEventRouter.ABILITY_START_SOUNDS:
 		assert_bool(Ids.ABILITIES.has(ability)).is_true()
 		var started: StringName = AudioEventRouter.ABILITY_START_SOUNDS[ability]
