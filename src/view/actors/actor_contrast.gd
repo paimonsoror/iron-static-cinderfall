@@ -58,13 +58,13 @@ static func variant_of(base: Material) -> Material:
 ## The High Contrast twin of the surface of role `role` of an enemy in `look` at `tier`: the old variant in CURRENT (or when the
 ## actor rollout is off), a twin of the look's shared material otherwise, null when the role has none. Shared per (role, look,
 ## shader class), repainted from the base on every call.
-static func variant_for(role: StringName, look: int, tier: int) -> Material:
+static func variant_for(role: StringName, look: int, tier: int, small: bool = false) -> Material:
 	if not LookActorsStyle.enabled(look):
 		return variant_of(MatLib.mat(role))
-	var base: Material = LookActorsMat.surface(role, look, tier)
+	var base: Material = LookActorsMat.surface(role, look, tier, small)
 	if base == MatLib.mat(role):
 		return null
-	var key: String = "%s|%d|%d" % [role, look, 1 if LookDevStyle.ramp_enabled(look, tier) else 0]
+	var key: String = "%s|%d|%d" % [role, look, 1 if LookActorsStyle.shaded(look, tier, small) else 0]
 	if not _look_variants.has(key):
 		_look_variants[key] = _look_twin(base)
 	var twin: Material = _look_variants[key]

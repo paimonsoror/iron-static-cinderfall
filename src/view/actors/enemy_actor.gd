@@ -105,14 +105,19 @@ func _dress() -> void:
 		var role: StringName = StringName(base.resource_name)
 		var chosen: Material = null
 		if LookActorsStyle.enabled(look):
-			chosen = LookActorsMat.surface(role, look, tier)
+			chosen = LookActorsMat.surface(role, look, tier, _small())
 			if chosen == base:
 				chosen = null
 		if _contrast:
-			var variant: Material = ActorContrast.variant_for(role, look, tier)
+			var variant: Material = ActorContrast.variant_for(role, look, tier, _small())
 			if variant != null:
 				chosen = variant
 		mesh.set_surface_override_material(s, chosen)
+
+
+## The Skitter and the Rusher take the baked material on every tier (`LookActorsStyle.shaded`).
+func _small() -> bool:
+	return kind == Ids.EN_SKITTER or kind == Ids.EN_RUSHER
 
 
 func world_position() -> Vector3:

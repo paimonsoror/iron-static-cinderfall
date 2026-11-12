@@ -98,6 +98,7 @@ func _ready() -> void:
 	_hide_warden = args.hide_warden
 	_focus.kind = args.focus if args.focus != "" else "warden"
 	LookActorsStyle.rollout_override = args.rollout
+	LookActorsStyle.small_baked_override = args.small_baked
 	_measure_s = args.measure_s
 	for pair: String in args.tune.split(",", false):
 		var kv: PackedStringArray = pair.split(":")

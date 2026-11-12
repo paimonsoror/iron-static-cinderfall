@@ -22,8 +22,9 @@ static var _cache: Dictionary[String, Material] = {}
 
 
 ## The material for a surface of role `base_id` of an enemy in `look` at `tier`; the plain MatLib material for anything else
-## (and for CURRENT, or when the rollout is off).
-static func surface(base_id: StringName, look: int, tier: int) -> Material:
+## (and for CURRENT, or when the rollout is off). `small` marks the Skitter and the Rusher, which take the baked material on every
+## tier (`LookActorsStyle.shaded`).
+static func surface(base_id: StringName, look: int, tier: int, small: bool = false) -> Material:
 	var plain: StandardMaterial3D = MatLib.mat(base_id)
 	if not LookActorsStyle.enabled(look):
 		return plain
@@ -31,7 +32,7 @@ static func surface(base_id: StringName, look: int, tier: int) -> Material:
 	var is_optic: bool = base_id == OPTIC
 	if not is_frame and not is_optic:
 		return plain
-	var shaded: bool = LookDevStyle.ramp_enabled(look, tier)
+	var shaded: bool = LookActorsStyle.shaded(look, tier, small)
 	var key: String = "%s|%d|%d" % [base_id, look, 1 if shaded else 0]
 	if not _cache.has(key):
 		_cache[key] = _build(base_id, look, shaded, is_optic)

@@ -22,6 +22,7 @@ func before_test() -> void:
 func after_test() -> void:
 	LookDevStyle.set_current(CURRENT)
 	LookActorsStyle.rollout_override = -1
+	LookActorsStyle.small_baked_override = -1
 	LookDevStyle.glow_override = -1
 
 
@@ -44,6 +45,13 @@ func _actors(layer: ActorLayer) -> Array[EnemyActor]:
 			if a.kind == k:
 				out.append(a)
 	return out
+
+
+func _of_kind(layer: ActorLayer, kind: int) -> EnemyActor:
+	for a: EnemyActor in _actors(layer):
+		if a.kind == kind:
+			return a
+	return null
 
 
 func test_pooled_enemies_share_one_mesh_per_kind_and_the_shared_look_materials() -> void:
@@ -116,7 +124,7 @@ func test_switching_the_look_fifty_times_grows_neither_nodes_nor_materials() -> 
 
 func test_high_contrast_builds_twins_of_the_look_materials_and_off_restores_them() -> void:
 	var layer: ActorLayer = _layer(STYLED)
-	var a: EnemyActor = _actors(layer)[0]
+	var a: EnemyActor = _of_kind(layer, Ids.EN_HOLLOW)
 	var optic: int = LookActorsTestKit.surface_of(a.mesh.mesh as ArrayMesh, &"emit_red")
 	var plates: int = LookActorsTestKit.surface_of(a.mesh.mesh as ArrayMesh, &"ceramic")
 	var base_optic: Material = a.mesh.get_surface_override_material(optic)
@@ -172,6 +180,26 @@ func test_tier_gating_of_the_enemy_materials() -> void:
 	assert_bool(LookActorsStyle.grit_enabled(CURRENT, HIGH)).is_false()
 	assert_float(LookActorsStyle.warm_rim_strength(STYLED, LOW)).is_equal(0.0)
 	assert_float(LookActorsStyle.warm_rim_strength(CURRENT, HIGH)).is_equal(0.0)
+
+
+func test_the_small_kinds_take_the_baked_material_on_every_tier_and_the_big_ones_the_shader() -> void:
+	var layer: ActorLayer = _layer(STYLED)
+	for tier: int in [MID, HIGH]:
+		layer.set_quality(tier)
+		for kind: int in [Ids.EN_SKITTER, Ids.EN_RUSHER]:
+			var small: EnemyActor = _of_kind(layer, kind)
+			var plates: int = LookActorsTestKit.surface_of(small.mesh.mesh as ArrayMesh, &"ceramic")
+			assert_bool(small.mesh.get_surface_override_material(plates) is StandardMaterial3D).is_true()
+		for kind: int in [Ids.EN_HOLLOW, Ids.EN_HULK]:
+			var big: EnemyActor = _of_kind(layer, kind)
+			var plates_big: int = LookActorsTestKit.surface_of(big.mesh.mesh as ArrayMesh, &"ceramic")
+			assert_bool(big.mesh.get_surface_override_material(plates_big) is ShaderMaterial).is_true()
+	LookActorsStyle.small_baked_override = 0  # the measurement switch puts the shader back on every kind
+	layer.set_quality(HIGH)
+	var forced: EnemyActor = _of_kind(layer, Ids.EN_SKITTER)
+	var plates_forced: int = LookActorsTestKit.surface_of(forced.mesh.mesh as ArrayMesh, &"ceramic")
+	assert_bool(forced.mesh.get_surface_override_material(plates_forced) is ShaderMaterial).is_true()
+	LookActorsStyle.small_baked_override = -1
 
 
 func test_the_optic_is_hdr_only_where_glow_is_enabled_and_only_in_the_red_channel() -> void:
