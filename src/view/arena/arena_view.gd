@@ -16,6 +16,8 @@ var sun: DirectionalLight3D
 var environment_node: WorldEnvironment
 var core: CoreRig
 var omnis: Array[OmniLight3D] = []
+var lamp_gain: float = 1.0  ## brightness of the lamp heads (the styled yard drives them above 1 for the tonemap and the bloom)
+var pool_gain: float = 1.0  ## strength of the lamp light pools
 
 var _arena: ArenaDef
 var _tokens: VisualTokens
@@ -38,6 +40,8 @@ var _omni_base: Array[float] = []
 var _time: float = 0.0
 var _reduced_flash: bool = false
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
+var _env: EnvDress = EnvDress.new()  ## the styled yard (W3-E), switched by look and tier
+var _lamp_spots: Array[Vector3] = []
 
 
 func setup(arena: ArenaDef, tokens: VisualTokens) -> void:
@@ -51,10 +55,10 @@ func setup(arena: ArenaDef, tokens: VisualTokens) -> void:
 	_build_spawn_glow()
 	_build_rain()
 	_build_lights()
+	_env.attach(self, arena, tokens, _lamp_spots)
 	set_quality(VisualQuality.Tier.MID)
 	var center: Vector3 = Vector3((arena.min_x + arena.max_x) * 0.5, -0.4, (arena.min_z + arena.max_z) * 0.5)
-	var extra: Array[Material] = [_ground_mat]
-	ShaderWarmup.attach(self, center, extra, LookDevMat.warm_materials(_look))
+	_env.warm_up(center, _ground_mat, _look)
 	set_process(true)
 
 
@@ -72,6 +76,7 @@ func set_pad_state(pad: int, has_turret: bool) -> void:
 	var rim: StandardMaterial3D = _pad_rim_lit if has_turret else _pad_rim_dim
 	_pad_meshes[pad].set_surface_override_material(1, rim)
 	_pad_pools[pad].visible = has_turret
+	_env.set_pad(pad, has_turret)
 
 
 func set_quality(tier_value: int) -> void:
@@ -95,15 +100,17 @@ func set_quality(tier_value: int) -> void:
 		GroundMaterial.set_quality(_ground_mat, _tier)
 	RenderingServer.directional_shadow_atlas_set_size(VisualQuality.shadow_atlas_size(_tier), true)
 	_apply_glow()
+	_env.apply(_look, _tier)
 	if is_inside_tree():
 		VisualQuality.apply_render_scale(get_viewport(), _tier)
 		LookDevStyle.apply_aa(get_viewport(), _look, _tier)
 
 
-## Character look (LookDevStyle.Look, W3-C look-dev): only STYLISED_PLUS turns bloom on, on MID and HIGH.
+## The look (LookDevStyle.Look): the character look and, with it, the yard (EnvStyle). Bloom: STYLISED_PLUS, or the yard's glow gate.
 func set_look(look: int) -> void:
 	_look = clampi(look, LookDevStyle.Look.CURRENT, LookDevStyle.Look.STYLISED_PLUS)
 	_apply_glow()
+	_env.apply(_look, _tier)
 	if is_inside_tree():
 		LookDevStyle.apply_aa(get_viewport(), _look, _tier)
 
@@ -116,24 +123,10 @@ func glow_active() -> bool:
 	return environment_node != null and environment_node.environment.glow_enabled
 
 
-## Bloom for HDR emissives: three small mip levels (1/4, 1/8, 1/16 of the screen) so the glow stays tight and the
-## chain short, added on top, only above the HDR threshold (an emissive material with energy above 1).
+## Bloom for HDR emissives (STYLISED_PLUS, or the styled yard's glow gate): see EnvDress.apply_glow.
 func _apply_glow() -> void:
-	if environment_node == null:
-		return
-	var env: Environment = environment_node.environment
-	var on: bool = LookDevStyle.glow_enabled(_look, _tier)
-	env.glow_enabled = on
-	if not on:
-		return
-	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
-	env.glow_intensity = 0.8
-	env.glow_strength = 1.0
-	env.glow_bloom = 0.0
-	env.glow_hdr_threshold = 1.0
-	env.glow_hdr_scale = 1.0
-	for level: int in 7:
-		env.set_glow_level(level, 1.0 if level >= 1 and level <= 3 else 0.0)
+	if environment_node != null:
+		EnvDress.apply_glow(environment_node.environment, _look, _tier)
 
 
 func _enter_tree() -> void:
@@ -157,6 +150,11 @@ func tier() -> int:
 
 func pad_is_lit(pad: int) -> bool:
 	return pad >= 0 and pad < _pad_on.size() and _pad_on[pad]
+
+
+## Re-lights the lamp heads and pools on the next frame (after a look change).
+func refresh_lamps() -> void:
+	_lamp_timer = 0.0
 
 
 func rain_visible() -> bool:
@@ -183,6 +181,7 @@ func advance(delta: float) -> void:
 		core.step(delta)
 		_drive_core_light()
 	_step_lamps(delta)
+	_env.step(core.light_level() if core != null else 1.0, _lamp_level)
 	if _rain != null and _rain.visible:
 		_rain.position.y = -fmod(_time * RAIN_SPEED, RAIN_PERIOD)
 
@@ -238,7 +237,7 @@ func _build_props_and_decor() -> void:
 
 	var body: MeshBuilder = MeshKit.begin()
 	var heads: MeshBuilder = MeshKit.begin()
-	var lamp_spots: Array[Vector3] = DecorKit.build(_arena, body, heads)
+	_lamp_spots = DecorKit.build(_arena, body, heads)
 	_casters.append(_node("Decor", body.build()))
 	var heads_node: MeshInstance3D = _node("LampHeads", heads.build())
 	_lamp_mat = MatLib.mat(&"emit_amber").duplicate() as StandardMaterial3D
@@ -246,7 +245,7 @@ func _build_props_and_decor() -> void:
 	heads_node.material_override = _lamp_mat
 
 	var pools: MeshBuilder = MeshKit.begin()
-	for spot: Vector3 in lamp_spots:
+	for spot: Vector3 in _lamp_spots:
 		pools.quad(Vector2(6.0, 6.0), Transform3D(Basis.IDENTITY, Vector3(spot.x, 0.03, spot.z)), &"pool_lamp")
 	var pools_node: MeshInstance3D = _node("LampPools", pools.build())
 	_lamp_pool_mat = MatLib.mat(&"pool_lamp").duplicate() as StandardMaterial3D
@@ -394,5 +393,6 @@ func _step_lamps(delta: float) -> void:
 	var dip: bool = not _reduced_flash and _rng.randf() < 0.07
 	_lamp_level = _rng.randf_range(0.5, 0.75) if dip else _rng.randf_range(0.9, 1.0)
 	var amber: Color = _tokens.color(&"core_amber")
-	_lamp_mat.albedo_color = _tokens.color(&"obsidian").lerp(amber, _lamp_level)
-	_lamp_pool_mat.albedo_color = Color(amber.r, amber.g, amber.b, _lamp_pool_peak * _lamp_level)
+	var head: Color = _tokens.color(&"obsidian").lerp(amber, _lamp_level)
+	_lamp_mat.albedo_color = Color(head.r * lamp_gain, head.g * lamp_gain, head.b * lamp_gain)
+	_lamp_pool_mat.albedo_color = Color(amber.r, amber.g, amber.b, _lamp_pool_peak * _lamp_level * pool_gain)

@@ -17,6 +17,8 @@ var pool_mat: StandardMaterial3D
 var shield_mat: StandardMaterial3D
 var spark_mat: StandardMaterial3D
 var reduced_flash: bool = false
+var gain: float = 1.0  ## brightness of the column (the styled yard drives it above 1 for the tonemap and the bloom)
+var pool_gain: float = 1.0  ## strength of the light pool
 
 var _tokens: VisualTokens
 var _body: MeshInstance3D
@@ -185,8 +187,9 @@ func _apply() -> void:
 	var amber: Color = _tokens.color(&"core_amber")
 	var dark: Color = MatLib.mat(&"dark_frame").albedo_color
 	var k: float = 0.0 if _dead else clampf(light_level(), 0.0, 1.0)
-	column_mat.albedo_color = dark.lerp(amber, k)
-	pool_mat.albedo_color = Color(amber.r, amber.g, amber.b, _pool_peak * k)
+	var lit: Color = dark.lerp(amber, k)
+	column_mat.albedo_color = Color(lit.r * gain, lit.g * gain, lit.b * gain)
+	pool_mat.albedo_color = Color(amber.r, amber.g, amber.b, _pool_peak * k * pool_gain)
 	_pool.visible = k > 0.01
 	var cyan: Color = _tokens.color(&"warden_cyan")
 	shield_mat.albedo_color = Color(cyan.r, cyan.g, cyan.b, _shield_peak * _shield_frac)

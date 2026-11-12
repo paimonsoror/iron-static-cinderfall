@@ -2,6 +2,8 @@ extends SceneTree
 ## Look-dev comparison sheet (W3-C): crops, scales and lays PNGs side by side with a bitmap-font label above each.
 ##   Godot --headless --path <project> --script res://src/debug/look_dev_compare.gd -- --out=<png> --img=LABEL|<png> ...
 ##        [--crop=x,y,w,h] [--scale=<int>] [--pad=<px>] [--rows=<n>] [--plain]
+## W3-E additions: `--shrink=<int>` divides every tile by n (Lanczos) after the crop, `--fit=w,h` fits every tile into a w x h cell (aspect kept,
+## centred on the sheet colour; a landscape concept image next to portrait captures), `--cols=<n>` lays the tiles out in n columns.
 ## `--plain` writes the single input image as it is (no label, no padding); an output name ending in .jpg is saved as a
 ## JPEG (quality 0.88) instead of a PNG, which is how the full-size individual captures are kept small.
 ## Pure Image API (no rendering, works headless); the glyphs are a 5 x 7 font drawn with rectangles.
@@ -39,6 +41,9 @@ func _init() -> void:
 	var pad: int = 10
 	var rows: int = 1
 	var plain: bool = false
+	var shrink: int = 1
+	var fit: Vector2i = Vector2i.ZERO
+	var cols: int = 0
 	for raw: String in OS.get_cmdline_user_args():
 		if raw == "--plain":
 			plain = true
@@ -65,6 +70,13 @@ func _init() -> void:
 				rows = maxi(1, value.to_int())
 			"--jpg":
 				_jpg_quality = clampf(value.to_float(), 0.3, 1.0)
+			"--shrink":
+				shrink = maxi(1, value.to_int())
+			"--fit":
+				var fp: PackedStringArray = value.split(",")
+				fit = Vector2i(fp[0].to_int(), fp[1].to_int())
+			"--cols":
+				cols = maxi(0, value.to_int())
 	var tiles: Array[Image] = []
 	for path: String in paths:
 		var img: Image = Image.load_from_file(path)
@@ -76,6 +88,10 @@ func _init() -> void:
 			img = img.get_region(crop)
 		if scale > 1:
 			img.resize(img.get_width() * scale, img.get_height() * scale, Image.INTERPOLATE_NEAREST)
+		if shrink > 1:
+			img.resize(floori(float(img.get_width()) / float(shrink)), floori(float(img.get_height()) / float(shrink)), Image.INTERPOLATE_LANCZOS)
+		if fit.x > 0:
+			img = _fit(img, fit)
 		tiles.append(img)
 	if tiles.is_empty() or out == "":
 		print("COMPARE ERROR nothing to do")
@@ -85,6 +101,8 @@ func _init() -> void:
 		_save(tiles[0], out)
 		return
 	var header: int = 7 * FONT_SCALE + 2 * pad
+	if cols > 0:
+		rows = ceili(float(tiles.size()) / float(cols))
 	var per_row: int = ceili(float(tiles.size()) / float(rows))
 	var cell_w: int = tiles[0].get_width()
 	var cell_h: int = tiles[0].get_height()
@@ -101,6 +119,16 @@ func _init() -> void:
 		_text(sheet, labels[i], x, y + half)
 		sheet.blit_rect(tiles[i], Rect2i(Vector2i.ZERO, tiles[i].get_size()), Vector2i(x, y + header - half))
 	_save(sheet, out)
+
+
+## `img` scaled to fit inside `cell` (aspect kept), centred on a cell-sized canvas of the sheet colour.
+func _fit(img: Image, cell: Vector2i) -> Image:
+	var k: float = minf(float(cell.x) / float(img.get_width()), float(cell.y) / float(img.get_height()))
+	img.resize(maxi(1, roundi(float(img.get_width()) * k)), maxi(1, roundi(float(img.get_height()) * k)), Image.INTERPOLATE_LANCZOS)
+	var canvas: Image = Image.create(cell.x, cell.y, false, Image.FORMAT_RGB8)
+	canvas.fill(BG)
+	canvas.blit_rect(img, Rect2i(Vector2i.ZERO, img.get_size()), Vector2i(floori(float(cell.x - img.get_width()) * 0.5), floori(float(cell.y - img.get_height()) * 0.5)))
+	return canvas
 
 
 func _save(img: Image, out: String) -> void:

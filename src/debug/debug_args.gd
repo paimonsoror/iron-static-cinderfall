@@ -38,6 +38,11 @@ var tune: String = ""  ## --tune=name:value,name:value  shader parameter overrid
 var rollout: int = -1  ## --rollout=0|1 (W3-D): 0 keeps the turret and the enemies in CURRENT while the Warden is styled (cost measurement)
 var small_baked: int = -1  ## --small-baked=0|1 (W3-D): 0 = the shader on every enemy kind on MID and HIGH (cost measurement)
 var focus: String = ""  ## --focus=warden|skitter|hollow_warden|rusher|siege_hulk|turret (W3-D): close-up and solo cameras follow that actor
+var env: String = ""  ## --env=off|only:a,b|no:a,b  switches single effects of the styled yard (EnvStyle) for the cost measurement
+var env_tune: String = ""  ## --env-tune=name:value,...  floor shader parameter overrides (EnvGround.overrides)
+var cam_pitch: float = 0.0  ## --cam-pitch=<degrees>  sandbox-only camera pitch experiment (0 = the game camera)
+var cam_persp: float = 0.0  ## --cam-persp=<fov degrees>  sandbox-only perspective camera for the camera study (0 = orthographic)
+var cam_report: bool = false  ## --cam-report: log one line of camera numbers shortly before the capture frame
 ## Sound switches for bisecting an audio problem on a device (GameAudioDebug): --sfx=0|1 and --music=0|1 override the saved
 ## settings (-1 = not forced), --loop-trim=<frames> pulls the beds' loop end back, --loop-off plays the beds once,
 ## --audio-trace logs every started sound.
@@ -165,6 +170,18 @@ static func parse(args: PackedStringArray) -> DebugArgs:
 					a.small_baked = value.to_int()
 			"--focus":
 				a.focus = value.to_lower()
+			"--env":
+				a.env = value
+			"--env-tune":
+				a.env_tune = value
+			"--cam-pitch":
+				if value.is_valid_float():
+					a.cam_pitch = clampf(value.to_float(), 20.0, 89.0)
+			"--cam-report":
+				a.cam_report = true
+			"--cam-persp":
+				if value.is_valid_float():
+					a.cam_persp = clampf(value.to_float(), 0.0, 90.0)
 			"--solo":
 				a.solo = true
 			"--hide-warden":
