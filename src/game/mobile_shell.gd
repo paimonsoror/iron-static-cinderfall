@@ -1,8 +1,9 @@
 class_name MobileShell
 extends Node
 ## Lifecycle and the back gesture (ARCH 7.4). It only reports; Game decides what to do:
-##  - the app went to the background or lost focus (mobile builds only): the profile is flushed at once, then
-##    `app_paused` is emitted (Game pauses the run; it stays paused after returning until the player taps RESUME);
+##  - the app went to the background or lost focus (mobile builds only): the profile is flushed at once, the run file
+##    of a live run is written with its `resume_tick` (VARIETY_SPEC 2.8: the process may be killed while it is in the
+##    background), then `app_paused` is emitted (Game pauses the run; it stays paused until the player taps RESUME);
 ##  - the OS back request (Android back button or gesture) emits `back_requested` (Game asks BackPolicy);
 ##  - on desktop the Escape key (`ui_cancel`) stands in for the back gesture, so the flow can be tried without a phone.
 
@@ -29,7 +30,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		back_requested.emit()
 
 
-## The app is leaving the foreground: write the profile, then tell Game to pause.
+## The app is leaving the foreground: write the profile and the run file, then tell Game to pause.
 func on_app_paused() -> void:
 	GameRewards.flush_now()
+	RunController.save_active_on_pause()
 	app_paused.emit()

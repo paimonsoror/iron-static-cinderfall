@@ -108,7 +108,7 @@ func goto_menu() -> void:
 	if not _set_state(GameState.Id.MENU):
 		return
 	var menu: MainMenuScreen = _layers.swap_screen(SCREEN_MENU) as MainMenuScreen
-	menu.setup(Save.profile)
+	GameRunFlow.setup_menu(self, menu)
 	menu.start_pressed.connect(goto_briefing)
 	menu.settings_pressed.connect(open_settings)
 	menu.quit_pressed.connect(_quit_app)
@@ -179,7 +179,7 @@ func open_settings() -> void:
 ## Android back (and Escape on desktop), by BackPolicy.
 func request_back() -> void:
 	var drawer: bool = hud != null and hud.is_drawer_open()
-	match BackPolicy.decide(machine.current, drawer, _settings_overlay != null):
+	match BackPolicy.decide(machine.current, drawer, _settings_overlay != null, GameRunFlow.choice_open(run)):
 		BackPolicy.Action.CLOSE_OVERLAY:
 			_close_settings()
 		BackPolicy.Action.CLOSE_DRAWER:
@@ -210,7 +210,7 @@ func _begin_run(run_seed: int) -> void:
 		return
 	var seed_value: int = GameLaunch.pick_seed(run_seed, args)
 	var config: SimConfig = SimConfig.create(content, seed_value)
-	GameRunFlow.apply_launch(config, content)
+	GameRunFlow.apply_launch(config, content, args)
 	run = RunController.new()
 	run.name = "RunController"
 	_layers.run_host.add_child(run)
@@ -221,9 +221,9 @@ func _begin_run(run_seed: int) -> void:
 	run.phase_changed.connect(_on_sim_phase)
 	_set_state(GameState.Id.PREPARING)
 	_feedback.attach(content)
-	var run_id: String = GameLaunch.make_run_id(seed_value, _used_run_ids, Save.profile.awarded_run_ids)
+	var run_id: String = GameRunFlow.run_id_for(seed_value, _used_run_ids)
 	Log.info("Game", "run started id=%s seed=%d autoplay=%s scenario=%s" % [run_id, seed_value, args.autoplay, args.scenario])
-	run.start(config, run_id, battle_view)
+	GameRunFlow.start(self, config, run_id)
 	GameDebugTools.bind(battle_view, run, _perf, args.debug_overlay)
 	hud = _layers.add_scene(_layers.hud_root, SCENE_HUD) as CombatHud
 	hud.setup(run.api, content, battle_view)
@@ -272,7 +272,7 @@ func _teardown_run(free_view: bool) -> void:
 			run.paused_changed.disconnect(_on_paused_changed)
 		if run.phase_changed.is_connected(_on_sim_phase):
 			run.phase_changed.disconnect(_on_sim_phase)
-		run.stop()
+		run.abandon()
 		GameLayers.release(run)
 		run = null
 		Sfx.resume_all()
