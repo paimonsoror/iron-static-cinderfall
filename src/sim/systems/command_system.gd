@@ -43,7 +43,9 @@ static func _apply(world: SimWorld, cmd: SimCommand, bought_this_tick: Dictionar
 
 
 ## The commands of the variety milestone (VARIETY_SPEC 13.2). Each goes to the system that owns it and returns a
-## Reason.Id; a refusal is answered here, once, with COMMAND_REJECTED(command id, reason).
+## Reason.Id; a refusal is answered here, once, with COMMAND_REJECTED(command id, reason). The five draft commands
+## (PICK_DIRECTIVE, SKIP_DRAFT, REROLL, BUY_OUT, PATCH_CORE) are legal only while a draft is open and awaited: DraftSystem
+## answers NOT_AWAITING otherwise, INVALID_CHOICE for a slot that is not offered, INSUFFICIENT_SCRAP for a price.
 static func _apply_variety(world: SimWorld, cmd: SimCommand) -> void:
 	var reason: int = Reason.Id.UNKNOWN_ID
 	match cmd.kind:

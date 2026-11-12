@@ -3,7 +3,8 @@ extends RefCounted
 ## Run-wide modifiers (VARIETY_SPEC 13.2): a flat set of typed fields that ModSystem recomputes whenever a directive,
 ## the kit or the wave modifier changes. One float per OpDef.STATS entry (a `*_mul` field starts at 1.0, the others at
 ## 0.0) and one byte per OpDef.FLAGS entry. Written by ModSystem only; everything is hashed.
-# TODO(V2-B): the stub holds the defaults; nothing reads them yet.
+## ModSystem.recompute rebuilds it from the kit, the held directives and the wave modifier; the route rewards that arm
+## a flag of the next draft (next_draft_rare, next_draft_double) set the bit until the next recompute and arm DraftState.
 
 var lvl_damage: float = 0.0
 var lvl_fire_rate: float = 0.0

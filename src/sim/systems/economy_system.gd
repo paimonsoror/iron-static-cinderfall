@@ -13,8 +13,12 @@ static func purchase(world: SimWorld, command_id: int, upgrade_index: int) -> in
 	return reason
 
 
-## Reason.Id.OK when the upgrade can be bought right now. Check order: state, id, max level, min_wave, funds.
+## Reason.Id.OK when the upgrade can be bought right now. Check order: shop, state, id, max level, min_wave, funds.
+## The shop is closed (SHOP_CLOSED) when `mission.shop_enabled` is false: the shipped variety mission buys directives
+## on the draft screen instead. Only the legacy content keeps the shop.
 static func block_reason(world: SimWorld, upgrade_index: int) -> int:
+	if not world.content.mission.shop_enabled:
+		return Reason.Id.SHOP_CLOSED
 	if not _purchases_allowed(world.phase):
 		return Reason.Id.WRONG_STATE
 	if upgrade_index < 0 or upgrade_index >= world.content.upgrades.size() or upgrade_index >= world.upgrade_levels.size():
@@ -62,6 +66,25 @@ static func _free_pad(world: SimWorld) -> int:
 		if world.turrets.active[pad] == 0:
 			return pad
 	return -1
+
+
+## True when a turret can still be deployed: a pad is free and no effect has disabled the pads.
+static func has_free_pad(world: SimWorld) -> bool:
+	return not world.mods.has_flag(&"pads_disabled") and _free_pad(world) >= 0
+
+
+## Variety runs (ModSystem.recompute): deploys turrets on the lowest free pads until `target` are active (never removes
+## one) and mirrors the number of active pads into the legacy level `upgrade_levels[UP_AUTO_TURRET]`.
+static func sync_turrets(world: SimWorld, target: int) -> void:
+	var wanted: int = mini(target, world.turrets.active.size())
+	while world.turrets.active_count() < wanted and has_free_pad(world):
+		var pad: int = _free_pad(world)
+		world.turrets.active[pad] = 1
+		world.events.push(SimEventKind.Id.TURRET_DEPLOYED, pad)
+	var count: int = world.turrets.active_count()
+	if world.upgrade_levels[Ids.UP_AUTO_TURRET] != count:
+		world.upgrade_levels[Ids.UP_AUTO_TURRET] = count
+		world.events.push(SimEventKind.Id.UPGRADE_LEVEL_CHANGED, Ids.UP_AUTO_TURRET, count)
 
 
 ## Only called after block_reason returned OK: debit exactly once, raise the level, apply the effect.

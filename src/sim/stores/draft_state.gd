@@ -1,7 +1,9 @@
 class_name DraftState
 extends RefCounted
 ## Directive stacks and the draft in progress (VARIETY_SPEC 4.3, 4.4, 13.2). Written by DraftSystem only; hashed.
-# TODO(V2-B): the stub holds the neutral state.
+## `offer_ordinal` counts the offers made: the offer made while it was n draws from the stream `draft:<n>` (0-based),
+## and `offer_ordinal` is n + 1 for as long as that draft is open. A taken slot of `offer` is -1.
+## `reroll_locked` stands for the whole "no breather" lock of a hot wave (mod_no_breather): no reroll and no patch.
 
 const FIELDS: PackedStringArray = [
 	"stacks", "offer", "last_offer", "offer_ordinal", "open", "picks_left", "rerolls_paid", "free_rerolls", "buyouts",
@@ -10,7 +12,7 @@ const FIELDS: PackedStringArray = [
 
 var stacks: PackedInt32Array = PackedInt32Array()  ## per directive index: how many the build holds
 var offer: PackedInt32Array = PackedInt32Array()  ## directive index per slot; -1 = slot already taken
-var last_offer: PackedInt32Array = PackedInt32Array()  ## the previous offer (repeat penalty)
+var last_offer: PackedInt32Array = PackedInt32Array()  ## the directives offered and not picked in the previous draft
 var offer_ordinal: int = 0  ## n of the `draft:<n>` stream: offers made so far in this run
 var open: bool = false
 var picks_left: int = 0  ## 2 after rw_double_pick, else 1
@@ -34,6 +36,20 @@ func stacks_of(directive_index: int) -> int:
 	if directive_index < 0 or directive_index >= stacks.size():
 		return 0
 	return stacks[directive_index]
+
+
+## Slots of the open offer that were already taken (picked, or kept by a buy-out).
+func taken_count() -> int:
+	var n: int = 0
+	for index: int in offer:
+		if index < 0:
+			n += 1
+	return n
+
+
+## Slots of the open offer that can still be picked.
+func slots_left() -> int:
+	return offer.size() - taken_count()
 
 
 func hash_into(h: StateHasher) -> void:
