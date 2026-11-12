@@ -96,9 +96,10 @@ static func container(mb: MeshBuilder, t: Transform3D, kind: int, lit: bool, sal
 		_bx(mb, t, Vector3(-hl + 0.04, ry, 0.0), Vector3(0.06, 0.1, W - 0.5), _k(col, 0.85), 0.0)
 	_bx(mb, t, Vector3(hl + 0.07, 1.7, 0.0), Vector3(0.04, 0.16, 0.46), EnvShapes.paint(&"ceramic", 0.55), 0.0)
 	if lit:
-		_bx(mb, t, Vector3(-hl + 1.0, 1.7, hw + 0.07), Vector3(0.88, 0.32, 0.05), dark, 0.0)
-		mb.tint = Color.WHITE
-		mb.box(Vector3(0.74, 0.2, 0.05), t * Transform3D(Basis.IDENTITY, Vector3(-hl + 1.0, 1.7, hw + 0.1)), EnvShapes.AMBER)
+		for wx: float in [-hl + 1.0, -hl + 2.4, -hl + 3.6]:
+			_bx(mb, t, Vector3(wx, 1.7, hw + 0.07), Vector3(0.88 if wx < -1.0 else 0.5, 0.32, 0.05), dark, 0.0)
+			mb.tint = Color.WHITE
+			mb.box(Vector3(0.74 if wx < -1.0 else 0.36, 0.2, 0.05), t * Transform3D(Basis.IDENTITY, Vector3(wx, 1.7, hw + 0.1)), EnvShapes.AMBER)
 	PropKit.blob_shadow_box(mb, t, Vector2(L + 0.3, W + 0.4))
 
 

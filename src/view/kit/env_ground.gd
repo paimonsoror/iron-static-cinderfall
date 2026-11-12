@@ -65,7 +65,7 @@ static func set_groups(m: ShaderMaterial, core: float, lamp: float, pad0: float,
 	m.set_shader_parameter(&"grp", Vector4(core, lamp, pad0, pad1))
 
 
-## The reflecting sources: the reactor column, the lamp heads, the Warden's lights and the two turret pads. A source at height h
+## The reflecting sources: the reactor column, the lamp heads and the two turret pads (not the Warden: its pad must stay the calmest, darkest ground for legibility). A source at height h
 ## shows on the floor `h * cot(pitch)` toward the viewer, so its streak starts and ends there along Z.
 static func set_sources(m: ShaderMaterial, arena: ArenaDef, tokens: VisualTokens, lamps: Array[Vector3]) -> void:
 	var cot: float = 1.0 / tan(deg_to_rad(CameraFit.effective_pitch_deg(arena)))
@@ -81,8 +81,6 @@ static func set_sources(m: ShaderMaterial, arena: ArenaDef, tokens: VisualTokens
 			break
 		pos.append(Vector4(spot.x, spot.z + 4.7 * cot, spot.z + 5.1 * cot, 0.55))
 		col.append(Vector4(amber.r * 1.8, amber.g * 1.8, amber.b * 1.8, GROUP_LAMP))
-	pos.append(Vector4(arena.warden_x, arena.warden_z + 0.9 * cot, arena.warden_z + 1.6 * cot, 0.6))
-	col.append(Vector4(cyan.r * 0.9, cyan.g * 0.9, cyan.b * 0.9, GROUP_STEADY))
 	for i: int in mini(2, arena.turret_pads.size()):
 		var p: Vector2 = arena.turret_pads[i]
 		pos.append(Vector4(p.x, p.y + 0.6 * cot, p.y + 1.5 * cot, 0.6))

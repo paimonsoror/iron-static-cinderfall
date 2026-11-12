@@ -3,7 +3,7 @@ extends GdUnitTestSuite
 ## channels the floor shader reads (grain, cracks, blotches, breakup).
 
 ## FNV-1a of the mip 0 bytes (EnvTex.checksum). Changing the generator changes this number on purpose: update it with the textures.
-const CHECKSUM: int = 0
+const CHECKSUM: int = 3128169212052033339
 
 
 func test_size_format_and_mipmaps() -> void:

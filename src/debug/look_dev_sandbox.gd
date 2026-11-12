@@ -16,6 +16,11 @@ extends Node
 ##   --msaa=0|2|4  --fxaa=0|1                force the anti-aliasing of the 3D viewport (default: by look and tier)
 ##   --glow=0|1                              force bloom off or on (cost measurement)   --tune=name:value,...  shader overrides
 ##   --debug-perf  --measure=<seconds>       PerfHud `[PERF]` lines every 5 s, quit after N seconds (live runs lift the fps cap)
+##   --env=off|only:a,b|no:a,b               W3-E: switch single effects of the styled yard (EnvStyle names: floor wet props prop_shader
+##                                           reactor spill vignette grade glow ripples flicker); `off` is today's yard with the styled Warden
+##   --env-tune=name:value,...               W3-E: floor shader overrides (albedo_gain sheen_gain refl_gain puddle_lo puddle_hi crack_gain)
+##   --cam-pitch=<deg> [--cam-persp=<fov>]   W3-E camera study: this pitch (orthographic, or perspective with that vertical fov) fitted into the
+##                                           same HUD band; --cam-report logs the screen numbers (src/debug/env_cam_study.gd). Sandbox only.
 ## Keys: F8 cycles the look, F5 the quality tier, F9 the camera, F7 the perf overlay.
 ## In a capture the puppet steps a fixed 1/60 s per frame, so `--capture-frames=N` always shows second N/60.
 

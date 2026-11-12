@@ -21,9 +21,10 @@ uniform float ripples_on = 0.0;
 uniform float crack_gain = 1.0;
 uniform float refl_gain = 1.0;
 uniform float sheen_gain = 0.9;
-uniform float albedo_gain = 1.35;
+uniform float albedo_gain = 1.5;
 uniform float puddle_lo = 0.5;
 uniform float puddle_hi = 0.66;
+uniform float pad_dark = 0.5;
 uniform vec4 grp = vec4(1.0);          // intensity of the source groups: core, lamps, pad 0, pad 1
 uniform vec4 src_pos[12];              // x, z_lo, z_hi (reflection of the lit part along the view), half width
 uniform vec4 src_col[12];              // rgb (energy included), group index (0..3, 4 = steady)
@@ -102,6 +103,9 @@ void fragment() {
 	col = mix(col, col * 0.5 + c_puddle * 0.1, pm);
 	crack *= 1.0 - pm * 0.7;
 
+	// The Warden's pad is the calmest, darkest ground: the figure and its cyan ring must read against it (legibility floor).
+	col *= 1.0 - pad_dark * (1.0 - smoothstep(1.2, 3.4, length(w - warden_xy)));
+
 	// Hazard paint (world rectangles, diagonal stripes in the decor frame), worn.
 	for (int i = 0; i < 3; i++) {
 		vec4 s = stripes[i];
@@ -148,7 +152,7 @@ void fragment() {
 		}
 		vec3 sheen = c_sky * pm * sheen_gain * brk;
 		float near_core = smoothstep(8.0, 0.8, length(w - core_xy));
-		sheen += src_col[0].rgb * near_core * near_core * 0.22 * (0.4 + 0.8 * brk) * grp.x;
+		sheen += src_col[0].rgb * near_core * near_core * 0.22 * (0.4 + 0.8 * brk) * grp.x * smoothstep(1.4, 3.6, length(w - warden_xy));
 		refl = (refl * brk + sheen) * wet * refl_gain;
 		if (ripples_on > 0.5 && pm > 0.05) {
 			vec2 rc = w * 0.9;

@@ -119,13 +119,15 @@ func test_mid_and_high_use_the_shader_and_only_high_plus_flashes_the_muzzle_ligh
 	assert_bool(layer.warden.muzzle_light().visible).is_false()
 
 
-func test_bloom_is_a_plus_touch_on_mid_and_high_only() -> void:
+func test_bloom_is_a_plus_touch_on_mid_and_high_and_the_styled_yards_on_high() -> void:
 	var view: BattleView = ViewIntegrationKit.battle_view(self, _content)
 	for tier: int in [VisualQuality.Tier.LOW, VisualQuality.Tier.MID, VisualQuality.Tier.HIGH]:
 		view.set_quality(tier)
 		for look: int in 3:
 			view.arena_view.set_look(look)
+			# W3-E: the styled yard adds its own bloom gate (EnvStyle.GLOW, HIGH) to the STYLISED_PLUS touch (MID and HIGH)
 			var want: bool = look == LookDevStyle.Look.STYLISED_PLUS and tier >= VisualQuality.Tier.MID
+			want = want or EnvStyle.on(EnvStyle.GLOW, look, tier)
 			assert_bool(view.arena_view.glow_active()).is_equal(want)
 	view.arena_view.set_look(LookDevStyle.Look.CURRENT)
 	view.set_quality(VisualQuality.Tier.HIGH)

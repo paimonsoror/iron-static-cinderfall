@@ -145,8 +145,9 @@ func test_floor_and_props_follow_the_tier() -> void:
 	v.set_quality(HIGH)
 	assert_float(_ground_param(v, &"ripples_on")).is_equal(1.0)
 	assert_bool(v.glow_active()).is_true()
-	assert_int(v.environment_node.environment.tonemap_mode).is_equal(Environment.TONE_MAPPER_FILMIC)
+	assert_int(v.environment_node.environment.tonemap_mode).is_equal(EnvStyle.GRADE_TONEMAP)
 	assert_bool(v.environment_node.environment.adjustment_enabled).is_true()
+	assert_float(v.environment_node.environment.adjustment_contrast).is_equal(EnvStyle.GRADE_CONTRAST)
 
 
 func test_bloom_of_stylised_plus_is_unchanged_on_mid() -> void:
@@ -254,10 +255,10 @@ func test_styled_triangle_budget() -> void:
 	assert_int(total).is_between(8000, 40000)
 
 
-func test_styled_lamp_and_reactor_gains_are_hdr_only_in_the_styled_yard() -> void:
+func test_lamp_heads_are_hdr_only_in_the_styled_yard() -> void:
 	var v: ArenaView = _view(STY)
 	assert_float(v.lamp_gain).is_greater(1.0)
-	assert_float(v.core.gain).is_greater(1.0)
+	assert_float(v.core.gain).is_equal(EnvStyle.REACTOR_GAIN)
 	v.advance(0.5)
 	var lamp: StandardMaterial3D = (v.get_node("LampHeads") as MeshInstance3D).material_override as StandardMaterial3D
 	assert_float(lamp.albedo_color.r).is_greater(1.0)

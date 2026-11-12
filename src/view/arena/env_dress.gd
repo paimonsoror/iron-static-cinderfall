@@ -148,8 +148,10 @@ func _apply_props() -> void:
 		if styled:
 			EnvMat.bind(_new_meshes[i], EnvStyle.on(EnvStyle.PROP_SHADER, _look, _tier))
 		nodes[i].mesh = _new_meshes[i] if styled else _old_meshes[i]
-	_view.lamp_gain = EnvStyle.LAMP_GAIN if EnvStyle.on(EnvStyle.SPILL, _look, _tier) else 1.0
-	_view.refresh_lamps()
+	var lamp_gain: float = EnvStyle.LAMP_GAIN if EnvStyle.on(EnvStyle.SPILL, _look, _tier) else 1.0
+	if not is_equal_approx(_view.lamp_gain, lamp_gain):  # CURRENT never touches the lamps (their flicker keeps its own timing)
+		_view.lamp_gain = lamp_gain
+		_view.refresh_lamps()
 
 
 ## Light spill, the reactor detail and the HDR gains.
@@ -161,7 +163,7 @@ func _apply_light() -> void:
 	_reactor.visible = reactor
 	EnvMat.bind(_reactor.mesh as ArrayMesh, false)
 	_view.core.gain = EnvStyle.REACTOR_GAIN if reactor else 1.0
-	_view.core.pool_gain = 1.7 if EnvStyle.on(EnvStyle.SPILL, _look, _tier) else 1.0
+	_view.core.pool_gain = EnvStyle.CORE_POOL_GAIN if EnvStyle.on(EnvStyle.SPILL, _look, _tier) else 1.0
 	_view.pool_gain = 2.2 if EnvStyle.on(EnvStyle.SPILL, _look, _tier) else 1.0
 
 
@@ -169,9 +171,9 @@ func _apply_light() -> void:
 func _apply_grade() -> void:
 	var env: Environment = _view.environment_node.environment
 	var on: bool = EnvStyle.on(EnvStyle.GRADE, _look, _tier)
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC if on else Environment.TONE_MAPPER_LINEAR
+	env.tonemap_mode = EnvStyle.GRADE_TONEMAP if on else Environment.TONE_MAPPER_LINEAR
 	env.tonemap_exposure = EnvStyle.GRADE_EXPOSURE
-	env.tonemap_white = EnvStyle.GRADE_WHITE if on else 1.0
+	env.tonemap_white = EnvStyle.GRADE_WHITE
 	env.adjustment_enabled = on
 	env.adjustment_brightness = 1.0
 	env.adjustment_contrast = EnvStyle.GRADE_CONTRAST if on else 1.0

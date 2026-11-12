@@ -73,11 +73,15 @@ static func set_override(text: String) -> void:
 		no = names
 
 
-## Tonemap and colour adjustment of the Environment (GRADE): a filmic roll-off, a little contrast, slightly muted colour.
-const GRADE_EXPOSURE: float = 1.0
-const GRADE_WHITE: float = 3.2
-const GRADE_CONTRAST: float = 1.08
-const GRADE_SATURATION: float = 0.92
+## Colour adjustment of the Environment (GRADE): a little contrast, slightly muted colour. The tonemapper stays LINEAR on purpose: a filmic or
+## ACES curve lifted the pad's amber glow and rolled the Warden's highlights off, and the Warden's contrast against its pad fell under the
+## legibility floor (round 5 measurement: pixel contrast 0.155 with filmic against 0.208 before). The HDR lamp heads clip to a warm white
+## and the bloom (HIGH) carries them.
+const GRADE_TONEMAP: int = Environment.TONE_MAPPER_LINEAR
+const GRADE_EXPOSURE: float = 0.92
+const GRADE_WHITE: float = 1.0
+const GRADE_CONTRAST: float = 1.06
+const GRADE_SATURATION: float = 0.94
 
 ## Bloom of the styled yard: only values above 1.0 glow (the HDR lamp heads and reactor windows).
 const LAMP_GAIN: float = 2.2
@@ -85,6 +89,8 @@ const REACTOR_GAIN: float = 0.95
 const WINDOW_GAIN: float = 1.7
 
 ## Peak alpha of the additive halos (reactor, lamps, turret pads).
+## The core's own light pool under the Warden's pad: below 1 on purpose (the Warden's contrast against its pad is the legibility floor).
+const CORE_POOL_GAIN: float = 0.75
 const REACTOR_HALO: float = 0.42
 const LAMP_HALO: float = 0.5
 const PAD_HALO: float = 0.3
