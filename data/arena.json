@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "quiet_yards_b4",
   "bounds": { "min_x": -10.0, "max_x": 10.0, "min_z": -16.0, "max_z": 12.0 },
   "grid": { "cell_m": 1.0, "margin_cells": 2 },
@@ -18,5 +18,10 @@
     { "id": "crates",    "shape": "circle", "x": 4.5, "z": 0.5, "radius": 1.3, "visual": "crate_stack" },
     { "id": "drums",     "shape": "circle", "x": -0.5, "z": -9.5, "radius": 1.0, "visual": "drum_cluster" }
   ],
-  "camera": { "pitch_down_deg": 60.0, "yaw_deg": 0.0, "frame_margin_m": 0.5, "decor_yaw_deg": 38.0 }
+  "camera": { "pitch_down_deg": 60.0, "yaw_deg": 0.0, "frame_margin_m": 0.5, "decor_yaw_deg": 38.0 },
+  "standoff": { "radii": [10.5, 12.5, 14.0], "counts": [24, 12, 6], "arc_start_deg": -35.0, "arc_end_deg": 95.0, "clear_m": 0.6 },
+  "breach_points": [ { "x": 2.5, "z": -2.0 }, { "x": 6.0, "z": 2.5 }, { "x": 5.0, "z": -4.5 }, { "x": 3.5, "z": 3.0 } ],
+  "drop_points": [ { "x": 2.0, "z": -3.0 }, { "x": 5.5, "z": 3.5 }, { "x": 1.0, "z": 4.5 }, { "x": 6.0, "z": -8.0 } ],
+  "drum_points": [ { "x": 7.5, "z": -3.0 }, { "x": 0.5, "z": 1.0 }, { "x": 4.0, "z": -10.0 }, { "x": 7.0, "z": 6.0 }, { "x": 2.5, "z": 9.5 }, { "x": -2.0, "z": -6.0 } ],
+  "rail_lines": [ { "id": "A", "z": -7.0, "half_width": 1.3 }, { "id": "B", "z": 10.5, "half_width": 1.3 } ]
 }

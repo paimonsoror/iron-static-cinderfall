@@ -40,7 +40,49 @@ static func build(r: JsonRead, d: Dictionary) -> ArenaDef:
 	a.yaw_deg = r.num(cam, "yaw_deg", "$.camera")
 	a.frame_margin_m = r.num(cam, "frame_margin_m", "$.camera")
 	a.decor_yaw_deg = r.num(cam, "decor_yaw_deg", "$.camera")
+	_variety(a, r, d)
 	return a
+
+
+## arena.json schema 2 (VARIETY_SPEC 13.1); every key is optional here, the loader only allows them with variety content.
+## Standoff points sit on rings around the core like the attack slots (same angle rule). A candidate that is outside
+## the bounds or closer than `clear_m` to an obstacle is dropped, so the points that remain are free by construction.
+static func _variety(a: ArenaDef, r: JsonRead, d: Dictionary) -> void:
+	a.breach_points = OpReader.points(r, d, "breach_points", "$")
+	a.drop_points = OpReader.points(r, d, "drop_points", "$")
+	a.drum_points = OpReader.points(r, d, "drum_points", "$")
+	if d.has("rail_lines"):
+		var rails: Array[Dictionary] = OpReader.rows(r, d, "rail_lines", "$")
+		for i: int in rails.size():
+			a.rail_z.append(r.num(rails[i], "z", "$.rail_lines[%d]" % i))
+			a.rail_half_width.append(r.num(rails[i], "half_width", "$.rail_lines[%d]" % i))
+	if not d.has("standoff"):
+		return
+	var s: Dictionary = r.dict(d, "standoff", "$")
+	r.check_keys(s, PackedStringArray(["radii", "counts", "arc_start_deg", "arc_end_deg", "clear_m"]), "$.standoff")
+	var slots: Dictionary = r.dict(d, "slots", "$")
+	var arc_start: float = r.num_or(s, "arc_start_deg", "$.standoff", r.num_or(slots, "arc_start_deg", "$.slots", 0.0))
+	var arc_end: float = r.num_or(s, "arc_end_deg", "$.standoff", r.num_or(slots, "arc_end_deg", "$.slots", 0.0))
+	var clear_m: float = r.num_or(s, "clear_m", "$.standoff", 0.0)
+	a.standoff_radii = OpReader.floats(r, s, "radii", "$.standoff", -1)
+	var counts: PackedInt32Array = OpReader.ints(r, s, "counts", "$.standoff", a.standoff_radii.size())
+	for ring: int in mini(a.standoff_radii.size(), counts.size()):
+		for k: int in counts[ring]:
+			var rad: float = deg_to_rad(arc_start + (float(k) + 0.5) * (arc_end - arc_start) / float(counts[ring]))
+			var p: Vector2 = Vector2(a.core_x + a.standoff_radii[ring] * cos(rad), a.core_z - a.standoff_radii[ring] * sin(rad))
+			if point_is_free(a, p.x, p.y, clear_m):
+				a.standoff_points.append(p)
+				a.standoff_ring.append(ring)
+
+
+## True when (x, z) is inside the bounds and at least `clear_m` away from every obstacle.
+static func point_is_free(a: ArenaDef, x: float, z: float, clear_m: float) -> bool:
+	if x < a.min_x or x > a.max_x or z < a.min_z or z > a.max_z:
+		return false
+	for o: ObstacleDef in a.obstacles:
+		if o.contains(x, z, clear_m):
+			return false
+	return true
 
 
 static func _slots(a: ArenaDef, r: JsonRead, s: Dictionary) -> void:

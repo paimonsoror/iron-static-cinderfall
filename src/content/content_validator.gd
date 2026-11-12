@@ -32,6 +32,8 @@ static func validate(content: ContentSet) -> PackedStringArray:
 	_arena(e, content)
 	_tokens(e, content.tokens)
 	_strings(e, content)
+	if content.run != null:
+		VarietyValidator.validate(e, content)
 	return e
 
 
@@ -105,42 +107,53 @@ static func _mission(e: PackedStringArray, m: MissionDef) -> void:
 	_ge(e, EXT, "$.mission.stuck_min_progress_m", m.stuck_min_progress_m)
 
 
+## The legacy content has the first Ids.LEGACY_ENEMY_COUNT enemies (balance + ext files); variety content has every id
+## of Ids.ENEMIES, the new ones from enemies.json (where a part that orbits its boss may have speed 0).
 static func _enemies(e: PackedStringArray, c: ContentSet) -> void:
-	if c.enemies.size() != Ids.ENEMIES.size():
-		_bad(e, BAL, "$.enemies", "expected %d enemies, got %d" % [Ids.ENEMIES.size(), c.enemies.size()])
+	var expected: int = Ids.ENEMIES.size() if c.run != null else Ids.LEGACY_ENEMY_COUNT
+	if c.enemies.size() != expected:
+		_bad(e, BAL, "$.enemies", "expected %d enemies, got %d" % [expected, c.enemies.size()])
 		return
 	for i: int in c.enemies.size():
 		var d: EnemyDef = c.enemies[i]
+		var legacy: bool = i < Ids.LEGACY_ENEMY_COUNT
+		var bal: String = BAL if legacy else VarietyValidator.ENEMIES
+		var ext: String = EXT if legacy else VarietyValidator.ENEMIES
 		var p: String = "$.enemies." + String(Ids.ENEMIES[i])
 		if d.id != Ids.ENEMIES[i] or d.index != i:
-			_bad(e, BAL, p, "enemy %d must be '%s' at index %d" % [i, String(Ids.ENEMIES[i]), i])
-		_gt(e, BAL, p + ".hp", d.hp)
-		_gt(e, BAL, p + ".speed_mps", d.speed_mps)
-		_ge(e, BAL, p + ".armor", d.armor)
-		_ge(e, BAL, p + ".core_damage", d.core_damage)
-		_ge(e, BAL, p + ".attack_period_s", float(d.attack_period_ticks), 1.0, "ticks")
-		_ge(e, BAL, p + ".scrap", float(d.scrap))
-		_gt(e, EXT, p + ".radius", d.radius)
-		_gt(e, EXT, p + ".mass", d.mass)
-		_ge(e, EXT, p + ".separation_weight", d.separation_weight)
-		_ge(e, EXT, p + ".weave_amp_m", d.weave_amp_m)
-		_ge(e, EXT, p + ".weave_period_s", float(d.weave_period_ticks), 1.0, "ticks")
-		_ge(e, EXT, p + ".slot_span", float(d.slot_span), 1.0)
-		_gt(e, EXT, p + ".visual_height_m", d.visual_height_m)
+			_bad(e, bal, p, "enemy %d must be '%s' at index %d" % [i, String(Ids.ENEMIES[i]), i])
+		_gt(e, bal, p + ".hp", d.hp)
+		if legacy:
+			_gt(e, bal, p + ".speed_mps", d.speed_mps)
+		else:
+			_ge(e, bal, p + ".speed_mps", d.speed_mps)
+		_ge(e, bal, p + ".armor", d.armor)
+		_ge(e, bal, p + ".core_damage", d.core_damage)
+		_ge(e, bal, p + ".attack_period_s", float(d.attack_period_ticks), 1.0, "ticks")
+		_ge(e, bal, p + ".scrap", float(d.scrap))
+		_gt(e, ext, p + ".radius", d.radius)
+		_gt(e, ext, p + ".mass", d.mass)
+		_ge(e, ext, p + ".separation_weight", d.separation_weight)
+		_ge(e, ext, p + ".weave_amp_m", d.weave_amp_m)
+		_ge(e, ext, p + ".weave_period_s", float(d.weave_period_ticks), 1.0, "ticks")
+		_ge(e, ext, p + ".slot_span", float(d.slot_span), 1.0)
+		_gt(e, ext, p + ".visual_height_m", d.visual_height_m)
 
 
 static func _weapons(e: PackedStringArray, c: ContentSet) -> void:
-	if c.weapons.size() != Ids.WEAPONS.size():
-		_bad(e, BAL, "$.weapons", "expected %d weapons, got %d" % [Ids.WEAPONS.size(), c.weapons.size()])
+	var expected: int = Ids.WEAPONS.size() if c.run != null else Ids.LEGACY_WEAPON_COUNT
+	if c.weapons.size() != expected:
+		_bad(e, BAL, "$.weapons", "expected %d weapons, got %d" % [expected, c.weapons.size()])
 		return
 	for i: int in c.weapons.size():
 		var d: WeaponDef = c.weapons[i]
+		var file: String = BAL if i < Ids.LEGACY_WEAPON_COUNT else VarietyValidator.WEAPONS
 		var p: String = "$.weapons." + String(Ids.WEAPONS[i])
-		_gt(e, BAL, p + ".damage", d.damage)
-		_ge(e, BAL, p + ".shots_per_second", float(d.sps_milli), 1.0, "milli-shots")
-		_ge(e, BAL, p + ".magazine", float(d.magazine), 1.0)
-		_ge(e, BAL, p + ".reload_seconds", float(d.reload_ticks), 0.0, "ticks")
-		_gt(e, BAL, p + ".range_m", d.range_m)
+		_gt(e, file, p + ".damage", d.damage)
+		_ge(e, file, p + ".shots_per_second", float(d.sps_milli), 1.0, "milli-shots")
+		_ge(e, file, p + ".magazine", float(d.magazine), 0.0 if d.is_heat() else 1.0)  # a heat weapon has no magazine
+		_ge(e, file, p + ".reload_seconds", float(d.reload_ticks), 0.0, "ticks")
+		_gt(e, file, p + ".range_m", d.range_m)
 
 
 static func _upgrades(e: PackedStringArray, c: ContentSet) -> void:
@@ -289,7 +302,10 @@ static func _arena(e: PackedStringArray, c: ContentSet) -> void:
 		if dist < clear:
 			var msg: String = "obstacle '%s' is %.2f m from the core; keep it at least approach_radius + 1 = %s m away"
 			_bad(e, ARENA, p, msg % [String(o.id), dist, _fmt(clear, "")])
-	e.append_array(reachability_errors(a, build_flow_field(a)))
+	var field: Object = build_flow_field(a)
+	e.append_array(reachability_errors(a, field))
+	if c.run != null:
+		VarietyArenaValidator.validate(e, c, field)
 
 
 ## FlowField.build(arena) through its script path; null when the script is missing or does not return an object.
@@ -329,8 +345,9 @@ static func _strings(e: PackedStringArray, c: ContentSet) -> void:
 		needs[d.name_key] = "$.upgrades." + String(d.id)
 	for d: AbilityDef in c.abilities:
 		needs[d.name_key] = "$.abilities." + String(d.id)
-	for key: String in Reason.KEYS:
-		needs[key] = "Reason"
+	var reasons: int = Reason.KEYS.size() if c.run != null else Reason.LEGACY_COUNT  # the legacy tables stop there
+	for i: int in reasons:
+		needs[Reason.KEYS[i]] = "Reason"
 	for key: String in needs:
 		if not c.strings.has(key):
 			_bad(e, STRINGS, "$." + key, "missing string (needed by %s)" % needs[key])

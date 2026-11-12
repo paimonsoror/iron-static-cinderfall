@@ -93,3 +93,24 @@ static func _dist_sq(store: EnemyStore, index: int, from_x: float, from_z: float
 	var dx: float = store.x[index] - from_x
 	var dz: float = store.z[index] - from_z
 	return dx * dx + dz * dz
+
+
+# --- variety milestone (VARIETY_SPEC 13.2): new queries; the signatures above are frozen ---
+
+
+## The centre of the densest cluster: the point (an enemy position) with the most living enemies within `radius`,
+## among enemies between `min_range` and `max_range` of (from_x, from_z); ties by the best-ranked enemy in it.
+## Returns (x, z), or (from_x, from_z) when no enemy is in range.
+# TODO(V2-C): the stub finds no cluster.
+static func pick_cluster(
+	_world: SimWorld, from_x: float, from_z: float, _min_range: float, _max_range: float, _radius: float
+) -> Vector2:
+	return Vector2(from_x, from_z)
+
+
+## The best `n` living enemies within `range_m`, in rank order, as enemy ids written to `out` (cleared first).
+## Returns how many were found.
+# TODO(V4-W): the stub finds none.
+static func pick_many(_world: SimWorld, _from_x: float, _from_z: float, _range_m: float, _n: int, out: PackedInt32Array) -> int:
+	out.clear()
+	return 0

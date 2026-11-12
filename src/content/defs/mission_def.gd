@@ -19,3 +19,7 @@ var eta_bucket_ticks: int
 var max_spawns_per_tick: int
 var stuck_ticks: int
 var stuck_min_progress_m: float
+# --- variety milestone (data/run.json; legacy content keeps these defaults) ---
+var swarm_cap: int = 0  ## minis alive at once; 0 in the legacy content
+var breather_ticks: int = 0  ## the countdown after the last intermission choice
+var shop_enabled: bool = true  ## false = EconomySystem.purchase answers SHOP_CLOSED (V2-B)

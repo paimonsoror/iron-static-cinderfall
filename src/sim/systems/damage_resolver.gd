@@ -1,6 +1,13 @@
 class_name DamageResolver
 extends RefCounted
-## Applies hits (ARCH 6.5, 6.6). The only writer of enemies.hp.
+## Applies hits (ARCH 6.5, 6.6). The only writer of enemies.hp (heals included).
+
+## Flags of `hit_ex` (VARIETY_SPEC 13.2).
+const F_IGNORE_ARMOR: int = 1
+const F_HALF_ARMOR: int = 2
+const F_AREA: int = 4  ## a blast, pool or chain: never triggers on-hit hooks again
+const F_NO_WARD: int = 8  ## passes wards and shieldbearer protection
+const F_BURN: int = 16  ## damage over time
 
 
 ## Applies Formulas with the current armor_piercing level and debug_damage_mult; clamps hp at 0; pushes
@@ -33,3 +40,18 @@ static func hit(world: SimWorld, enemy_index: int, base_damage: float, damage_le
 			world.combat.kills_by_source[source] += 1
 		world.kill_enemy(enemy_index, source)
 	return dealt
+
+
+## The variety damage path (VARIETY_SPEC 3.3 damage order): `amount` is the damage before armor, with the weapon level
+## and conditional multipliers already applied by the caller; this applies effective armor (reduced by `flags` and
+## shred), wards and shieldbearer reductions and debug_damage_mult, tallies by `source` (DamageSource.Id), pushes
+## ENEMY_DAMAGED and kills at 0 hp. `hit` will call it with no flags once it is real. Returns the damage dealt.
+# TODO(V2-C): the stub deals nothing.
+static func hit_ex(_world: SimWorld, _enemy_index: int, _amount: float, _flags: int, _source: int) -> float:
+	return 0.0
+
+
+## Restores up to `amount` hp (never above max_hp); pushes ENEMY_HEALED. Returns the hp restored.
+# TODO(V4-N): the stub heals nothing.
+static func heal(_world: SimWorld, _enemy_index: int, _amount: float) -> float:
+	return 0.0

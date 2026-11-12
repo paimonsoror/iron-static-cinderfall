@@ -7,12 +7,16 @@ extends RefCounted
 
 const FILES: PackedStringArray = ["vertical_slice_balance.json", "waves.json", "visual_tokens.json", "content_ext.json", "arena.json"]
 const STRING_FILES: PackedStringArray = ["content_en.json", "combat_en.json", "screens_en.json", "lore_en.json"]
+## Variety milestone (VARIETY_SPEC 13.1): the six files of VarietyLoader.FILES and this string file are optional as a
+## set. A directory without them loads as the legacy 5-wave content, exactly as before.
+const VARIETY_STRING_FILES: PackedStringArray = ["variety_en.json"]
 const TICK_RATE: int = 60  ## must equal SimWorld.TICK_RATE (content may not depend on the sim layer)
 const BALANCE_UPGRADES: Array[StringName] = [&"damage", &"fire_rate", &"armor_piercing", &"auto_turret"]
 const SCHEMA_BALANCE: int = 2
 const SCHEMA_WAVES: int = 2
 const SCHEMA_EXT: int = 1
 const SCHEMA_ARENA: int = 1
+const SCHEMA_ARENA_VARIETY: int = 2  ## arena.json with standoff, breach, drop, drum points and rail lines
 ## Known top-level keys per file; anything else is reported (ARCH 5.4).
 const KEYS_BALANCE: PackedStringArray = [
 	"schema_version", "mission_id", "mission_name", "core_max_hp", "target_duration_seconds", "sim_ticks_per_second",
@@ -25,16 +29,29 @@ const KEYS_ARENA: PackedStringArray = [
 	"schema_version", "id", "bounds", "grid", "core", "warden", "turret_pads", "approach_radius", "slots",
 	"spawn_regions", "obstacles", "camera",
 ]
+const KEYS_ARENA_VARIETY: PackedStringArray = ["standoff", "breach_points", "drop_points", "drum_points", "rail_lines"]
 
 
-## dir = "res://data". Reads the five data files and data/strings/*_en.json.
+## dir = "res://data". Reads the five data files and data/strings/*_en.json, plus the variety files when any of them
+## is present (then all six are required).
 static func load_from_dir(dir: String) -> ContentLoadResult:
 	var res: ContentLoadResult = ContentLoadResult.new()
 	var docs: Array[Dictionary] = []
 	for f: String in FILES:
 		docs.append(_read_json(dir + "/" + f, f, res.errors))
+	var variety: Dictionary = {}
+	var has_variety: bool = false
+	for f: String in VarietyLoader.FILES:
+		has_variety = has_variety or FileAccess.file_exists(dir + "/" + f)
+	if has_variety:
+		for f: String in VarietyLoader.FILES:
+			variety[f] = _read_json(dir + "/" + f, f, res.errors)
+	var string_files: PackedStringArray = STRING_FILES.duplicate()
+	for f: String in VARIETY_STRING_FILES:
+		if FileAccess.file_exists(dir + "/strings/" + f):
+			string_files.append(f)
 	var strings: Dictionary = {}
-	for f: String in STRING_FILES:
+	for f: String in string_files:
 		var d: Dictionary = _read_json(dir + "/strings/" + f, "strings/" + f, res.errors)
 		for k: Variant in d.keys():
 			var ks: String = str(k)
@@ -46,12 +63,14 @@ static func load_from_dir(dir: String) -> ContentLoadResult:
 				strings[ks] = d[k]
 	if not res.errors.is_empty():
 		return res
-	var built: ContentLoadResult = build(docs[0], docs[1], docs[2], docs[3], docs[4], strings)
+	var built: ContentLoadResult = build(docs[0], docs[1], docs[2], docs[3], docs[4], strings, variety)
 	return built
 
 
+## `variety` maps a file name of VarietyLoader.FILES to its parsed JSON. Empty (the default) = the legacy content.
 static func build(
-	balance: Dictionary, waves: Dictionary, tokens: Dictionary, ext: Dictionary, arena: Dictionary, strings: Dictionary
+	balance: Dictionary, waves: Dictionary, tokens: Dictionary, ext: Dictionary, arena: Dictionary, strings: Dictionary,
+	variety: Dictionary = {}
 ) -> ContentLoadResult:
 	var res: ContentLoadResult = ContentLoadResult.new()
 	var cs: ContentSet = ContentSet.new()
@@ -63,12 +82,12 @@ static func build(
 	_check_schema(rb, balance, SCHEMA_BALANCE)
 	_check_schema(rw, waves, SCHEMA_WAVES)
 	_check_schema(re, ext, SCHEMA_EXT)
-	_check_schema(ra, arena, SCHEMA_ARENA)
+	_check_schema(ra, arena, SCHEMA_ARENA if variety.is_empty() else SCHEMA_ARENA_VARIETY)
 	rb.check_keys(balance, KEYS_BALANCE, "$")
 	rw.check_keys(waves, KEYS_WAVES, "$")
 	rt.check_keys(tokens, KEYS_TOKENS, "$")
 	re.check_keys(ext, KEYS_EXT, "$")
-	ra.check_keys(arena, KEYS_ARENA, "$")
+	ra.check_keys(arena, KEYS_ARENA if variety.is_empty() else KEYS_ARENA + KEYS_ARENA_VARIETY, "$")
 	cs.mission = _mission(rb, re, balance, ext)
 	cs.enemies = _enemies(rb, re, balance, ext)
 	cs.weapons = _weapons(rb, balance)
@@ -81,6 +100,8 @@ static func build(
 		cs.strings[str(k)] = str(strings[k])
 	for r: JsonRead in [rb, rw, rt, re, ra]:
 		res.errors.append_array(r.errors)
+	if not variety.is_empty():
+		VarietyLoader.apply(cs, variety, res.errors)
 	if res.errors.is_empty():
 		res.content = cs
 	return res
@@ -148,9 +169,10 @@ static func _enemies(rb: JsonRead, re: JsonRead, b: Dictionary, e: Dictionary) -
 	var out: Array[EnemyDef] = []
 	var bd: Dictionary = rb.dict(b, "enemies", "$")
 	var ed: Dictionary = re.dict(e, "enemies", "$")
-	_check_ids(rb, bd, Ids.ENEMIES, "$.enemies")
-	_check_ids(re, ed, Ids.ENEMIES, "$.enemies")
-	for i: int in Ids.ENEMIES.size():
+	var legacy_ids: Array[StringName] = Ids.ENEMIES.slice(0, Ids.LEGACY_ENEMY_COUNT)
+	_check_ids(rb, bd, legacy_ids, "$.enemies")
+	_check_ids(re, ed, legacy_ids, "$.enemies")
+	for i: int in Ids.LEGACY_ENEMY_COUNT:
 		var key: String = String(Ids.ENEMIES[i])
 		var pb: String = "$.enemies." + key
 		var sb: Dictionary = rb.dict(bd, key, "$.enemies")
@@ -183,8 +205,8 @@ static func _enemies(rb: JsonRead, re: JsonRead, b: Dictionary, e: Dictionary) -
 static func _weapons(rb: JsonRead, b: Dictionary) -> Array[WeaponDef]:
 	var out: Array[WeaponDef] = []
 	var wd: Dictionary = rb.dict(b, "weapons", "$")
-	_check_ids(rb, wd, Ids.WEAPONS, "$.weapons")
-	for i: int in Ids.WEAPONS.size():
+	_check_ids(rb, wd, Ids.WEAPONS.slice(0, Ids.LEGACY_WEAPON_COUNT), "$.weapons")
+	for i: int in Ids.LEGACY_WEAPON_COUNT:
 		var key: String = String(Ids.WEAPONS[i])
 		var p: String = "$.weapons." + key
 		var s: Dictionary = rb.dict(wd, key, "$.weapons")

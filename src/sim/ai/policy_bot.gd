@@ -12,7 +12,9 @@ extends RefCounted
 ##          shield     when the core lost integrity since the last call (it is being hit),
 ##          overdrive  when the boss is alive and inside the Warden's weapon range.
 
-enum Policy { NONE, GREEDY }
+## Append only. The six policies after GREEDY are the variety bots (VARIETY_SPEC 14.1; one file each under
+## src/sim/ai/policy_*.gd); until V2-H and V4-T wire them into `act` they submit nothing, like NONE.
+enum Policy { NONE, GREEDY, RANDOM, HOARDER, SPAMMER, TURRET_RUSH, BALANCED, RISK }
 
 ## Enemies standing at the core that make GREEDY fire the EMP.
 const EMP_ATTACKERS: int = 12

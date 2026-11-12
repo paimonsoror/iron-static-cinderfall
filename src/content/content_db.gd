@@ -23,7 +23,9 @@ func reload() -> bool:
 			Log.error("Content", e)
 		return false
 	db = res.content
-	Log.info("Content", "content ok enemies=%d waves=%d hash=%s" % [db.enemies.size(), db.waves.size(), _raw_hash()])
+	var wave_count: int = db.run.waves.size() if db.run != null else db.waves.size()
+	Log.info("Content", "content ok enemies=%d waves=%d directives=%d hash=%s" % [
+		db.enemies.size(), wave_count, db.directives.size(), _raw_hash()])
 	return true
 
 
@@ -34,7 +36,9 @@ func _raw_hash() -> String:
 	var files: PackedStringArray = PackedStringArray()
 	for f: String in ContentLoader.FILES:
 		files.append(DATA_DIR + "/" + f)
-	for f: String in ContentLoader.STRING_FILES:
+	for f: String in VarietyLoader.FILES:
+		files.append(DATA_DIR + "/" + f)
+	for f: String in ContentLoader.STRING_FILES + ContentLoader.VARIETY_STRING_FILES:
 		files.append(DATA_DIR + "/strings/" + f)
 	for path: String in files:
 		var bytes: PackedByteArray = FileAccess.get_file_as_bytes(path)

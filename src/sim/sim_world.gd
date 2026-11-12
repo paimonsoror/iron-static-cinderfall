@@ -32,6 +32,16 @@ var command_log: CommandLog
 var next_enemy_id: int = 1
 ## Commands submitted and not yet applied (CommandSystem.apply_queued consumes it). Additive to ARCH 6.2.
 var command_queue: Array[SimCommand] = []
+# --- variety milestone (VARIETY_SPEC 13.2): one writer per state class, the system of the same name ---
+var plan: RunPlan  ## null in the legacy content (SpawnSystem then reads content.waves)
+var mods: ModState
+var arsenal: ArsenalState
+var draft: DraftState
+var salvage: SalvageState
+var ext: EnemyExtState  ## parallel to `enemies` by store index
+var hazards: HazardState
+var events_state: EventState
+var boss: BossState
 
 
 func _init(cfg: SimConfig) -> void:
@@ -41,7 +51,7 @@ func _init(cfg: SimConfig) -> void:
 	core_hp = core_max_hp
 	scrap = cfg.debug_start_scrap
 	upgrade_levels.resize(Ids.UPGRADES.size())
-	enemies = EnemyStore.new(content.mission.enemy_cap + 8)
+	enemies = EnemyStore.new(content.mission.enemy_cap + content.mission.swarm_cap + 8)
 	turrets = TurretStore.new(content.arena.turret_pads.size())
 	for p: int in content.arena.turret_pads.size():
 		turrets.x[p] = content.arena.turret_pads[p].x
@@ -59,28 +69,60 @@ func _init(cfg: SimConfig) -> void:
 	rng = SimRng.new(cfg.run_seed)
 	events = SimEvents.new()
 	stats = RunStats.new()
+	stats.setup(content)
 	command_log = CommandLog.new()
+	mods = ModState.new()
+	arsenal = ArsenalState.new()
+	draft = DraftState.new(content.directives.size())
+	salvage = SalvageState.new()
+	ext = EnemyExtState.new(enemies.capacity)
+	hazards = HazardState.new()
+	events_state = EventState.new(content.events.size())
+	boss = BossState.new()
 	NavSystemHooks.init_world(self)
 	PhaseSystem.init_world(self)
+	ModSystem.init_world(self)
+	ArsenalSystem.init_world(self)
+	EventSystem.init_world(self)
+	plan = RunPlanSystem.build(self)
 
 
-## Exactly one tick; a no-op once the run is over. Order is fixed (ARCH 6.2).
+## Exactly one tick; a no-op once the run is over. Order is fixed (ARCH 6.2, extended by VARIETY_SPEC 13.2).
+## While the run awaits a choice (PhaseState.awaiting) the tick does not advance: a call with an empty queue does
+## nothing, and a call with queued commands advances one tick, applies them and stops again if still awaiting. So the
+## tick count of a run depends on the seed and the decisions only, never on thinking time.
+## The systems added by the variety milestone (Event, Status, Hazard, Boss, Salvage) are called on every tick of a live
+## run and gate on the phase themselves; the legacy systems keep their gates.
 func step() -> void:
 	if is_over():
+		return
+	if phase_state.awaiting != PhaseState.Await.NONE and command_queue.is_empty():
 		return
 	tick += 1
 	events.current_tick = tick
 	CommandSystem.apply_queued(self)
+	if phase_state.awaiting != PhaseState.Await.NONE:
+		return
 	PhaseSystem.pre_step(self)
+	var live: bool = not GameState.is_terminal(phase)
+	if live:
+		EventSystem.step(self)
 	if GameState.is_combat(phase):
 		SpawnSystem.step(self)
-	if not GameState.is_terminal(phase):
+	if live:
 		AbilitySystem.step(self)
+		StatusSystem.step(self)
 	if GameState.is_combat(phase):
 		MovementSystem.step(self)
 		WeaponSystem.step(self)
 		TurretSystem.step(self)
+	if live:
+		HazardSystem.step(self)
+	if GameState.is_combat(phase):
 		CoreAttackSystem.step(self)
+	if live:
+		BossSystem.step(self)
+		SalvageSystem.step(self)
 	PhaseSystem.post_step(self)
 	stats.sample(self)
 
@@ -124,6 +166,17 @@ func state_hash() -> String:
 	combat.hash_into(h)
 	phase_state.hash_into(h)
 	rng.hash_into(h)
+	h.put_int(1 if plan != null else 0)
+	if plan != null:
+		plan.hash_into(h)
+	mods.hash_into(h)
+	arsenal.hash_into(h)
+	draft.hash_into(h)
+	salvage.hash_into(h)
+	ext.hash_into(h)
+	hazards.hash_into(h)
+	events_state.hash_into(h)
+	boss.hash_into(h)
 	return h.finish()
 
 
@@ -141,6 +194,16 @@ func summary(run_id: String) -> RunSummary:
 	s.scrap_earned = stats.scrap_earned
 	s.scrap_spent = stats.scrap_spent
 	s.data_reward = Formulas.data_reward(s.result, waves_completed, core_hp, content.mission)
+	s.act_reached = stats.act_reached
+	s.combat_ticks = stats.combat_ticks
+	s.directives = draft.stacks.duplicate()
+	s.weapons = arsenal.slot_weapon.duplicate()
+	s.route_choices = stats.route_choices.duplicate()
+	s.core_damage_by_type = stats.core_damage_by_type.duplicate()
+	s.damage_by_source = combat.damage_by_source.duplicate()
+	s.events_seen = stats.events_seen.duplicate()
+	s.crates_secured = stats.crates_secured
+	s.boss_ids = stats.boss_ids.duplicate()
 	return s
 
 
@@ -173,11 +236,18 @@ func add_scrap(delta: int) -> void:
 
 
 ## Store index, or -1 at capacity. Pushes ENEMY_SPAWNED (+ BOSS_SPAWNED). The enemy faces the core.
-func spawn_enemy(type_index: int, x: float, z: float) -> int:
+## Variety content also returns -1 when the enemy's class (bodied or mini), its type or, for `affix_mask` != 0, the
+## elite cap is full (VARIETY_SPEC 5.5); the caller keeps the spawn queued. `affix_mask` makes the enemy an elite.
+func spawn_enemy(type_index: int, x: float, z: float, affix_mask: int = 0) -> int:
+	var def: EnemyDef = content.enemies[type_index]
+	if content.run != null and not _has_room(def, affix_mask != 0):
+		return -1
 	var i: int = enemies.alloc()
 	if i < 0:
 		return -1
-	var def: EnemyDef = content.enemies[type_index]
+	ext.reset(i)
+	if def.is_mini():
+		ext.flags[i] = EnemyExtState.F_MINI
 	var enemy_id: int = next_enemy_id
 	next_enemy_id += 1
 	enemies.id[i] = enemy_id
@@ -192,14 +262,41 @@ func spawn_enemy(type_index: int, x: float, z: float) -> int:
 	if d > 0.0001:
 		enemies.face_x[i] = dx / d
 		enemies.face_z[i] = dz / d
-	enemies.hp[i] = def.hp
-	enemies.max_hp[i] = def.hp
+	var hp: float = EliteSystem.spawn_hp(self, def, affix_mask)
+	enemies.hp[i] = hp
+	enemies.max_hp[i] = hp
 	enemies.state[i] = EnemyStore.ST_MOVING
 	enemies.spawn_tick[i] = tick
 	events.push(SimEventKind.Id.ENEMY_SPAWNED, enemy_id, type_index, x, z)
 	if def.is_boss:
 		events.push(SimEventKind.Id.BOSS_SPAWNED, enemy_id, type_index)
+		BossSystem.on_spawned(self, i)
+	if affix_mask != 0:
+		EliteSystem.apply(self, i, affix_mask)
 	return i
+
+
+## Room under the caps of VARIETY_SPEC 5.5: bodied enemies (the store kept 8 spare rows above enemy_cap before the
+## variety milestone, and still does), minis (swarm_cap), the type's alive_cap, and elites alive.
+func _has_room(def: EnemyDef, elite: bool) -> bool:
+	var mini: bool = def.is_mini()
+	var of_class: int = 0
+	var of_type: int = 0
+	var elites: int = 0
+	for j: int in enemies.high_water:
+		if enemies.alive[j] == 0:
+			continue
+		if ext.has_flag(j, EnemyExtState.F_MINI) == mini:
+			of_class += 1
+		if enemies.type[j] == def.index:
+			of_type += 1
+		if ext.is_elite(j):
+			elites += 1
+	if of_class >= (content.mission.swarm_cap if mini else content.mission.enemy_cap + 8):
+		return false
+	if def.alive_cap > 0 and of_type >= def.alive_cap:
+		return false
+	return not elite or elites < content.run.max_elites_alive
 
 
 ## Exactly once: a no-op if the slot is not alive. Pays Scrap, counts the kill, pushes ENEMY_KILLED,
@@ -208,10 +305,10 @@ func kill_enemy(index: int, source: int) -> void:
 	if index < 0 or index >= enemies.capacity or enemies.alive[index] == 0:
 		return
 	var type_index: int = enemies.type[index]
-	var def: EnemyDef = content.enemies[type_index]
-	add_scrap(def.scrap)
+	add_scrap(DeathHooks.scrap_for(self, index, source))
 	stats.kills_by_type[type_index] += 1
 	events.push(SimEventKind.Id.ENEMY_KILLED, enemies.id[index], source, enemies.x[index], enemies.z[index])
+	DeathHooks.on_killed(self, index, source)
 	NavSystemHooks.on_enemy_removed(self, index)
 	enemies.free_index(index)
 
@@ -220,6 +317,12 @@ func kill_enemy(index: int, source: int) -> void:
 func set_core_hp(value: float) -> void:
 	core_hp = clampf(value, 0.0, core_max_hp)
 	events.push(SimEventKind.Id.CORE_CHANGED, 0, 0, core_hp, core_max_hp)
+
+
+## Changes the core maximum (never below 1) and clamps the current value; pushes CORE_CHANGED(current, max).
+func set_core_max(value: float) -> void:
+	core_max_hp = maxf(1.0, value)
+	set_core_hp(core_hp)
 
 
 # --- read-only queries ---
