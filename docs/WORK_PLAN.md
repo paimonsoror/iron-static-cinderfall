@@ -1,10 +1,28 @@
 # IRON STATIC: CINDERFALL - Work Plan for parallel implementation agents
 
-Version 1.0, 2026-11-10. Read with `ARCHITECTURE.md` (contracts, cited as ARCH n) and `GAME_DESIGN.md`
+Version 1.1, 2026-11-11. Read with `ARCHITECTURE.md` (contracts, cited as ARCH n) and `GAME_DESIGN.md`
 (rules, cited as GDD n). Handoff files are cited as `handoff/<path>` and live in `docs/handoff/` in the project.
 
 Project root: **`C:\dev\tower-two`** (Git Bash: `/c/dev/tower-two`). Every owned path below is relative to it.
 The original game at `C:\dev\tower` is **read-only**. Never read `secrets.local.json`, `C:\dev\keys` or any keystore.
+
+**Two milestones.** *Milestone 1* is the five-wave vertical slice (waves 0 to 4, sections 2 to 7); it is the history of the
+repository and its tasks stay below unchanged. **Milestone 2: Variety** is the owner-approved replacement of the five scripted
+waves by a generated 15-wave, three-act run with 1-of-3 directive drafts, ten weapons, new enemies, bosses, chaos events, an
+Archive of unlocks and resume (decisions D1 to D8 approved 2026-11-11, GDD 14). Its design is
+`docs/design/VARIETY_PITCH.md` (owner summary), `VARIETY_SPEC.md` (rules, contracts and plan; cited as SPEC n) and
+`VARIETY_CONTENT.md` (every id and first-pass number; cited as CONTENT n). Its waves (V1 to V6), task cards, rule changes and
+acceptance rows are in section 2.1, section 8, section 6 and section 7 (rows B01 to B12). ARCH and GDD already describe the
+milestone (marked **(V)** in ARCH).
+
+**Status (2026-11-11), milestone 1.** Wave 0, Wave 1, Wave 2 and W3-A are merged on `main`. **W3-C** (the Warden look-dev
+spike, added after this plan was written) is merged and frozen at v4; the shipped character look is STYLISED (ARCH 8).
+**W3-D** (the look rolled out to the turret, the enemies and the Hulk) has since been merged into `main` (merge `44997d0`);
+**W3-E** (the environment look) is in progress on its own branch, not merged. W3-B (presentation integration) and W4-A
+(release QA) have not been run: their remaining scope is taken over by V5-B and V6-Q. The first real-device numbers are in
+`docs/reports/PHONE_PERF.md` (ARCH 13.1). The Warden triangle budget is **2,500 now** (W3-C, `ActorMeshes.TRI_BUDGET`); SPEC Q4
+proposes a split of body 2,300 plus a weapon budget of 350, to be decided by the owner of `TRI_BUDGET` after the captures
+(section 6).
 
 ---
 
@@ -17,19 +35,33 @@ The original game at `C:\dev\tower` is **read-only**. Never read `secrets.local.
 3. **Never edit**: `project.godot`, `export_presets.cfg` (except its owner), `src/shared/**`,
    `src/content/defs/**`, `src/sim/sim_world.gd`, `src/sim/stores/**`, `src/core/event_bus.gd`,
    `src/core/main.gd`, `src/game/run_api.gd`, `src/view/battle_view.gd`, `tools/**` (except the owner),
-   unless your task lists the file.
+   unless your task lists the file. **Milestone 2 adds the shared files of section 8.2** (`src/shared/{ids,reason,damage_source}.gd`;
+   `src/content/defs/**`, `content_loader.gd`, `content_validator.gd`; `src/sim/{sim_world,sim_command,sim_event_kind,sim_config,run_stats,run_summary}.gd`;
+   `src/core/event_bus.gd`, `src/game/{run_api,game_event_relay}.gd`, `src/debug/fake_run_api.gd`;
+   `tests/unit/core/test_contracts.gd`, `tests/fixtures/test_content.gd`; `src/audio/audio_catalog.gd`, `tools/audio_gen/voices.py`;
+   `src/view/vfx/vfx_layer.gd`, `src/view/actors/{actor_layer,enemy_pool}.gd`; `src/ui/combat/combat_hud.gd`;
+   `data/strings/variety_en.json`; `data/{run,enemies,weapons,directives,events}.json`; nobody changes `project.godot` or
+   `export_presets.cfg` in this milestone). They are extended once, as complete contracts, by V1-S; the owner-per-wave exceptions are in the table of 8.2. A needed
+   change elsewhere is reported as "needs owner" and made by the coordinator between waves.
 4. **Verify with the wrappers, never with raw Godot.** Headless Godot can exit 0 after an error. A check
    passes only when the command exits 0 **and** prints the stated last line.
 5. **Unit tests use frozen data.** Build content with `TestContent.baseline()` (`tests/fixtures/test_content.gd`,
    reads `tests/fixtures/data_baseline/`). Never assert on values from `res://data/` in a unit test: those
-   files get tuned in Wave 2.
+   files get tuned in Wave 2. **Milestone 2:** the baseline fixture (the five-wave handoff data) stays untouched, so the 1,063
+   existing tests keep guarding the sim core on it. New unit tests of variety behaviour build content with
+   `TestContent.variety()` (same file), which reads a **second frozen fixture**, `tests/fixtures/data_variety/`: created by V1-S
+   with the slice data, frozen by V3-I as the first complete variety data set, and refreshed only by an explicit task (V5-C);
+   golden values recorded on it are re-recorded when it is refreshed. No unit test reads `res://data/`; the e2e suites do, on
+   purpose.
 6. Typed GDScript, warnings are errors. No `class_name` clash with an autoload name (`Log`, `Events`,
    `Content`, `Save`, `Sfx`, `Game`). Do not name a variable `set`, `seed`, `name` or `position` where it
    would shadow a member or global.
 7. Write files with the Write tool (UTF-8, no BOM, LF). Do not create `.tscn` content beyond a root node with
    a script unless the task says so; build children in code.
 8. Do not pass `-d` to Godot. Do not run two Godot processes on the same checkout at once.
-9. **Only the task that says so may use the Android emulator.** It is a single shared device.
+9. **Only the task that says so may use the Android emulator.** It is a single shared device. **Milestone 2:** the physical
+   phone (Pixel 11 Pro Fold, `docs/reports/PHONE_PERF.md`) may be used only by **V2-P** and **V6-Q**, one at a time; the emulator
+   cannot present Vulkan, so every other task reports device checks as **NOT RUN**.
 10. Report with `handoff/05_AGENT_PROMPTS/REVIEW_TEMPLATE.md`: files changed, decisions, each command run
     with its exit code and last line, screenshots, known defects. Never report a check you did not run.
     Physical-device checks that were not run are reported as **NOT RUN**.
@@ -48,6 +80,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\tower-two\tools\captu
 
 # Raw import, only as a diagnostic (do not judge by its exit code):
 "C:\dev\tools\godot\4.7.2\Godot_v4.7.2-stable_win64_console.exe" --headless --path C:\dev\tower-two --import
+
+# (Milestone 2) Headless runs with any of the 8 bot policies. Pass = exit 0, a "SIM SUMMARY: runs=N victories=V defeats=D" line.
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\tower-two\tools\sim_run.ps1 -Seed 1 -Policy balanced -Runs 20
+
+# (Milestone 2) The predictability scorecard (ARCH 12, GDD 8.4). -Pool base|full. The gate version is -Runs 30, the full card
+# -Runs 200. Pass = exit 0 (exit 1 on FAIL) and last line "SCORECARD: PASS|WARN|FAIL rows=.. pass=.. warn=.. fail=.. runs=..".
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\tower-two\tools\scorecard_run.ps1 -Runs 30 -Pool base
+
+# (Milestone 2) Print the whole plan of a seed (bosses, both options of every wave, events) for bug reports and design review.
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\tower-two\tools\plan_dump.ps1 -Seed 1
 ```
 
 If a task runs in a git worktree, replace `C:\dev\tower-two` with the worktree root. The tools resolve the
@@ -88,7 +130,55 @@ project from their own location.
 | W3-B | Presentation integration and fixes | `src/{view,ui,audio,debug}/**`, `assets/**`, `data/strings/**`, `tests/unit/{view,ui,audio}/`, `docs/reports/screenshots/` | Wave 2 | Screenshot set, safe areas, accessibility audit |
 | **W4-A** | Release QA and Android evidence | whole repo | Wave 3 | Full suite, APK, emulator run, evidence reports |
 
-Five waves: 0 (1 task), 1 (8 tasks), 2 (5 tasks), 3 (2 tasks), 4 (1 task).
+Five waves: 0 (1 task), 1 (8 tasks), 2 (5 tasks), 3 (2 tasks), 4 (1 task). This table is milestone 1 and is history; its status
+is in the header. (W3-C, W3-D and W3-E, the look-dev tasks added during Wave 3, are not in the table.)
+
+### 2.1 Milestone 2: Variety (waves V1 to V6)
+
+Style and rules are those of section 1 (own only your paths, contracts frozen after the scaffold, verify with the wrappers,
+one worktree per task at `C:\dev\tower-two-wt\<ID>\`, branch `task/<ID>`, merge, then `check.ps1` on `main`). Effort is in
+agent-hours and is an estimate, not a measurement. The cards are in section 8.
+
+| ID | Title | Owned paths (summary) | Depends on | Hours |
+|---|---|---|---|---:|
+| **V1-S** | Contract scaffold | the shared and frozen files of 8.2, every new file as a compiling stub, the slice data, fixtures | - | 12 |
+| V2-A | Sim: run plan, wave builder, phases and awaits | `src/sim/plan/`, `src/sim/systems/{run_plan_system,wave_builder,phase_system,phase_state,spawn_system}.gd`, `tests/unit/sim_plan/` | V1-S | 9 |
+| V2-B | Sim: drafts, directives, modifiers | `src/sim/systems/{draft_system,mod_system,command_system,economy_system}.gd`, `src/sim/stores/{draft_state,mod_state}.gd`, `tests/unit/sim_draft/` | V1-S | 8 |
+| V2-C | Sim: arsenal, arc projector, blasts, burster, salvage | `src/sim/systems/{arsenal_system,weapon_system,damage_resolver,area_damage,hazard_system,status_system,death_hooks,salvage_system,core_attack_system}.gd`, `src/sim/systems/fire/{fire_hitscan,fire_arc}.gd`, `src/sim/stores/{arsenal_state,hazard_state,enemy_ext_state,salvage_state}.gd`, `tests/unit/sim_arsenal/` | V1-S | 12 |
+| V2-D | Game flow, run file, resume | `src/game/**`, `src/core/game.gd`, `src/save/**`, `tests/unit/{game,save}/`, `tests/integration/game/`, `tests/fixtures/saves/` | V1-S | 10 |
+| V2-E | UI: draft, route, salvage overlays, weapon bar | `src/ui/run/**`, `src/ui/combat/**`, `assets/icons/`, `data/strings/variety_en.json`, `tests/unit/ui/` | V1-S | 12 |
+| V2-F | View: arc projector, burster, minis, blast and arc effects | `src/view/**` except `battle_view.gd`, `tests/unit/view/` | V1-S | 10 |
+| V2-G | Audio: slice sounds and voice classes | `src/audio/**`, `tools/audio_gen/**`, `assets/audio/**`, `tests/unit/audio/` | V1-S | 5 |
+| V2-H | Bots and tools for drafts | `src/sim/ai/**`, `tools/{sim_run,balance_run,plan_dump}.*`, `tests/unit/sim_ai/` | V1-S | 6 |
+| V2-P | Phone baseline and mini stress (uses the device) | `src/debug/**`, `docs/reports/PERFORMANCE_REPORT.md` | V1-S | 5 |
+| **V3-I** | Slice integration and owner playtest build | `src/**`, `data/**`, `tests/**` (fixes only), `tests/fixtures/data_variety/` | Wave V2 | 10 |
+| V4-W | Sim: the other 7 weapons and weapon levels | `src/sim/systems/fire/{fire_cone,fire_line,fire_shell,fire_missiles,fire_beam}.gd`, `src/sim/systems/{arsenal_system,shot_hooks}.gd`, `data/weapons.json`, `tests/unit/sim_arsenal/` | V3-I | 12 |
+| V4-N | Sim: the other 8 enemy types, elites | `src/sim/systems/{status_system,elite_system,movement_system,core_attack_system,targeting}.gd`, `src/sim/nav/**`, `data/{enemies,arena}.json`, `tests/unit/sim_enemies/`, `tests/unit/sim_nav/` | V3-I | 14 |
+| V4-L | Sim: bosses | `src/sim/systems/boss_system.gd`, `src/sim/systems/bosses/**`, `src/sim/stores/boss_state.gd`, `tests/unit/sim_boss/` | V3-I | 12 |
+| V4-V | Sim: events and hazards | `src/sim/systems/{event_system,hazard_system,ability_system,turret_system}.gd`, `src/sim/systems/events/**`, `src/sim/stores/event_state.gd`, `data/events.json`, `tests/unit/sim_events/` | V3-I | 11 |
+| V4-C | Sim: the other 52 directives, packs, modifiers, kits | `src/sim/systems/{mod_system,draft_system,death_hooks,core_hooks,wave_builder,run_plan_system}.gd`, `data/{directives,run}.json`, `tests/unit/sim_draft/`, `tests/unit/sim_plan/` | V3-I | 10 |
+| V4-M | Save v2, unlocks, rewards, daily seed | `src/save/**`, `src/game/{game_rewards,game_launch}.gd`, `data/unlocks.json`, `tests/unit/save/`, `tests/fixtures/saves/` | V3-I | 8 |
+| V4-U | UI: Archive, kits, results, ticker, boss bar, hints | `src/ui/**`, `assets/icons/`, `data/strings/{variety,screens,combat,lore}_en.json`, `tests/unit/ui/` | V3-I | 14 |
+| V4-R | View: weapon, enemy and boss models | `src/view/actors/**`, `tests/unit/view/actors_*` | V3-I | 14 |
+| V4-X | View: effects, zones, events, cosmetic chaos, tiers | `src/view/{vfx,arena,kit}/**`, `tests/unit/view/{vfx,arena,kit}_*` | V3-I | 12 |
+| V4-A | Audio: the remaining sounds | as V2-G | V3-I | 6 |
+| V4-T | Bots, scorecard tool | `src/sim/ai/**`, `tools/{scorecard_run,sim_run,balance_run}.*`, `tests/unit/sim_ai/` | V3-I | 8 |
+| V5-A | Gameplay integration and cleanup | `src/{sim,game,core,content,save,shared}/**`, `data/*.json`, `tests/**` except view, ui, audio | Wave V4 | 10 |
+| V5-B | Presentation integration, captures, accessibility | `src/{view,ui,audio,debug}/**`, `assets/**`, `data/strings/**`, `tests/unit/{view,ui,audio}/`, `docs/reports/screenshots/` | Wave V4 | 10 |
+| V5-C | Balance with the scorecard | `data/*.json` (values only), `docs/reports/BALANCE_REPORT.md`, `tests/fixtures/data_variety/` (refresh) | V5-A | 14 |
+| **V6-Q** | Release QA, device evidence | whole repo (fixes only); uses the device and the emulator | Wave V5 | 8 |
+
+Totals: 26 tasks, about **262 agent-hours**. Six waves after the design task V0: V1 (1 task), V2 (9 in parallel), V3 (1), V4 (11
+in parallel), V5 (2 in parallel, then 1), V6 (1). The slice (V1 to V3) is playable after about 100 hours.
+
+**Critical path** (longest chain of dependent work): V1-S 12 -> V2-C 12 -> V3-I 10 -> V4-N 14 -> V5-A 10 -> V5-C 14 -> V6-Q 8 =
+**80 hours** of sequential agent time, plus two owner playtests (after V3-I and after V4) and the merges. The third playtest is
+the gate after V5-C.
+
+**What to cut first if time is short** (in this order, each cut independent): (1) the Daily Run; (2) turret types and the third
+sling; (3) cosmetic chaos beyond scorch marks; (4) `jammer` and `borer` (and `floor_breach`; the Tremor Rig's breaches become a
+second stomp); (5) two weapons (`cutting_torch`, `hornet_rack`); (6) the second boss of each act pool; (7) the unlock packs
+`u_p_corrupted` and `u_p_proto`. **Never cut:** the run plan, drafts, two weapon slots, bursters and minis, resume, the scorecard.
 
 ---
 
@@ -624,12 +714,40 @@ gameplay. No concept PNG is ever used as a texture, sprite or background.
 | `vfx_bundle` | W1-F | Pooled quads and thin boxes with additive unshaded materials: tracers, muzzle star, sparks, debris cubes, EMP ground ring (scaled torus or ring mesh), shield dome (transparent sphere), overdrive glow, floating texts | Scale and fade over fixed lifetimes | `VfxLayer` |
 | `audio_bundle` | W2-C | Synthesized WAVs from `tools/audio_gen/gen.py` (noise bursts, filtered sweeps, FM tones) | - | `assets/audio/` by id |
 
-Budgets for placeholders: Skitter at most 300 triangles, Hollow Warden 400, Rusher 400, Hulk 900, Warden 2,500
-(every body part plus the weapon in hand; it went 700 to 2,000 to 2,500 in W3-C, source of truth `ActorMeshes.TRI_BUDGET`),
-turret 300, each as one mesh with at most 3 surfaces (the Warden is 11 mesh instances with at most 3 surfaces each). Arena total at most 25 k triangles.
+Budgets for placeholders (source of truth `ActorMeshes.TRI_BUDGET`): Skitter at most 450 triangles, Hollow Warden 500,
+Rusher 500, Hulk 1,500, turret 600 (W3-D raised these for the hard-surface looks from 300, 400, 400, 900 and 300; the
+CURRENT meshes stay far below them), Warden 2,500 (every body part plus the weapon in hand; it went 700 to 2,000 to 2,500 in
+W3-C), each as one mesh with at most 3 surfaces (the Warden is 11 mesh instances with at most 3 surfaces each). Arena total at most 25 k triangles.
+**The Warden budget is 2,500 now** (it uses 2,448 triangles with the pistol and 2,472 with the SMG); milestone 2 needs room for
+long weapons, and SPEC Q4 proposes a body budget of 2,300 plus a separate weapon budget of 350 (the body must lose about 150
+triangles, or the budget rises to 2,650). The owner of `ActorMeshes.TRI_BUDGET` decides after a look at the captures; until then
+2,500 stands.
 
 Readability rules for all placeholder actors: dark blob shadow, one emissive accent in the faction color,
 silhouette differences in height and footprint first, detail second. Faction color is never the only cue.
+
+### 6.1 Milestone 2 additions
+
+New assets, same rules (procedural, hard-surface kit, **palette materials only**: `ceramic`, `dark_frame`, `gunmetal`, `hazard`,
+`emit_red` for enemies; `add_cyan`, `add_amber`, `add_red`, `add_white` for effects). The one new material is the red hatch for
+danger decals (unshaded, alpha), which must be added to `ShaderWarmup`. Models and sounds per weapon: GDD 12.5.
+
+| Asset | Owner | Triangle budget | Note |
+|---|---|---:|---|
+| 8 new weapons (`scattergun`, `assault_rifle`, `hornet_rack`, `lmg`, `slag_mortar`, `cutting_torch`, `arc_projector`, `rail_lance`) | V2-F (arc projector), V4-R (the other seven) | 350 each | The Warden budget becomes body 2,300 + weapon in hand 350 only if the owner of `TRI_BUDGET` decides so (SPEC Q4) |
+| Holstered weapon on the pack | V4-R | reuses the weapon mesh | MID and HIGH only |
+| `mote`, `shard` | V2-F (mote), V4-R (shard) | 40 each | One mesh, 2 surfaces (ceramic, `emit_red`), drawn as a transform-only MultiMesh (40 instances each) |
+| `burster`, `spitter`, `borer`, `jammer` | V2-F (burster), V4-R (the rest) | 400 each | One mesh, 3 surfaces, pooled like today's enemies |
+| `splitter`, `shieldbearer`, `reclaimer` | V4-R | 500 each | Same |
+| `ward_pylon` | V4-R | 150 | Orbits the Aegis Array |
+| 4 new bosses (`brood_carrier`, `lance_platform`, `aegis_array`, `tremor_rig`) | V4-R | 900 each (SPEC 12.2) | The Hulk's budget when the spec was written; `TRI_BUDGET` has since raised the Hulk to 1,500 (W3-D), so V4-R fixes the budget of the new bosses with the owner of `TRI_BUDGET`; one pooled node each |
+| Crate (with its ring), freight car, fuel drum, strike beacon | V2-F (crate), V4-X (the rest) | 200, 600, 80, 100 | Arena props; the rail lines are faint ground marks |
+| About 20 tag, rarity and category icons and 10 weapon silhouettes | V2-E, V4-U | - | SVG, 128x128; the 60 directive icons are not hand-authored (8 tag glyphs x 4 rarity frames plus a category corner mark) |
+| 60 new sound ids | V2-G (14 for the slice), V4-A (the rest) | - | `tools/audio_gen/voices.py` recipes, deterministic; `gen.py --check` stays byte-identical |
+
+Readability rules of the new content (tests, not prose): one red optic per enemy and nothing else on an enemy glows; every
+damage zone that hurts the player's side is a red hatched ground decal, every zone that hurts enemies is cyan or amber with no
+hatch; at most 3 ticker lines and 1 banner; no damage numbers; a flash over 5% of the screen lasts at most 0.25 s (GDD 6.7, 12.3).
 
 ---
 
@@ -658,5 +776,566 @@ silhouette differences in height and footprint first, detail second. Faction col
 | A19 | No network, ads, accounts, IAP, extra permissions | W1-H and W4-A permission dumps; offline run in step 11 |
 | A20 | Source, scripts, tests, licenses, APK, logs delivered | W3-B `ASSET_LICENSES.csv`; W4-A step 13 |
 
+**Milestone 2 rows (B01 to B12).** The A rows above are the handoff's matrix. After the variety milestone the five-wave behaviour
+of A07 (five waves and boss complete), A10 (pistol to SMG, purchases) and A14 (wave 5 clear wins) is covered on the legacy
+fixture (SPEC 13.9); the shipped game's equivalents are B01 to B03 and the 15-wave end-to-end suites of V3-I and V5-A.
+
+| ID | Requirement | Covered by |
+|---|---|---|
+| B01 | **Run plan determinism.** The plan (bosses, both options of every wave, events) is a pure function of the seed; it is identical for the same seed and differs for another; a decision at wave 3 does not change the options of wave 7; thinking time does not change the hash (a bot waiting 0 or 600 calls); replay equality holds with drafts and awaits | V2-A tests (`sim_plan`, `sim_flow`); V2-H `plan_dump`; V3-I and V5-A end-to-end suites |
+| B02 | **Drafts.** 1-of-3 offers are seeded, weighted, duplicate-free, with pity, reroll, skip, buy-out and patch; the three stat directives reproduce the golden `hit_damage` values | V2-B tests (`sim_draft`); V4-C (every directive, packs, modifiers, kits); V2-E and V4-U UI tests |
+| B03 | **Two weapons and swap.** Two slots, per-slot magazines and heat, swap timing, holster reload; the firing kinds hit exactly the expected sets | V2-C tests (`sim_arsenal`); V4-W (the other seven weapons, levels); V2-E weapon bar |
+| B04 | **Each enemy type is distinct.** One behaviour test per type (GDD 6.3); pairwise silhouettes, one optic per mesh, size classes far apart | V4-N tests (`sim_enemies`, `sim_nav`); V4-R view tests and roster capture |
+| B05 | **Elites.** One test per affix and the forbidden pairs; an elite is readable by behaviour and one ground cue | V4-N tests; V4-X captures |
+| B06 | **Bosses.** Per boss a timeline test over its first 60 s; interrupt and brace rules; no attack above 20% of the core; pools and variants come from the plan | V4-L tests (`sim_boss`); V4-R models; V4-X telegraphs |
+| B07 | **Events fairness.** Every fairness rule of GDD 7b is a test; the interaction table row by row; every event warns first | V4-V tests (`sim_events`); V4-X captures |
+| B08 | **Resume.** Snapshot, restore and hash equality at each boundary for 3 seeds; tail replay lands on the same hash; hash mismatch falls back to full replay; reward once across resumes; 100 kill-and-resume cycles in memory; resume after `am force-stop` mid-wave and mid-draft on the device | V2-D tests (`game`, `save`, `integration/game`); V6-Q on the device |
+| B09 | **Profile migration.** v1 to v2 on the fixture files (plain, `.bak` only, corrupt, newer schema); v1 files left untouched; Data kept, nothing unlocked for free | V4-M tests (`save`); V6-Q on the device |
+| B10 | **Unlocks once.** Purchases are atomic (tier gate, not owned, funds); milestones are claimed once; a run is rewarded once; the Daily seed is the same for a date and differs across dates | V4-M tests (`save`, `game`); V2-D reward-once across resumes |
+| B11 | **Scorecard PASS.** `scorecard_run.ps1 -Runs 200 -Pool base` and `-Pool full` print `SCORECARD: PASS` (or WARN rows each explained); `balance_run.ps1 -Runs 20` prints `BALANCE: PASS`; the legacy fixture still passes `BALANCE: PASS` | V4-T tool and tests; V5-C balance; V1-S legacy check |
+| B12 | **Phone frame budget at 50 + 40.** `--scenario=hold50+40` and `--scenario=chain` on the phone stay within the budget of ARCH 13.2 (go or no-go and the cut list in `PERFORMANCE_REPORT.md`); a 15-minute soak per tier with `[PERF]` lines; anything not run on the device is **NOT RUN** | V2-P (first, before content is built); V4-X (and V4-X2 only if no-go); V6-Q soak |
+
 Test plan coverage: "Unit" rows map to W0-S, W1-A to W1-D and W2-A; "Integration" to W2-D, W2-A, W3-A;
 "Stress" to W2-D; "On-device" to W4-A (emulator), with thermal and physical-device items NOT RUN.
+
+---
+
+## 8. Milestone 2: Variety - conventions, shared files and task cards
+
+Design: `docs/design/VARIETY_PITCH.md`, `VARIETY_SPEC.md` (cited as SPEC n) and `VARIETY_CONTENT.md` (CONTENT n); contracts:
+ARCH (marked **(V)**); rules and numbers: GDD. Every number in them is a first-pass value that the balance task (V5-C) confirms
+with deterministic runs. "Read" below is always: SPEC, CONTENT, ARCH, GDD, plus the sections named. The overview table, the
+totals, the critical path and the cut order are in 2.1.
+
+### 8.1 Conventions
+
+- Every task ends with `powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\tower-two-wt\<ID>\tools\check.ps1` exiting 0
+  with last line `CHECK OK`. The commands in the Acceptance tables below are the **additional**, task-specific checks, written
+  without the common prefix `powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\tower-two-wt\<ID>\` (so
+  `tools\test.ps1 -Path res://tests/unit/sim_plan` means `powershell -NoProfile -ExecutionPolicy Bypass -File
+  C:\dev\tower-two-wt\<ID>\tools\test.ps1 -Path res://tests/unit/sim_plan`). A check passes only when the command exits 0 and
+  prints the stated last line (rule 4).
+- From a Git Bash shell write `-Out` paths with forward slashes (the captures below do).
+- Each task is one worktree `C:\dev\tower-two-wt\<ID>\`, branch `task/<ID>`; the coordinator merges and runs `check.ps1` on
+  `main` before the next wave.
+- Tests of variety behaviour use `TestContent.variety()` (rule 5). Hours are estimates.
+- Same-wave tasks share a few system files in wave V4: `hazard_system.gd` is V4-V's, `status_system.gd` is V4-N's,
+  `mod_system.gd` and the hook files (`death_hooks.gd`, `core_hooks.gd`) are V4-C's, `arsenal_system.gd` and `shot_hooks.gd` are
+  V4-W's. The scaffold's stubs define the call points; a task that needs a new call point in another task's file reports it
+  ("needs owner") instead of editing. `class_name` uniqueness for test helpers stays a rule (the Wave 1 merge lesson in
+  `CLAUDE.md`).
+
+### 8.2 Shared files that need a single owner
+
+These files are touched by many features. They are extended **once, by V1-S**, as complete contracts; later tasks fill bodies in
+their own files and must not edit these (a needed change is reported as "needs owner" and done by the coordinator between
+waves).
+
+| File | Why it is shared |
+|---|---|
+| `src/shared/{ids,reason,damage_source}.gd` | Ids and enums for every layer |
+| `src/content/defs/**`, `src/content/content_loader.gd`, `content_validator.gd` | Every data file |
+| `src/sim/sim_world.gd`, `sim_command.gd`, `sim_event_kind.gd`, `sim_config.gd`, `run_stats.gd`, `run_summary.gd` | Tick order, commands, events |
+| `src/core/event_bus.gd`, `src/game/run_api.gd`, `src/game/game_event_relay.gd`, `src/debug/fake_run_api.gd` | The door between sim, UI, view and audio |
+| `tests/unit/core/test_contracts.gd`, `tests/fixtures/test_content.gd` | Contract tests, fixtures |
+| `data/strings/variety_en.json` | V2-E in wave V2, V4-U in wave V4 (one owner per wave; other tasks list the keys they need in their report) |
+| `data/run.json`, `data/enemies.json`, `data/weapons.json`, `data/directives.json`, `data/events.json` | One owner per wave as in 2.1 (V4-C owns `run.json` and `directives.json`, V4-N `enemies.json` and `arena.json`, V4-W `weapons.json`, V4-V `events.json`); V5-C owns all values afterwards |
+| `src/audio/audio_catalog.gd`, `tools/audio_gen/voices.py` | The audio task of each wave |
+| `src/view/vfx/vfx_layer.gd`, `src/view/actors/actor_layer.gd`, `enemy_pool.gd` | V2-F, then V4-X (vfx) and V4-R (actors) |
+| `src/ui/combat/combat_hud.gd` | V2-E, then V4-U |
+| `project.godot`, `export_presets.cfg` | Nobody (no change is needed: `data/*.json` is already included) |
+
+### 8.3 The vertical slice comes first (waves V1 to V3)
+
+The slice is the whole loop with one of each, playable on the phone:
+
+| Pillar | In the slice |
+|---|---|
+| Run | Act I only: 4 generated waves and a boss wave (the existing Siege Hulk stands in as the act boss), untimed intermissions |
+| Draft | The draft overlay with 8 directives: `hot_loads`, `cyclic_tuning`, `penetrator_cores`, `turret_deploy`, `reinforced_cage`, `emp_capacitor`, `incendiary_tips`, `glass_cannon` (one corrupted, to test the red frame) |
+| Weapon | `arc_projector` (it proves chains, heat, a new effect and a new sound), found in the guaranteed crate after wave 2; 2 slots; the weapon bar and swapping |
+| Enemy | `burster` (it proves death hooks and chain blasts) and `mote` (it proves minis and the instanced path) |
+| Modifier | Route choice before waves 2 to 4 with 3 packs (`pack_tide`, `pack_powder`, `pack_column`) and one modifier (`mod_volatile`) |
+| Event | Player-triggered `deadfall_strike` only (it proves delayed hits, telegraphs and the call button) |
+| Resume | The run file and RESUME RUN |
+| Meta | None yet (Data is still granted as today) |
+
+Slice exit (V3-I acceptance): a `balanced` bot and a human finish a 5-wave run on the desktop and on the phone; two seeds give
+visibly different runs (different packs, offers and outcomes); kill the app mid-wave and resume; `sim_run` over 20 seeds shows
+wins and losses.
+
+### 8.4 Wave V1
+
+#### V1-S Contract scaffold
+
+**Goal.** Every contract of ARCH marked **(V)** exists as compiling code and data, so nine tasks can start in parallel.
+**Owned.** The whole repository, but functional changes only in the files of 8.2; everything else is new stubs.
+**Read.** SPEC 13 (all), 15.4; ARCH 3.1, 4, 5, 6, 7, 12; CONTENT 1 to 13 (the data it transcribes for the slice).
+**Deliverables.**
+1. Shared and frozen files extended exactly as ARCH describes (SPEC 13.1 to 13.4; append only).
+2. Every new def, state class, system, hook file, fire kind, event and boss file as a stub with the final signature,
+   `hash_into`, `to_dict`, `from_dict`, marked `# TODO(<task id>)`.
+3. `ContentLoader.build` with the 7th parameter; loaders for the six new files (straight mapping).
+4. Slice data in `data/` (8.3) and the full schemas with at least one entry per list.
+5. `TestContent.variety()` and `tests/fixtures/data_variety/` (slice data).
+6. `FakeRunApi` and `SimPuppet` extended; `hud_sandbox.tscn` gains `--state=draft|route|salvage|combat2` and `view_sandbox.tscn`
+   gains `--scenario=chain` and `hold<N>+<M>` (driven by the puppet), so V2-E and V2-F can capture without waiting for V2-P,
+   which owns `src/debug/` afterwards.
+7. `test_contracts.gd` extended.
+8. `mission.shop_enabled` false in shipped data; the game still boots and a run still plays as 5 scripted waves until V2-A
+   lands (the plan stub returns the legacy waves).
+
+**Tests.** Loader tests for each new file; contract test; "legacy fixture content is byte-for-byte the same `ContentSet` as
+before" (compare a hash of the defs); every existing test still green.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| Full gate | `tools\check.ps1` -> `CHECK OK` with at least the current 1,063 tests plus 40 new | A01 |
+| Contracts and content | `tools\test.ps1 -Path res://tests/unit/core,res://tests/unit/content` passes | - |
+| The wrapper detects failures | `tools\test.ps1 -Canary` -> `CANARY OK` | A20 |
+| The legacy fixture is intact | `tools\balance_run.ps1 -Runs 5 -Data res://tests/fixtures/data_baseline` still prints `BALANCE: PASS` | A07, B11 |
+
+### 8.5 Wave V2 (nine tasks in parallel; all depend on V1-S)
+
+Every Wave V2 task ends with `check.ps1` exiting 0 with `CHECK OK`.
+
+#### V2-A Sim: run plan, wave builder, phases and awaits
+
+**Goal.** A run is a generated plan; intermissions wait for choices; the sim holds its tick while waiting.
+**Owned.** `src/sim/plan/`, `src/sim/systems/{run_plan_system,wave_builder,phase_system,phase_state,spawn_system}.gd`,
+`tests/unit/sim_plan/`.
+**Read.** SPEC 2.5, 5.3 to 5.5, 9, 13.2; CONTENT 1, 4.1; ARCH 4.1, 6.1, 6.2, 6.6; GDD 7.
+**Deliverables.** `RunPlanSystem.build`, `WaveBuilder`, the `Await` flow of ARCH 4.1, `PICK_ROUTE`, acts, `ACT_STARTED`,
+`ROUTE_OFFERED`; `SpawnSystem` reads the chosen option and enforces the class and type caps.
+**Tests (`tests/unit/sim_plan/`, at least 30).** The plan is identical for the same seed and differs for another; golden plan for
+seeds 1 to 3; both options of a wave never share a pack; budgets are met within 10%; composition rules (GDD 6.5); a pick at
+wave 3 does not change wave 7's options; awaiting freezes `tick` and every timer; a bot answering after 0 or 600 calls gives the
+same hash; caps and FIFO queue with minis; legacy fixture runs unchanged.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| Plan, flow and nav tests | `tools\test.ps1 -Path res://tests/unit/sim_plan,res://tests/unit/sim_flow,res://tests/unit/sim_nav` passes | B01 |
+
+#### V2-B Sim: drafts, directives, modifiers
+
+**Goal.** 1-of-3 offers that are seeded, weighted, duplicate-free, with pity, reroll, skip, buy-out and patch.
+**Owned.** `src/sim/systems/{draft_system,mod_system,command_system,economy_system}.gd`, `src/sim/stores/{draft_state,mod_state}.gd`,
+`tests/unit/sim_draft/`.
+**Read.** SPEC 4, 13.2; CONTENT 3; ARCH 6.5, 6.6; GDD 5.2.
+**Deliverables.** `DraftSystem`, `DraftState`, `ModSystem`, `ModState`, the `ops` interpreter, the 5 draft commands,
+`SHOP_CLOSED`, the legacy level fields fed by the three stat directives.
+**Tests (`tests/unit/sim_draft/`, at least 35).** No duplicates over 1,000 offers; rarity frequencies within 3 points of the
+weights over 5,000 offers; rare pity fires on the 4th offer; turret pity; requirement filtering; tag lean changes frequencies in
+the expected direction; reroll prices 60, 100, 140; buy-out once per draft; skip pays 60; maxed directives never appear; every op
+changes exactly its `ModState` field; `hot_loads` x3 gives the golden `hit_damage` values of ARCH 6.5; golden first offer of
+seed 1; replay equality with drafts.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| Draft and flow tests | `tools\test.ps1 -Path res://tests/unit/sim_draft,res://tests/unit/sim_flow` passes | B02 |
+
+#### V2-C Sim: arsenal, arc projector, blasts, burster, salvage
+
+**Goal.** Two weapon slots, swapping, heat, chain lightning, delayed and area damage, death blasts with a chain delay, crates.
+**Owned.** `src/sim/systems/{arsenal_system,weapon_system,damage_resolver,area_damage,hazard_system,status_system,death_hooks,salvage_system,core_attack_system}.gd`,
+`src/sim/systems/fire/{fire_hitscan,fire_arc}.gd`, `src/sim/stores/{arsenal_state,hazard_state,enemy_ext_state,salvage_state}.gd`,
+`tests/unit/sim_arsenal/`; and `src/sim/systems/events/event_deadfall_strike.gd` (V1-S's stub, filled here).
+**Read.** SPEC 3, 5.1 (burster), 7.1 (Deadfall Strike), 9.5, 13.2; CONTENT 2, 4.2, 6, 7; ARCH 6.5, 6.6; GDD 5.1, 5.5.
+**Deliverables.** As the owned files; `DamageResolver.hit_ex`; `DeathHooks.on_killed`; the 8-per-tick blast limit;
+`deadfall_strike` as the first user of delayed hits.
+**Tests (`tests/unit/sim_arsenal/`, at least 40).** Swap timing and per-slot magazines; holster reload at half speed; heat and
+vent exact tick counts; arc chain order (nearest, id ties), falloff values, armor ignored; a line of 6 bursters detonates in
+6-tick steps and kills exactly the expected set; blasts never recurse; Scrap exactly once per kill by a blast; a burster at its
+slot arms and hits the core for 70 (shield first); minis burn out with no Scrap; crate progress, contest, loss, bank limit;
+`SALVAGE` actions; the legacy pistol and SMG cadence tests unchanged; determinism over 3,600 ticks with 50 + 40; micro-benchmark:
+the tick with 50 + 40 and a blast per second averages under 1.0 ms on the dev machine.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| Arsenal and combat tests | `tools\test.ps1 -Path res://tests/unit/sim_arsenal,res://tests/unit/sim_combat` passes | B03 |
+
+#### V2-D Game flow, run file, resume
+
+**Goal.** The app drives the new intermission, writes the run file, resumes after a kill.
+**Owned.** `src/game/**`, `src/core/game.gd`, `src/save/**`, `tests/unit/{game,save}/`, `tests/integration/game/`,
+`tests/fixtures/saves/`.
+**Read.** SPEC 2.8, 8.4, 13.3, 13.4; ARCH 6.7, 7; GDD 3, 8.2.
+**Deliverables.** `SimRunApi` additions, `GameEventRelay` additions, run file read and write, `start_resumed`, RESUME RUN wiring
+(the menu button itself is V2-E's stub signal), boundary snapshot calls, the fallback chain of ARCH 6.7.
+**Tests.** Snapshot, restore, hash equal at each boundary (3 seeds); tail replay lands on the same hash; hash mismatch falls
+back to full replay; wrong build closes the run and pays once; reward-once across resumes; app-pause writes `resume_tick`; 100
+kill-and-resume cycles in memory.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| Game, save and integration tests | `tools\test.ps1 -Path res://tests/unit/game,res://tests/unit/save,res://tests/integration/game` passes | B08, B10 |
+
+#### V2-E UI: draft, route and salvage overlays, weapon bar
+
+**Goal.** The three choice screens and the new bottom band, built against `FakeRunApi`.
+**Owned.** `src/ui/run/**`, `src/ui/combat/**`, `assets/icons/`, `data/strings/variety_en.json`, `tests/unit/ui/`.
+**Read.** SPEC 11.1 to 11.4, 13.5; ARCH 9; GDD 9, 10.1, 10.5.
+**Deliverables.** The draft, route, salvage and boss-briefing screens and the combat HUD of GDD 10.1 and 10.5 (ticker and call
+button in their first form), two-tap confirm, long-press detail, safe areas, the drawer hidden (not deleted).
+**Tests.** Touch sizes at least 132 px for every control at 1080x1920, 1080x2400 and 1080x1120; text at least 30 px; a
+selection never commits without CONFIRM; the right command and argument reach the API for every button; corrupted cards show the
+price line; High Contrast variants.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| UI tests | `tools\test.ps1 -Path res://tests/unit/ui` passes | B02, B03, A16 |
+| Draft screen | `tools\capture.ps1 -Scene "res://src/debug/hud_sandbox.tscn --state=draft" -Out C:/dev/tower-two-wt/V2-E/build/shots/draft.png -Size 1080x2400` prints `CAPTURE OK`; also `--state=route`, `--state=salvage`, `--state=combat2`; each PNG opened and listed in the report | A16, A17 |
+
+#### V2-F View: arc projector, burster, minis, blast and arc effects
+
+**Goal.** The first new models and effects, at the readability and budget rules.
+**Owned.** `src/view/**` except `battle_view.gd`, `tests/unit/view/`.
+**Read.** SPEC 5.6, 10.2 to 10.4, 12.2, 12.3, 13.6; ARCH 8, 13.2; GDD 6.7, 12.3 to 12.5.
+**Deliverables.** The two models (arc projector, burster), `MiniSwarm`, `fx_blasts`, `fx_arcs`, the telegraph ring for the
+strike, the crate and its ring, pools sized by tier, data-driven `EnemyPool` sizes.
+**Tests.** Triangle budgets; one optic material surface per enemy mesh; pool caps by tier; no allocation after `setup` (a
+counter test as in the existing vfx tests); a blast never draws on a recycled slot twice in a frame.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| View tests | `tools\test.ps1 -Path res://tests/unit/view` passes | B04 |
+| Chain capture | `tools\capture.ps1 -Scene "res://src/debug/view_sandbox.tscn --scenario=chain" -Out C:/dev/tower-two-wt/V2-F/build/shots/chain.png -Size 1080x2400` prints `CAPTURE OK`; the capture shows countable optics during the chain | A17, B12 |
+
+#### V2-G Audio: slice sounds and voice classes
+
+**Goal.** The sounds the slice needs, and the voice rules that keep a warning audible in a chain blast.
+**Owned.** `src/audio/**`, `tools/audio_gen/**`, `assets/audio/**`, `tests/unit/audio/`.
+**Read.** SPEC 12.1, 10.5, 13.7; ARCH 10; GDD 11.
+**Deliverables.** 14 slice sounds (14 of the 60 new ids of ARCH 10, chosen to cover the slice of 8.3; list them in the report);
+the voice classes and limits (3 voices reserved for alerts, the weapon class at most 8, the big-blast substitution); held voices
+(`AudioDirector.hold`, `release`); `AudioEventRouter` for the new signals the slice raises; `AudioLoopPad` for every new loop.
+**Tests.** Every new id in the catalog has a file; alert voices are never starved (a test that floods weapon sounds); a held
+voice starts and stops with its slot; the generator is byte-identical on a second run.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| Generator is deterministic | `py -3.12 -I C:\dev\tower-two-wt\V2-G\tools\audio_gen\gen.py --check` exits 0 | A20 |
+| Audio tests | `tools\test.ps1 -Path res://tests/unit/audio` passes | - |
+
+#### V2-H Bots and tools for drafts
+
+**Goal.** Deterministic bots that answer every choice, and the tools to run and inspect a seed.
+**Owned.** `src/sim/ai/**`, `tools/{sim_run,balance_run,plan_dump}.*`, `tests/unit/sim_ai/`.
+**Read.** SPEC 14.1, 13.8; CONTENT 13; ARCH 6.7, 12; GDD 8.4.
+**Deliverables.** Policies `none`, `greedy`, `random`, `balanced` (slice scope: draft, route, salvage, weapons), `plan_dump`;
+`sim_run` accepts a policy and prints the build signature and the death wave.
+**Tests.** Each policy is deterministic and never draws from a sim stream; every await is answered on the next tick; the
+`random` bot's RNG is seeded outside the world.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| Runs | `tools\sim_run.ps1 -Seed 1 -Policy balanced -Runs 20` prints `SIM SUMMARY:` with both victories and defeats possible | B01, B11 |
+| Plan | `tools\plan_dump.ps1 -Seed 1` prints the plan | B01 |
+
+#### V2-P Phone baseline and mini stress (uses the physical device)
+
+**Goal.** Know before the content is built whether the phone holds the effect budget at 50 + 40.
+**Owned.** `src/debug/**`, `docs/reports/PERFORMANCE_REPORT.md`. **Uses the physical device** (rule 9; the only task of the
+wave that may).
+**Read.** SPEC 10; ARCH 13.1, 13.2; `docs/reports/PHONE_PERF.md` and its "How to repeat"; `docs/reports/BUILD_INSTRUCTIONS.md`.
+**Deliverables.** `PERFORMANCE_REPORT.md` records the baseline at 50 enemies for LOW, MID and HIGH (measured 2026-11-11 in
+`PHONE_PERF.md`: LOW 60 fps, MID and HIGH about 56 fps, 137 draw calls and 40.6k primitives on HIGH; copy the three tier rows
+and re-measure them if the build changed); then `--scenario=hold50+40` and `--scenario=chain` on the phone with `--debug-perf`:
+six `[PERF]` lines per tier, flags set through `user://cinderfall_args.txt` (ARCH 11). Output: a go or no-go on the budget of
+ARCH 13.2 (about 165 draw calls on HIGH against the 150 target and the 220 limit) and the cut list if no-go (ghost swarm,
+scorch marks, flashes, tether lines, then V4-X2).
+**Tests.** None beyond `check.ps1`; the evidence is the report. Anything not run on the device is reported **NOT RUN**.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| Baseline recorded | `docs/reports/PERFORMANCE_REPORT.md` has the LOW, MID and HIGH rows at 50 enemies | A18, B12 |
+| Mini stress | `--scenario=hold50+40 --debug-perf --quality=0`, `=1`, `=2` on the phone: six `[PERF]` lines per tier | B12 |
+| Chain | `--scenario=chain --debug-perf` likewise | B12 |
+| Decision | a go or no-go on the ARCH 13.2 budget, with the cut list if no-go | B12 |
+
+### 8.6 Wave V3
+
+#### V3-I Slice integration
+
+**Goal.** The slice of 8.3 plays end to end on desktop and phone.
+**Owned.** `src/**`, `data/**`, `tests/**` (fixes only), `tests/fixtures/data_variety/`. Device checks use the emulator or, when
+the coordinator attaches it, the phone (`-Serial`); a device check that was not run is reported **NOT RUN**.
+**Read.** SPEC 15.2; all Wave V2 reports ("needs owner" lists); `docs/reports/PHONE_PERF.md`.
+**Deliverables.** Fixes across layers, the e2e suite for the 5-wave generated run, the frozen `data_variety` fixture (the first
+complete variety data set), a debug APK for the owner.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| Full gate | `tools\check.ps1` -> `CHECK OK` | A01 |
+| Wins and losses | `tools\sim_run.ps1 -Seed 1 -Policy balanced -Runs 20` shows at least 1 victory and 1 defeat | B01 |
+| Integration | `tools\test.ps1 -Path res://tests/integration` passes | B01, B08 |
+| The real process | `Godot --headless --fixed-fps 60 --path . -- --autoplay=balanced --seed=1 --mute --quit-after-run` ends with `[Game] quit after run` | A07 |
+| Device | `tools\deploy_android.ps1` and `tools\smoke_android.ps1 -SkipDeploy` -> `SMOKE OK` | A02 |
+
+**Gate: owner playtest** ("is the loop fun?"; short form in GDD 8.4).
+
+### 8.7 Wave V4 (eleven tasks in parallel; each ends with `check.ps1`)
+
+#### V4-W Sim: the other 7 weapons and weapon levels
+
+**Goal.** The whole arsenal of ten weapons, levels 1 to 3.
+**Owned.** `src/sim/systems/fire/{fire_cone,fire_line,fire_shell,fire_missiles,fire_beam}.gd`,
+`src/sim/systems/{arsenal_system,shot_hooks}.gd`, `data/weapons.json`, `tests/unit/sim_arsenal/`.
+**Read.** SPEC 3 (all), 13.2; CONTENT 2; ARCH 6.6 (V); GDD 5.1.
+**Deliverables.** The firing kinds cone, line, shell, missiles and beam (one file each); the scattergun, assault rifle, hornet
+rack, LMG, slag mortar, cutting torch and rail lance with their special fields and the values of `weapons.json`; weapon levels 1
+to 3 and the level-3 perks; `ShotHooks` for the weapon directives that hook shots; cluster targeting (`Targeting.pick_cluster`,
+`pick_many`) for the shell and missile kinds. A change needed in `fire_hitscan.gd` is "needs owner".
+**Tests.** Per firing kind: exact hit sets on hand-placed enemies; cadence, magazine, heat; level multipliers; level-3 perks;
+cluster targeting ties.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| Arsenal tests | `tools\test.ps1 -Path res://tests/unit/sim_arsenal` passes | B03 |
+
+#### V4-N Sim: the other 8 enemy types, elites
+
+**Goal.** Every enemy type behaves as its row of GDD 6.3, and elites carry affixes.
+**Owned.** `src/sim/systems/{status_system,elite_system,movement_system,core_attack_system,targeting}.gd`, `src/sim/nav/**`,
+`data/{enemies,arena}.json`, `tests/unit/sim_enemies/`, `tests/unit/sim_nav/`.
+**Read.** SPEC 5 (all), 13.2; CONTENT 4; ARCH 6.6 (V); GDD 6.
+**Deliverables.** `spitter`, `splitter`, `shard`, `shieldbearer`, `reclaimer`, `jammer`, `borer` and `ward_pylon`; the ten
+affixes and their combination rules; standoff points, breach spawns, ward maths, the mini rule and the MAGNETIC and SHROUDED
+effects in `Targeting`; the values of `enemies.json` and the `arena.json` schema 2 points.
+**Tests.** Per type one behaviour test per row of GDD 6.3; standoff points never overlap slots; ward maths with exact numbers;
+splitter with a full mini cap queues shards; affix tests one per affix and the forbidden pairs; mini movement cost benchmark.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| Enemy and nav tests | `tools\test.ps1 -Path res://tests/unit/sim_enemies,res://tests/unit/sim_nav` passes | B04, B05 |
+
+#### V4-L Sim: bosses
+
+**Goal.** The five bosses, their telegraphs and counterplay.
+**Owned.** `src/sim/systems/boss_system.gd`, `src/sim/systems/bosses/**`, `src/sim/stores/boss_state.gd`, `tests/unit/sim_boss/`.
+**Read.** SPEC 6, 13.2; CONTENT 5; ARCH 6.4, 6.6 (V); GDD 7a.
+**Deliverables.** `BossSystem` and one script per boss (`brood_carrier`, `lance_platform`, `aegis_array`, `tremor_rig`,
+`siege_hulk` with its three variants), phase pips and telegraph events, escorts, boss pools and variants taken from the plan.
+**Tests.** Per boss a timeline test over its first 60 s (telegraph ticks, attack ticks, phase thresholds); interrupt and brace
+rules; no attack above 20% of the core; boss pools and variants from the plan.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| Boss tests | `tools\test.ps1 -Path res://tests/unit/sim_boss` passes | B06 |
+
+#### V4-V Sim: events and hazards
+
+**Goal.** Ten telegraphed events and the fuel drums, under the fairness rules.
+**Owned.** `src/sim/systems/{event_system,hazard_system,ability_system,turret_system}.gd`, `src/sim/systems/events/**`,
+`src/sim/stores/event_state.gd`, `data/events.json`, `tests/unit/sim_events/`.
+**Read.** SPEC 7 (all), 13.2; CONTENT 6; ARCH 6.6 (V); GDD 7b.
+**Deliverables.** `EventSystem` and the ten event files (the player calls Core Vent and Freight; the world events), the fuel
+drums, the schedule and mercy rules, the Static Front lock and cooldown rates in `AbilitySystem`, offline timers and rate
+multipliers in `TurretSystem`.
+**Tests.** Per event: warn, start, end ticks; every fairness rule of GDD 7b as a test; the interaction table row by row; drums
+chain with bursters.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| Event and flow tests | `tools\test.ps1 -Path res://tests/unit/sim_events,res://tests/unit/sim_flow` passes | B07 |
+
+#### V4-C Sim: the other 52 directives, packs, modifiers, kits
+
+**Goal.** All 60 directives, the packs, modifiers, rewards and kits.
+**Owned.** `src/sim/systems/{mod_system,draft_system,death_hooks,core_hooks,wave_builder,run_plan_system}.gd`,
+`data/{directives,run}.json`, `tests/unit/sim_draft/`, `tests/unit/sim_plan/`.
+**Read.** SPEC 4, 9.3, 13.1; CONTENT 1, 3, 11; ARCH 5.2, 6.6 (V); GDD 5.2, 7.2, 7.3.
+**Deliverables.** The directives of GDD 5.2 beyond the 8 of the slice (the 34 pure-data ones and the HOOK ones), the packs,
+modifiers, route rewards and kits, the plan patches of `chorus_handshake`, `static_pact` and `open_gate`, and the validator
+rules with their bad fixtures.
+**Tests.** Every directive: one test of its effect with numbers; every modifier and reward; kits; plan patches reproducible; the
+validator rejects each bad fixture.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| Directive, plan and content tests | `tools\test.ps1 -Path res://tests/unit/sim_draft,res://tests/unit/sim_plan,res://tests/unit/content` passes | B02 |
+
+#### V4-M Save v2, unlocks, rewards, daily seed
+
+**Goal.** The Archive's rules: profile v2, atomic unlocks, milestones, the Daily seed.
+**Owned.** `src/save/**`, `src/game/{game_rewards,game_launch}.gd`, `data/unlocks.json`, `tests/unit/save/`, `tests/fixtures/saves/`.
+**Read.** SPEC 8, 13.3; CONTENT 10 to 12; ARCH 7.5; GDD 8.
+**Deliverables.** `Profile` v2 and its codec, the migration and `MIGRATED_FROM_V1`, `purchase_unlock`, tier gates, milestones,
+the `extras` of `grant_run_reward`, the Daily seed (the UTC date hashed in the game layer; the sim never reads the clock), and
+the values of `unlocks.json`.
+**Tests.** v1 to v2 migration on 6 fixture files; purchase atomicity; tier gates; milestones once; daily seed same for a date,
+different across dates; reward extras.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| Save and game tests | `tools\test.ps1 -Path res://tests/unit/save,res://tests/unit/game` passes | B09, B10 |
+
+#### V4-U UI: Archive, kits, results, ticker, boss bar, hints
+
+**Goal.** The remaining screens and HUD parts of GDD 10.
+**Owned.** `src/ui/**`, `assets/icons/`, `data/strings/{variety,screens,combat,lore}_en.json`, `tests/unit/ui/`.
+**Read.** SPEC 11.4 to 11.7, 13.5; ARCH 9; GDD 8.5, 9, 10.
+**Deliverables.** `ArchiveScreen`, `KitSelector`, the results additions (build recap, what broke the line, SAME SEED, the Archive
+hook), the threat ticker and edge arrows, boss-bar phase pips, the menu, briefing and pause additions, the first-run hints, the
+approved story strings of GDD 2.3, and optionally the SWAP ASSIST setting.
+**Tests.** Archive, kit selector, results additions, ticker (3 lines, priorities), boss pips, hints once per profile; sizes and
+safe areas on 3 aspects.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| UI tests | `tools\test.ps1 -Path res://tests/unit/ui` passes | A16 |
+| Captures | 8 captures (Archive, kit selector, results, ticker, boss bar and others) opened and listed in the report | A16, A17 |
+
+#### V4-R View: weapon, enemy and boss models
+
+**Goal.** Every new model, readable from above, inside its triangle budget.
+**Owned.** `src/view/actors/**`, `tests/unit/view/actors_*`.
+**Read.** SPEC 3.5, 5.1, 6, 12.2, 13.6; ARCH 8; GDD 6.3, 12.4, 12.5; the lookdev recipe in `docs/reports/lookdev/README.md`.
+**Deliverables.** The seven remaining weapon models and the holstered weapon, the enemy models, `ward_pylon`, the four boss
+models, all by the budgets of section 6.1; data-driven pools stay as V2-F left them.
+**Tests.** Budgets, surfaces, one optic per mesh, silhouettes differ (the existing silhouette test pattern, pairwise).
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| View tests | `tools\test.ps1 -Path res://tests/unit/view` passes | B04, B06 |
+| Roster capture | a roster capture of every enemy and boss, opened and listed in the report | A17 |
+
+#### V4-X View: effects, zones, events, cosmetic chaos, tiers
+
+**Goal.** Everything that happens to the yard is drawn, telegraphed and tier-scaled.
+**Owned.** `src/view/{vfx,arena,kit}/**`, `tests/unit/view/{vfx,arena,kit}_*`.
+**Read.** SPEC 7.2, 10.3, 10.4, 12.3, 13.6; ARCH 8, 13.2; GDD 6.7, 7b, 12.3.
+**Deliverables.** `fx_beams`, `fx_lobs`, `fx_zones`, `fx_strike`, `fx_cosmetic`, the rail lines, freight car and fuel drums, the
+telegraph decals, the tier tables of ARCH 13.2, Reduced Flash and High Contrast variants.
+**Tests.** Pool caps by tier; a danger decal is drawn on every tier; Reduced Flash removes flashes and shake; legibility capture
+at 50 + 40 during a chain.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| View tests | `tools\test.ps1 -Path res://tests/unit/view` passes | B05, B07, B12 |
+| Captures | 6 captures (a chain on each tier and the event warnings), opened and listed in the report | A17, B12 |
+
+#### V4-A Audio: the remaining sounds
+
+**Goal.** All 60 new sound ids.
+**Owned.** As V2-G.
+**Read.** As V2-G.
+**Deliverables.** The remaining 46 ids, the routing for the remaining signals, the combat drone driven by act and wave budget.
+**Tests.** `gen.py --check`; every new id in the catalog has a file; alert voices are never starved (a test that floods weapon
+sounds).
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| Generator and audio tests | `py -3.12 -I C:\dev\tower-two-wt\V4-A\tools\audio_gen\gen.py --check` exits 0; `tools\test.ps1 -Path res://tests/unit/audio` passes | A20 |
+
+#### V4-T Bots, scorecard tool
+
+**Goal.** The eight policies and the predictability scorecard.
+**Owned.** `src/sim/ai/**`, `tools/{scorecard_run,sim_run,balance_run}.*`, `tests/unit/sim_ai/`.
+**Read.** SPEC 14, 13.8; CONTENT 13; ARCH 6.7, 12; GDD 8.4.
+**Deliverables.** `hoarder`, `spammer`, `turret_rush`, `risk` and the full `balanced`; `scorecard.gd`, `build_signature.gd`;
+`scorecard_run.ps1 -Runs n [-Pool base|full]`; `balance_run` reading the redefined targets.
+**Tests.** Each policy is deterministic and never draws from a sim stream (a test compares `world.rng` hashes with and without
+the bot's idle decisions); the scorecard maths on synthetic results.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| Scorecard runs | `tools\scorecard_run.ps1 -Runs 5` prints a `SCORECARD:` line | B11 |
+
+Optional, outside the path: **V4-X2** instanced bodies (10 hours), only if V2-P says the draw-call budget fails: draw all enemies
+of a type as one transform-only MultiMesh (about 50 to 100 draw calls fewer). It replaces the material-swap hit flash with a
+transform pop and needs the hard-surface look ported; its owned paths are set by the coordinator when it starts. Decide after the
+phone baseline is measured.
+
+**Gate after V4: owner playtest** ("can I read it?").
+
+### 8.8 Waves V5 and V6
+
+#### V5-A Gameplay integration and cleanup
+
+**Goal.** The 15-wave game works end to end through `Game`, and the legacy HUD is gone.
+**Owned.** `src/{sim,game,core,content,save,shared}/**`, `data/*.json`, `tests/**` except view, ui, audio; and, as the one
+exception, the drawer: `src/ui/combat/{hud_upgrade_drawer,hud_upgrade_card}.gd`, the drawer members of `combat_hud.gd`
+(`is_drawer_open`, `close_drawer`) and the HUD tests of the drawer in `tests/unit/ui/` (V5-B does not touch them).
+**Read.** SPEC 13.5, 13.9, 15.3; all Wave V4 reports.
+**Deliverables.** Full-run e2e tests for the 15-wave game (a scripted policy with a debug build, `--unlock=all` and
+`debug_damage_mult`, for a fast deterministic victory, and a `none` run for a defeat; the suites that read `res://data/` on purpose
+are rewritten here and in V3-I); the stress variant at 50 + 40 with blasts every second (limit 1.0 ms per tick on the desktop);
+delete the drawer and its dead paths together with `BackPolicy`'s drawer branch; fix cross-layer defects.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| Full gate | `tools\check.ps1` -> `CHECK OK` | A01 |
+| Integration | `tools\test.ps1 -Path res://tests/integration` passes | B01, B08 |
+| Runs | `tools\sim_run.ps1 -Seed 1 -Policy balanced -Runs 20` | B01, B11 |
+
+#### V5-B Presentation integration
+
+**Goal.** What the player sees and hears is correct, legible and consistent on every supported screen shape.
+**Owned.** `src/{view,ui,audio,debug}/**`, `assets/**`, `data/strings/**`, `tests/unit/{view,ui,audio}/`, `docs/reports/screenshots/`.
+**Read.** SPEC 5.6, 12.3; GDD 6.7, 10, 12; all Wave V4 reports.
+**Deliverables.** The screenshot set (at least 24 PNGs: every overlay, every boss, every event warning, a 50 + 40 chain on each
+tier, Reduced Flash, High Contrast, 3 aspects), the accessibility audit against GDD 6.7 and 12.3, audio routing gaps.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| Full gate | `tools\check.ps1` -> `CHECK OK` | A01 |
+| Captures | the screenshot set under `docs/reports/screenshots/`, each opened and listed with a pass or issue note | A16, A17 |
+
+#### V5-C Balance with the scorecard
+
+**Goal.** The scorecard of GDD 8.4 passes.
+**Owned.** `data/*.json` (values only), `docs/reports/BALANCE_REPORT.md`, `tests/fixtures/data_variety/` (refresh).
+**Read.** SPEC 14; CONTENT (all); GDD 8.4; `docs/reports/BALANCE_REPORT.md`.
+**Deliverables.** Tune `data/*.json` with the levers of GDD 8.4 until the checks below pass; write part 2 of
+`BALANCE_REPORT.md` with before and after for every changed value; refresh the frozen fixture (and re-record its goldens).
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| Scorecard | `tools\scorecard_run.ps1 -Runs 200 -Pool base` and `-Pool full` print `SCORECARD: PASS` (or WARN rows each explained) | B11 |
+| Balance | `tools\balance_run.ps1 -Runs 20` prints `BALANCE: PASS` | B11 |
+
+**Gate: owner playtest** ("one more run?").
+
+#### V6-Q Release QA, device evidence
+
+**Goal.** The handoff's final delivery list with honest evidence for the 15-wave game.
+**Owned.** The whole repository (fixes limited to defects found here). **Uses the physical device and the emulator** (rule 9).
+**Read.** The W4-A step list (section 5), `handoff/06_QA_AND_RELEASE/*`, `docs/reports/*`, `docs/reports/PHONE_PERF.md`.
+**Deliverables.** The W4-A step list, extended: resume after `am force-stop` mid-wave and mid-draft; a full run by input taps; a
+15-minute soak with `--autoplay=balanced` on each tier with `[PERF]` lines; v1 profile migration on the device; reports and the
+APK hash.
+**Acceptance.**
+
+| Check | Command or evidence | Matrix |
+|---|---|---|
+| W4-A steps 1 to 13 | as the table of W4-A, run for the 15-wave game; the APK SHA-256 recorded | A01 to A20 |
+| Resume | `adb shell am force-stop <pkg>` mid-wave and again mid-draft, relaunch: RESUME RUN restores the same state | B08 |
+| Migration | a v1 profile on the device migrates to v2 without loss | B09 |
+| Soak | a 15-minute `--autoplay=balanced` run on each tier with `[PERF]` lines (the soak mode of `smoke_android.ps1`: W4-A step 10 used `-Soak 300 -MinFps 20`, here 900 s) | B12 |
+| Evidence | reports and screenshots under `docs/reports/`; anything not run is **NOT RUN** | A20 |
