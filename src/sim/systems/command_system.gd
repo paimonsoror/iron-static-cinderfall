@@ -24,6 +24,8 @@ static func apply_queued(world: SimWorld) -> void:
 				continue
 			world.phase_state.mark_seen(cmd.command_id)
 		_apply(world, cmd, bought_this_tick)
+	# A resolved salvage emptied its offer but cannot release its own await: move the intermission on (idempotent).
+	PhaseSystem.advance_await(world)
 
 
 static func _apply(world: SimWorld, cmd: SimCommand, bought_this_tick: Dictionary[int, bool]) -> void:

@@ -40,8 +40,6 @@ static func init_world(world: SimWorld) -> void:
 static func step(world: SimWorld) -> void:
 	var a: ArsenalState = world.arsenal
 	var w: WardenState = world.warden
-	if w.weapon_index != maxi(0, a.slot_weapon[a.active]):
-		_adopt_shop_weapon(a, w)
 	var swapping: bool = a.swap_left > 0
 	if swapping:
 		a.swap_left -= 1
@@ -215,20 +213,6 @@ static func sps_milli(world: SimWorld, def: WeaponDef) -> int:
 	if world.mods.w_rate_mul != 1.0:
 		sps = maxi(0, roundi(float(sps) * world.mods.w_rate_mul))
 	return sps
-
-
-## The legacy shop (EconomySystem, the SMG unlock) writes the Warden directly. While it is still open on variety
-## content the weapon it set goes into the active slot, so the mirror does not undo the purchase. Every writer of
-## the arsenal itself (swap, give_weapon) mirrors at once, so this only ever sees that purchase.
-static func _adopt_shop_weapon(a: ArsenalState, w: WardenState) -> void:
-	a.slot_weapon[a.active] = w.weapon_index
-	a.slot_level[a.active] = 1
-	a.slot_magazine[a.active] = w.magazine
-	a.slot_reload_left[a.active] = w.reload_ticks_left
-	a.slot_reload_acc[a.active] = 0
-	a.slot_heat[a.active] = 0
-	a.slot_cool_acc[a.active] = 0
-	a.slot_vent_left[a.active] = 0
 
 
 static func _tick_active(world: SimWorld, a: ArsenalState, slot: int, def: WeaponDef) -> void:

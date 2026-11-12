@@ -100,6 +100,9 @@ static func _apply(world: SimWorld, upgrade_index: int) -> void:
 			world.turrets.active[pad] = 1
 			world.events.push(SimEventKind.Id.TURRET_DEPLOYED, pad)
 		UpgradeDef.Kind.WEAPON_UNLOCK:
+			if world.content.run != null:  # variety content: the arsenal owns the slots (the Warden mirrors them)
+				ArsenalSystem.give_weapon(world, world.arsenal.active, def.weapon_index)
+				return
 			world.warden.weapon_index = def.weapon_index
 			world.warden.magazine = world.content.weapons[def.weapon_index].magazine
 			world.warden.reload_ticks_left = 0
