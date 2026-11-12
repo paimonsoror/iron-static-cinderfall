@@ -21,12 +21,13 @@ var _saved_look: int = LookDevStyle.Look.CURRENT  ## `Game.boot` sets the shippe
 
 
 ## `arg_list` are the user arguments after `--`. `content_tweak` (optional) may change the baseline content first.
-static func create(suite: GdUnitTestSuite, arg_list: PackedStringArray = PackedStringArray(), content_tweak: Callable = Callable()) -> GameHarness:
+## `base` (optional) replaces the frozen baseline, e.g. `TestContent.variety()` for a generated run.
+static func create(suite: GdUnitTestSuite, arg_list: PackedStringArray = PackedStringArray(), content_tweak: Callable = Callable(), base: ContentSet = null) -> GameHarness:
 	var h: GameHarness = GameHarness.new()
 	h._saved_max_fps = Engine.max_fps
 	h._saved_look = LookDevStyle.current()
 	h.fs = GameRunKit.fresh_save()
-	h.content = TestContent.baseline()
+	h.content = base if base != null else TestContent.baseline()
 	if content_tweak.is_valid():
 		content_tweak.call(h.content)
 	h.events_log = GameSignalLog.new()
@@ -147,11 +148,32 @@ func frames_until_over(max_frames: int) -> int:
 	for i: int in max_frames:
 		if r.sim.is_over():
 			return i
-		if r.sim.phase == GameState.Id.INTERMISSION:
-			r.api.skip_intermission()
+		play_intermission(r)
 		r.step_frame(DT)
 	return max_frames if r.sim.is_over() else -1
 
+
+## What a player with no plan does in an intermission, through the RunApi (one command per call at most). The legacy
+## 5-wave run: CONTINUE. A generated run without a bot: scrap the crate, skip the draft, take route A, CONTINUE on the
+## boss briefing, and skip the breather. A generated run with a bot (--autoplay) is left alone: the bot answers every
+## choice itself and the breather counts down, so the run is the one `tools\sim_run.ps1` plays for that seed.
+static func play_intermission(r: RunController) -> void:
+	if r == null or r.sim == null or r.sim.phase != GameState.Id.INTERMISSION:
+		return
+	if r.sim.plan == null:
+		r.api.skip_intermission()
+		return
+	if r.bot != null or not r.sim.command_queue.is_empty():
+		return
+	match r.api.awaiting():
+		RunApi.AWAIT_SALVAGE:
+			r.api.resolve_salvage(r.api.next_command_id(), 0, RunApi.SALVAGE_SCRAP)
+		RunApi.AWAIT_DRAFT:
+			r.api.skip_draft(r.api.next_command_id())
+		RunApi.AWAIT_ROUTE:
+			r.api.pick_route(r.api.next_command_id(), 0)
+		_:
+			r.api.continue_run()  # the boss briefing, or the breather
 
 ## A `content_tweak` for `create`: only the first wave, so a boosted run is over in a couple of seconds.
 static func one_wave(c: ContentSet) -> void:

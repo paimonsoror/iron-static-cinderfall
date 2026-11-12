@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
-## Stress (TEST_PLAN "Stress"; acceptance A06): ten simulated minutes (36,000 ticks) with the arena held at the cap
-## of 50 and enemies spawning and dying all the time, on the shipped enemy numbers. The core is invulnerable and the
-## waves are floods (HarnessKit.stress_content), so nothing ends the run early. One run in before(); the tests read it.
+## Stress (TEST_PLAN "Stress"; acceptance A06; VARIETY_SPEC 10): ten simulated minutes (36,000 ticks) of a generated
+## run with the arena held at the bodied cap of 50, the swarm of minis on top of it, bursters going off and enemies
+## spawning and dying all the time, on the shipped enemy numbers. The core is invulnerable and the plan is a flood
+## (HarnessKit.flood_plan), so nothing ends the run early. One run in before(); the tests read it.
 
 const TICKS: int = 36000
 const HALF: int = 18000
@@ -23,6 +24,8 @@ var slowest_usec: int = 0
 var killed: int = 0
 var spawned: int = 0
 var max_pending: int = 0
+var minis_max: int = 0
+var blasts: int = 0
 
 
 ## Progress book-keeping for one enemy: the path distance when it last made real progress, and when.
@@ -33,10 +36,11 @@ class Progress:
 
 
 func before() -> void:
-	content = HarnessKit.stress_content()
+	content = HarnessKit.shipped()
 	var cfg: SimConfig = HarnessKit.config(content, 11)
 	cfg.debug_invulnerable_core = true
 	world = SimWorld.new(cfg)
+	HarnessKit.flood_plan(world)
 	checker = HarnessChecker.new(world)
 	var bot: PolicyBot = PolicyBot.new(PolicyBot.Policy.NONE)
 	var cap: int = content.mission.enemy_cap
@@ -62,14 +66,26 @@ func before() -> void:
 				seen.erase(e.a)
 			elif e.kind == SimEventKind.Id.ENEMY_SPAWNED:
 				spawned += 1
+			elif e.kind == SimEventKind.Id.AREA_BLAST:
+				blasts += 1
 		checker.after_step(world, events)
 		_watch_enemies(world, seen, window, min_progress, arena)
-		var alive: int = world.alive_count()
+		var minis: int = _minis(world)
+		minis_max = maxi(minis_max, minis)
+		var alive: int = world.alive_count() - minis  # the cap of 50 counts bodied enemies; minis have their own
 		ticks_at_cap += 1 if alive >= cap else 0
 		ticks_near_cap += 1 if alive >= cap - 5 else 0
 		max_pending = maxi(max_pending, SpawnSystem.pending_count(world))
 		high_water_max = maxi(high_water_max, world.enemies.high_water)
 	checker.finish(world, bot.commands_submitted)
+
+
+func _minis(w: SimWorld) -> int:
+	var n: int = 0
+	for i: int in w.enemies.high_water:
+		if w.enemies.alive[i] == 1 and w.ext.has_flag(i, EnemyExtState.F_MINI):
+			n += 1
+	return n
 
 
 func _watch_enemies(w: SimWorld, seen: Dictionary[int, Progress], window: int, min_progress: float, arena: ArenaDef) -> void:
@@ -82,6 +98,8 @@ func _watch_enemies(w: SimWorld, seen: Dictionary[int, Progress], window: int, m
 			continue
 		if store.x[i] < arena.min_x - 3.0 or store.x[i] > arena.max_x + 3.0 or store.z[i] < arena.min_z - 3.0 or store.z[i] > arena.max_z + 3.0:
 			out_of_bounds += 1
+		if w.ext.has_flag(i, EnemyExtState.F_MINI):
+			continue  # minis follow the flow field only: no slot and no stuck tracking (CONTENT 4.2)
 		var enemy_id: int = store.id[i]
 		if not seen.has(enemy_id):
 			var p: Progress = Progress.new()
@@ -116,6 +134,8 @@ func test_the_arena_was_held_at_the_cap_with_a_queue_behind_it() -> void:
 func test_enemies_kept_spawning_and_dying() -> void:
 	assert_int(spawned).is_greater(300)
 	assert_int(killed).is_greater(200)
+	assert_int(blasts).is_greater(20)  # bursters went off (and chained) all along
+	assert_int(minis_max).is_between(20, content.mission.swarm_cap)  # the swarm rode on top of the bodied cap
 	assert_int(world.next_enemy_id - 1).is_equal(spawned)  # every id handed out is an ENEMY_SPAWNED event
 
 
@@ -126,7 +146,7 @@ func test_no_position_is_nan_or_infinite_or_outside_the_yard() -> void:
 
 func test_the_store_never_outgrows_its_capacity() -> void:
 	assert_int(high_water_max).is_less_equal(world.enemies.capacity)
-	assert_int(high_water_max).is_less_equal(content.mission.enemy_cap + 8)
+	assert_int(high_water_max).is_less_equal(content.mission.enemy_cap + content.mission.swarm_cap + 8)
 
 
 func test_nobody_stays_stuck_without_the_sim_noticing() -> void:

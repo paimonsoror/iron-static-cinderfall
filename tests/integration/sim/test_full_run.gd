@@ -1,7 +1,9 @@
 extends GdUnitTestSuite
-## Five waves end to end on the shipped data through the real tick order (TEST_PLAN "Integration"; acceptance A06,
-## A07, A09, A14). Three runs are played once in before(): the greedy bot, a bot that buys nothing, and the greedy
-## bot with debug_damage_mult = 5.
+## The LEGACY game: the five scripted waves end to end through the real tick order (TEST_PLAN "Integration"; acceptance
+## A06, A07, A09, A14), on the frozen legacy fixture (tests/fixtures/data_baseline: the shop, four enemy types, no run
+## plan). The shipped data is a generated run since the variety milestone; its whole-run suite is test_slice_run.gd.
+## Three runs are played once in before(): the greedy bot, a bot that buys nothing, and the greedy bot with
+## debug_damage_mult = 5.
 
 var content: ContentSet
 var greedy: HarnessTally
@@ -10,7 +12,7 @@ var boosted: HarnessTally
 
 
 func before() -> void:
-	content = HarnessKit.shipped()
+	content = TestContent.baseline()
 	greedy = HarnessTally.play(HarnessKit.config(content, 1), PolicyBot.Policy.GREEDY)
 	idle = HarnessTally.play(HarnessKit.config(content, 1), PolicyBot.Policy.NONE)
 	boosted = HarnessTally.play(HarnessKit.config(content, 1, 5.0), PolicyBot.Policy.GREEDY)
