@@ -14,7 +14,9 @@ extends RefCounted
 ## Heat (3.3): a shot adds heat_per_shot; reaching the cap starts a vent of vent_ticks, after which heat is 0. The
 ## active weapon cools on every tick on which it holds no target or a swap runs ("not firing"); between the shots of
 ## a burst it does not cool.
-# TODO(V4-W): weapon level-3 perks, the LMG spin-up, the off-hand of twin_link and the other firing kinds.
+## Levels (V4-W): the weapon fires with `effective_of(slot)`, its def with the level-3 perks applied (WeaponPerks); the
+## damage multiplier of a level is DamageResolver's. The firing kinds, the weapon specials and the off-hand are
+## ArsenalFire's; the rail lance's wind-up is driven here (`_step_line`).
 
 ## Slot states for the HUD (RunApi.weapon_slot "state").
 const ST_READY: int = 0
@@ -47,9 +49,10 @@ static func step(world: SimWorld) -> void:
 		if s != a.active and a.slot_weapon[s] >= 0:
 			_tick_holstered(world, a, s)
 	var slot: int = a.active
-	var def: WeaponDef = weapon_of(world, slot)
+	var def: WeaponDef = effective_of(world, slot)
 	_tick_active(world, a, slot, def)
-	w.fire_acc_milli += sps_milli(world, def)
+	ShotHooks.kill_chain_tick(a)
+	w.fire_acc_milli += ArsenalFire.rate_milli(world, a, def)
 	var range_m: float = range_of(world, def)
 	var lock: PackedInt32Array = Targeting.refresh_lock(
 		world, w.target_id, w.lock_ticks_left, w.x, w.z, range_m, world.content.mission.lock_ticks
@@ -58,11 +61,16 @@ static func step(world: SimWorld) -> void:
 	w.lock_ticks_left = lock[1]
 	_aim(world, w)
 	if not swapping:
-		while w.fire_acc_milli >= MILLI_PER_SHOT and w.target_id != 0 and _can_fire(a, slot, def):
-			if not _fire(world, a, slot, def, range_m):
-				break
+		if def.kind == WeaponDef.Kind.LINE:
+			_step_line(world, a, slot, def, range_m)
+		else:
+			while w.fire_acc_milli >= MILLI_PER_SHOT and w.target_id != 0 and _can_fire(a, slot, def):
+				if not _fire(world, a, slot, def, range_m):
+					break
+		ArsenalFire.step_offhand(world, a, slot)
 	if w.fire_acc_milli > MILLI_PER_SHOT:
 		w.fire_acc_milli = MILLI_PER_SHOT
+	ArsenalFire.track(a, def, not swapping and w.target_id != 0 and _can_fire(a, slot, def))
 	if def.is_heat() and a.slot_vent_left[slot] == 0 and (swapping or w.target_id == 0):
 		_cool(a, slot, def)
 	_mirror(world)
@@ -107,16 +115,26 @@ static func give_weapon(world: SimWorld, slot: int, weapon_index: int) -> void:
 	if not world.stats.weapons.has(weapon_index):
 		world.stats.weapons.append(weapon_index)
 	if slot == a.active:
+		a.charge_left = 0
+		a.spin_ticks = 0
+		a.beam_target = 0
+		a.beam_hits = 0
 		_mirror(world)
 		world.events.push(SimEventKind.Id.WEAPON_CHANGED, weapon_index)
 
 
-## Raises the level of the weapon in `slot` by one (cap MAX_LEVEL).
+## Raises the level of the weapon in `slot` by one (cap MAX_LEVEL). A level that enlarges the magazine (the SMG's 45 rounds
+## and the rail lance's 4 at level 3) adds the new rounds to a magazine that is neither empty nor being reloaded.
 static func level_up(world: SimWorld, slot: int) -> void:
 	var a: ArsenalState = world.arsenal
 	if slot < 0 or slot >= a.slot_count or a.slot_weapon[slot] < 0:
 		return
+	var before: int = magazine_size_of(world, slot)
 	a.slot_level[slot] = mini(MAX_LEVEL, a.slot_level[slot] + 1)
+	var grown: int = magazine_size_of(world, slot) - before
+	if grown > 0 and a.slot_reload_left[slot] == 0 and a.slot_magazine[slot] > 0:
+		a.slot_magazine[slot] += grown
+		_mirror(world)
 
 
 ## The weapon in `slot`; the pistol for an empty slot.
@@ -125,6 +143,16 @@ static func weapon_of(world: SimWorld, slot: int) -> WeaponDef:
 	if slot < 0 or slot >= a.slot_weapon.size() or a.slot_weapon[slot] < 0:
 		return world.content.weapons[0]
 	return world.content.weapons[a.slot_weapon[slot]]
+
+
+## The weapon in `slot` as it fires at its level: the shared def below level 3, else a copy with the level-3 perk applied
+## (WeaponPerks). Read-only; do not keep it across ticks.
+static func effective_of(world: SimWorld, slot: int) -> WeaponDef:
+	var def: WeaponDef = weapon_of(world, slot)
+	var a: ArsenalState = world.arsenal
+	if slot < 0 or slot >= a.slot_level.size():
+		return def
+	return WeaponPerks.effective(def, a.slot_level[slot])
 
 
 ## The slot that carries `weapon_index`, or -1.
@@ -172,7 +200,8 @@ static func magazine_size_of(world: SimWorld, slot: int) -> int:
 	var def: WeaponDef = weapon_of(world, slot)
 	if def.is_heat():
 		return 0
-	return maxi(1, roundi(float(def.magazine) * world.mods.w_mag_mul))
+	var base: float = WeaponPerks.level_value(def, world.arsenal.slot_level[slot], &"magazine", float(def.magazine))
+	return maxi(1, roundi(roundf(base) * world.mods.w_mag_mul))
 
 
 ## Heat capacity of the weapon in `slot` with ModState.w_heat_cap_mul (0 for a magazine weapon).
@@ -275,7 +304,7 @@ static func _can_fire(a: ArsenalState, slot: int, def: WeaponDef) -> bool:
 
 
 static func _start_reload(world: SimWorld, a: ArsenalState, slot: int, def: WeaponDef) -> void:
-	a.slot_reload_left[slot] = reload_ticks_of(world, def)
+	a.slot_reload_left[slot] = reload_ticks_of(world, def) + ShotHooks.reload_jam_ticks(world)
 	a.slot_reload_acc[slot] = 0
 	world.events.push(SimEventKind.Id.RELOAD_STARTED, a.slot_reload_left[slot])
 
@@ -285,13 +314,7 @@ static func _start_reload(world: SimWorld, a: ArsenalState, slot: int, def: Weap
 static func _fire(world: SimWorld, a: ArsenalState, slot: int, def: WeaponDef, range_m: float) -> bool:
 	var w: WardenState = world.warden
 	var target_index: int = world.enemies.index_of(w.target_id)
-	var fired: bool = false
-	match def.kind:
-		WeaponDef.Kind.HITSCAN:
-			fired = FireHitscan.fire(world, slot, def, DamageSource.Id.WARDEN)
-		WeaponDef.Kind.ARC:
-			fired = FireArc.fire(world, slot, def, DamageSource.Id.WARDEN)
-	if not fired:
+	if not ArsenalFire.shoot(world, a, slot, def, DamageSource.Id.WARDEN):
 		return false
 	w.fire_acc_milli -= MILLI_PER_SHOT
 	w.shots_fired += 1
@@ -314,6 +337,25 @@ static func _fire(world: SimWorld, a: ArsenalState, slot: int, def: WeaponDef, r
 		w.lock_ticks_left = world.content.mission.lock_ticks if w.target_id != 0 else 0
 		_aim(world, w)
 	return true
+
+
+## The rail lance (kind L): a shot is a wind-up of `charge_ticks` ticks (ArsenalState.charge_left counts them down, the
+## far end of the fixed line is charge_x, charge_z), then the line is resolved by the first tick on which the cadence has
+## banked a whole shot. The wind-up starts so that it ends just as the cadence allows the shot: the rate of the weapon
+## (0.45 a second) is the rate of resolved lines. The finished charge waits as FireLine.ARMED.
+static func _step_line(world: SimWorld, a: ArsenalState, slot: int, def: WeaponDef, range_m: float) -> void:
+	var w: WardenState = world.warden
+	if a.charge_left > 0:
+		a.charge_left -= 1
+		if a.charge_left == 0:
+			a.charge_left = FireLine.ARMED
+	if a.charge_left == FireLine.ARMED:
+		if w.fire_acc_milli >= MILLI_PER_SHOT and _can_fire(a, slot, def):
+			var _fired: bool = _fire(world, a, slot, def, range_m)
+		return
+	if a.charge_left == 0 and w.target_id != 0 and _can_fire(a, slot, def):
+		if w.fire_acc_milli + def.charge_ticks * sps_milli(world, def) >= MILLI_PER_SHOT:
+			var _began: bool = FireLine.begin(world, def)
 
 
 static func _aim(world: SimWorld, w: WardenState) -> void:
