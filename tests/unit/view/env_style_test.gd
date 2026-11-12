@@ -21,19 +21,20 @@ func test_current_gets_no_effect_on_any_tier() -> void:
 
 
 func test_low_keeps_only_the_static_effects() -> void:
-	for fx: StringName in [EnvStyle.FLOOR, EnvStyle.PROPS, EnvStyle.REACTOR, EnvStyle.SPILL, EnvStyle.VIGNETTE, EnvStyle.GRADE]:
+	for fx: StringName in [EnvStyle.FLOOR, EnvStyle.PROPS, EnvStyle.REACTOR, EnvStyle.SPILL]:
 		assert_bool(EnvStyle.on(fx, STY, LOW)).override_failure_message("%s should be on at LOW" % fx).is_true()
 	for fx: StringName in [
-		EnvStyle.WET, EnvStyle.PROP_SHADER, EnvStyle.GLOW, EnvStyle.RIPPLES, EnvStyle.FLICKER
+		EnvStyle.WET, EnvStyle.PROP_SHADER, EnvStyle.GLOW, EnvStyle.RIPPLES, EnvStyle.FLICKER, EnvStyle.VIGNETTE, EnvStyle.GRADE
 	]:
 		assert_bool(EnvStyle.on(fx, STY, LOW)).override_failure_message("%s should be off at LOW" % fx).is_false()
 
 
 func test_mid_adds_the_wet_floor_and_the_prop_shading_but_not_bloom() -> void:
-	for fx: StringName in [EnvStyle.WET, EnvStyle.PROP_SHADER, EnvStyle.FLICKER]:
+	for fx: StringName in [EnvStyle.WET, EnvStyle.PROP_SHADER, EnvStyle.FLICKER, EnvStyle.GRADE]:
 		assert_bool(EnvStyle.on(fx, STY, MID)).override_failure_message("%s should be on at MID" % fx).is_true()
 	assert_bool(EnvStyle.on(EnvStyle.GLOW, STY, MID)).is_false()
 	assert_bool(EnvStyle.on(EnvStyle.RIPPLES, STY, MID)).is_false()
+	assert_bool(EnvStyle.on(EnvStyle.VIGNETTE, STY, MID)).is_false()  # the screen-edge pass is a full-screen blend: HIGH only
 
 
 func test_high_has_everything() -> void:
