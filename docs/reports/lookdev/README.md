@@ -612,3 +612,220 @@ mean-luma contrast and pixel contrast at least CURRENT's on HIGH, MID and LOW, a
   switch at run time (`src/debug/view_sandbox.gd` shows the pair).
 - The warm-up: `ArenaView._ready` calls `ShaderWarmup.attach(self, center, extra, LookDevMat.warm_materials(_look))`, so the hard-surface materials are drawn once during the boot
   screen. If the look is chosen after `ArenaView` is built, call `LookDevMat.warm_materials(look)` and attach a `ShaderWarmup` with it.
+
+
+## Round 5: environment pass (the gritty yard)
+
+The owner approved a direction (environment toward the gritty, wet, warm-against-cold look of `topdown_approved.png`; characters stay stylised hard-surface) and then
+made that image the target ("the closer we get to this outcome, the greater your success metric"). This round is the environment of the battlefield, procedural only
+(code, three small shaders, one generated 128 px tile; no PNG asset, nothing from the concept image is used as texture or traced), inside the Mobile renderer's budget.
+Images are sheets only, in `env/` (JPG quality 0.85). The sheets with the concept image next to our frames were made for judging and are NOT committed (the concept
+is a mood reference, never shipped); the committed sheets show our own frames.
+
+### What changed
+
+The environment follows `LookDevStyle.current()`: `CURRENT` is today's yard, byte for byte (the props' meshes are hash-pinned in `env_arena_test.gd`, and a
+`--look=current` capture is pixel-identical to the baseline taken before the pass); `STYLISED` and `STYLISED_PLUS` get the pass; the shipped game boots with `STYLISED`.
+`ArenaView` builds today's yard exactly as before and keeps the styled twins next to it (`EnvDress`, built the first time a styled look is applied, then only swapped by
+`EnvStyle` gates: no node and no material is created after that, 50 look switches add nothing, tested).
+
+| Piece | What it is | Files (new unless noted) |
+|---|---|---|
+| Gates | `EnvStyle.on(effect, look, tier)`: one place decides every effect (floor, wet, props, prop_shader, reactor, spill, vignette, grade, glow, ripples, flicker); `--env=off\|only:a,b\|no:a,b` for the cost measurement | `kit/env_style.gd` |
+| Floor | One shader on the old quad: dark asphalt slabs in the decor frame, seams, a baked 128 px tile (grain, cracks, blotches, one fetch, flipped and shifted per slab), repaired patches, stains, worn hazard stripes and dashed rim kept (stencil `B-4` is the same `Label3D`), puddles, vignette in world space. LOW runs the same shader without the reflection loop (puddles are a darker tone) | `kit/env_ground.gd`, `env_ground.gdshader`, `env_tex.gd` |
+| Wet sheen | MID and HIGH: the reactor column, the lamp heads, the Warden's lights and the two pads reflect as soft streaks along the view direction (a source at height h shows `h * cot(pitch)` toward the viewer), modulated by a stretched breakup, a cool sky sheen inside puddles and a warm sheen near the core. The core pulse, the lamp flicker and the pad state drive four uniforms | same |
+| Ripples | HIGH: rain rings on the puddles (a few hash lookups in the same shader) | same |
+| Props | Styled twins of `PropKit` and `DecorKit` with the same placement and footprint: jersey barriers with the real sloped profile and red hazard stripes, crates with lids, posts, straps and a lit handle, drums with chime rings and bungs, containers with corrugated walls (trapezoid ribs, valleys darkened, rust at the foot, per-rib dirt), door bars and handles, corner castings, roof ribs, lit windows, hazard-banded gantry legs, flanged pipes, lamp posts with a lit lens, a railing and cable runs along the bottom edge. Vertex colour is the albedo (paint, rust, edge wear baked); HIGH adds a prop shader (vertical grime and rust streaks, wet foot, cool rim) | `arena/env_props.gd`, `env_decor.gd`, `kit/env_shapes.gd`, `env_mat.gd`, `env_prop.gdshader` |
+| Reactor | A second mesh on the core (the body is untouched): lit ring bands on the cage, 24 base lights, lit slits, plated greebles, cable bundles, a crown of lamps | `arena/env_reactor.gd` |
+| Light spill | Additive camera-facing halos on the reactor, the lamp heads and the occupied pads (shared materials, 3 draws), stronger lamp and reactor pools, HDR lamp heads; HIGH: a dark screen-edge vignette (`CanvasLayer` below the HUD) | `arena/env_light.gd`, `env_dress.gd` |
+| Grade | MID and HIGH: contrast 1.06, saturation 0.94, exposure 0.92 on the `Environment`, linear tonemap (see the legibility section for why not filmic) | `env_dress.gd` |
+| Bloom | HIGH only (`EnvStyle.GLOW`): the existing three-level bloom (threshold 1.0) on the HDR lamp heads, windows and reactor rings; `STYLISED_PLUS` keeps its own MID and HIGH bloom | `env_dress.gd` (`apply_glow`) |
+| Hooks | `ArenaView` (set_look, set_quality, advance, warm-up via `EnvDress.warm_up`), `CoreRig` (`gain`, `pool_gain`), `ShaderWarmup` gets the new materials through its existing `extra` and `lit` lists (no kit file was edited) | `arena/arena_view.gd`, `core_rig.gd` |
+| Sandbox | `--env=...`, `--env-tune=...`, `--cam-pitch`, `--cam-persp`, `--cam-report`; `look_dev_compare.gd` gained `--shrink`, `--fit`, `--cols`; `measure_env.ps1` | `src/debug/*`, `docs/reports/lookdev/measure_env.ps1` |
+
+Tier gates (`EnvStyle.MIN_TIER`, asserted in `env_style_test.gd`): CURRENT nothing. LOW: floor (no reflections), props (baked colours), reactor, light spill. MID adds the wet floor, the flicker on the
+reflections and the grade. HIGH adds the prop shader, the screen vignette, bloom and the rain rings. Two gates were set by the measurement below: the vignette (a full-screen blended pass,
++0.4 to +0.8 ms at LOW and MID) and the prop shader (+0.3 to +1.1 ms at MID) moved up to HIGH. Not built: haze (not tried; the vignette and the dark floor carry the far end of the yard).
+
+### Camera study (owner: "balance of showing details of the battlefield, as well as a strong view into the tons of enemies")
+
+The camera is data-driven (`data/arena.json` `camera.pitch_down_deg`, orthographic KEEP_HEIGHT rig, `CameraFit` clamps the pitch to 55..65). The sandbox can show
+any pitch, orthographic or perspective, fitted into the SAME HUD band (`--cam-pitch=<deg> [--cam-persp=<fov>] --cam-report`, `src/debug/env_cam_study.gd`; it overrides the
+sandbox process's own copy of the arena, never `data/`). Same simulation frame (hold50, frame 240, 1080x2400, top band 264 px, bottom band 552 px = 1584 px of band), old yard,
+numbers logged by the capture itself. "Clear" = an enemy whose body (a 1 m capsule) is at least 80 percent uncovered by nearer enemies; "tell apart" = at least 50 percent.
+
+| Camera | Arena height on screen (of 1584 px) | Far / near edge width | Enemy size | Tell apart / clear (of 50) | Mean visible | Warden / core px |
+|---|---|---|---|---|---|---|
+| orthographic 60 (now) | 1201 (76%) | 991 / 991 | 40 px | 48 / 43 | 0.92 | 59 / 198 |
+| orthographic 50 | 1063 (67%) | 991 / 991 | 40 px | 48 / 28 | 0.86 | 59 / 198 |
+| orthographic 42 | 928 (59%) | 991 / 991 | 40 px | 45 / 17 | 0.76 | 59 / 198 |
+| perspective 55, fov 30 | 1019 (64%) | 839 / 988 | 37 px | 48 / 31 | 0.88 | 58 / 188 |
+| **perspective 50, fov 30** | 939 (59%) | 823 / 987 | 36 px | 47 / 25 | 0.83 | 58 / 186 |
+| perspective 42, fov 30 | 801 (51%) | 802 / 987 | 36 px | 43 / 16 | 0.74 | 57 / 184 |
+
+(`env/env_9_camera_study_hold50.jpg`.) What it does, read with the owner's words:
+- **Width is the binding constraint at every pitch** (the 20 m wide arena fills the 1080 px at its near edge). A lower pitch does not buy more screen for the swarm: the 28 m deep
+  arena is foreshortened, so the playfield shrinks vertically (76% of the band at 60, 59% at 50 and 42 orthographic, 51% at 42 perspective) and the enemies overlap more. The HUD bands
+  never cover arena content (the arena ends 270 px above the bottom band and 290 px below the top band even at perspective 55); the freed band shows more yard around it.
+- **Details of the battlefield:** prop sides, container doors, the reactor's flank and the characters' sides appear as soon as the pitch drops; perspective adds the depth cue
+  (converging verticals, bigger near props, smaller far enemies), which is what the concept image has and an orthographic camera never gives.
+- **A strong view into the enemies:** the swarm stays readable down to about 50 degrees (47 of 50 enemies can still be told apart, mean visibility 0.83 against 0.92 now) and then falls
+  (43 and 0.74 at 42). Far enemies in perspective are 10 percent smaller than orthographic (36 px against 40). The far lane (the top spawn edge) is 17 percent narrower on screen and
+  the far side of the arena stays inside the frame in every candidate (the fit includes the spawn ends). In the captures, tall props (containers, the gantry, lamps) stay outside the lanes and do not hide
+  enemies or the Warden at 50; the reactor's open cage lets the enemies behind it show through; the two lanes' spawn edges stay visible at the top and right.
+- **Boss scenario** (captured at every candidate, same numbers in `build/shots/cam/report.txt`): the Siege Hulk and its red ring read at every candidate.
+
+### Recommendation: perspective, 50 degrees down, 30 degrees field of view
+
+Prepared as a SEPARATE commit on `task/W3-E` ("camera: perspective 50 ..."), so it can be taken or left: `data/arena.json` `camera.pitch_down_deg` 60 to 50, a new `CameraPersp`
+(pure math, bisection fit into the same HUD band, `CameraFit.FOV_DEG` 30), `CameraFit` (pitch band 40..65, `solve_with_fov`, perspective `project` and `unproject_ground`), `CameraFitResult.fov_deg`,
+`CameraRig` (switches the `Camera3D` to perspective), the sun's shadow distance in `ArenaView` (a perspective camera stands roughly 90 to 100 m from the yard), and the camera tests updated deliberately.
+Why 50 and not 55 or 42: it is the lowest pitch at which 47 of 50 enemies can still be told apart (55: 48, 42: 43); 55 is the safe alternative and is one number in the data
+(`pitch_down_deg`, the commit leaves the pitch free between 40 and 65). Orthographic 50 (data change and the clamp only, no perspective code) keeps every enemy the same size and scores
+0.86 visibility, a fine fallback if the owner does not want a perspective camera. Verified for the change: nothing in `src/game` or `src/ui` maps a screen point to the world (the
+slice has no tap or drag on the field: the controls are HUD buttons and the Warden aims by itself), the only users of `world_to_screen` are tests, billboards (muzzle stars, bursts) take the camera basis,
+the health bars and the boss chevrons take the arena's own pitch and yaw (the same data value that the commit moves together with the camera), and the HUD bands are the same `GameCameraFit` call.
+
+### Legibility (measured, `look_dev_legibility.gd`, the round 3 setup: 1080x2400, hold28, frame 240, `--msaa=0` on both halves)
+
+| Tier | Yard | Warden px | mean luma | ring luma | contrast | pixel contrast | p10 / p90 | clipped | white |
+|---|---|---|---|---|---|---|---|---|---|
+| HIGH | old yard (`--env=off`, the v4 numbers) | 2318 | 0.691 | 0.518 | 0.173 | 0.208 | 0.44 / 0.88 | 2.9% | 0.4% |
+| HIGH | **new yard** | 2405 | 0.688 | 0.509 | **0.179** | **0.213** | 0.43 / 0.88 | **3.2%** | 0.6% |
+| MID | **new yard** | 2318 | 0.676 | 0.478 | 0.198 | 0.225 | 0.43 / 0.86 | 2.1% | 0.3% |
+| LOW | **new yard** | 2471 | 0.606 | 0.493 | 0.113 | 0.188 | 0.35 / 0.84 | 1.9% | 0.0% |
+
+The gate (Warden HIGH pixel contrast at least 0.19, clipped at most 5 percent) is met: 0.213 and 3.2 percent (v4: 0.208 and 2.9). The old-yard row reproduces round 4's HIGH numbers
+exactly, so the setup is the same. The MID and LOW rows were captured one revision earlier (before the container paint and the HDR gains were tuned; neither touches the Warden's surroundings).
+The way to the gate is worth knowing: the first version of the grade used a filmic tonemap and lifted the pad's amber glow while rolling the Warden's highlights off, and the pixel contrast fell
+to 0.155; a linear tonemap with a small contrast (1.06) and an exposure of 0.92 restored it (contrast 1.1 without the exposure clipped 12 percent of the Warden's pixels). The amber disc under the
+Warden is the Overdrive aura of `VfxAuras` (always on in the sandbox scenarios), an additive quad over the floor: the floor under it was darkened too, but the aura dominates the ring.
+The mean luma of the floor itself fell: 0.150 against 0.173 in a floor band of the arena and 0.192 against 0.215 over the whole arena rectangle (frame 240, hold28, no Warden), against the
+Warden's 0.69: "darker than today, clearly below the characters" holds.
+
+### Cost (this desktop Intel Iris Plus iGPU, NOT a phone; hold50, vsync off, `Engine.max_fps = 0`, 1080x1920 SubViewport, 2 interleaved passes per cell, 4 five-second windows each)
+
+Method: `docs/reports/lookdev/measure_env.ps1` (the round 1 setup: `look_dev_sandbox`, scenario `hold50`, 1080x1920 SubViewport in a 540x960 window, `--disable-vsync`, `Engine.max_fps = 0`, four
+5-second windows after a discarded one, every run under `C:\dev\tower-two-wt\measure.lock`, interleaved cells). **The machine was shared the whole time** (another agent measuring, an Android export,
+test runs): the lock covers only the agents that take it, and the same configuration varied by up to 2.7 ms between two runs (MID, old yard: 12.30, 13.44, 14.98), so a delta below about 0.7 ms is not
+resolved. `old yard` is `--look=stylised --env=off` (the new Warden on today's yard, which includes the tier's MSAA: 2x at MID, 4x at HIGH), so the numbers are the cost of the environment pass alone.
+Raw rows: `build/env_measure.csv` (matrix 1 `env`, matrix 2 `env2`, rounds 3 and 4 `env3` and `env4`; not committed, they are in the task report).
+
+**All effects together, against the budget** (mean of the runs, the spread in brackets):
+
+| Tier | old yard | new yard | delta | budget | draws | primitives |
+|---|---|---|---|---|---|---|
+| LOW | 6.51 ms (7 runs, 5.76 to 7.69) | 6.56 ms (7 runs, 5.83 to 7.53) | **+0.05** | +0.2 | 99 to 104 | 28.7k to 53.8k |
+| MID | 13.57 ms (3 runs, 12.30 to 14.98) | 12.95 ms (3 runs, 11.89 to 13.50) | **-0.62** (noise; the new floor is cheaper than the old one) | +0.6 | 99 to 104 | 28.8k to 53.9k |
+| HIGH | 16.78 ms (4 runs, 15.80 to 17.79) | 17.57 ms (4 runs, 15.92 to 19.06) | **+0.79** | +1.0 | 105 to 111 | 40.7k to 88.8k |
+
+All three tiers fit the budgets as measured, and the draw calls stay far inside ARCH 13 (111 against 150 in this scene without the HUD). The headroom is real only because the new floor shader is
+cheaper than the old one (below); the extras are not free. A MID run before the prop shader moved to HIGH read +0.65 to +1.65 ms (3 and 2 runs) and a LOW run with the vignette and the grade
+read +0.36, which is why those gates moved.
+
+**Per effect** (the effect alone on top of the old yard, `--env=only:...`; single runs unless stated, so read each number as plus or minus 0.7 ms; draws and primitives are exact):
+
+| Effect | Tier | ms against the old yard | Extra draws, primitives | How much closer to the concept |
+|---|---|---|---|---|
+| New floor (asphalt, seams, cracks, patches, painted stripes; no reflections) | LOW / HIGH | +0.01 / -1.34 | 0, 0 | Large: flat teal becomes worn dark asphalt (the old shader had about seven noise calls per pixel, the new one reads one tile) |
+| Wet floor (puddles, reflection streaks) | MID / HIGH | -0.45 / -0.94 (so about +0.4 over the new dry floor) | 0, 0 | Medium: the sheen, the warm streaks under the lamps and the core |
+| Rain rings | HIGH | -0.46 (about +0.5 over the wet floor) | 0, 0 | Small |
+| Props, baked colours (new geometry) | LOW | -0.09 (3 runs) and +0.23 (1 run) | 0, +23k | Large: corrugated containers, barriers with stripes, rimmed drums, rails |
+| Prop shader (grime streaks, wet foot, rim) | MID / HIGH | +0.28 and +1.14 (3 runs) / +1.13 (the HIGH figure includes the sun shadow pass over the extra 46k triangles) | 0, +23k / +46k | Medium (small at 1x) |
+| Light spill: halos, stronger pools, HDR lamps | MID / HIGH | +0.29 (3 runs) and +0.93 (2 runs) / -0.52 and -0.19 (noise) | +3, 0 | Large: warm light against cold |
+| Reactor detail (rings, lights, greebles) with the spill | HIGH | -0.31 | +5, +2k | Medium |
+| Grade (linear tonemap, contrast, saturation) | LOW / MID / HIGH | +0.39 / +0.34 / -0.23 | 0, 0 | Small (gated to MID and up) |
+| Screen vignette (a `CanvasLayer` pass) | LOW / MID / HIGH | +0.36 / +0.80 / +0.05 | +1, 0 | Small to medium (gated to HIGH) |
+| Bloom (on the spill's HDR values) | HIGH | not resolved: -1.77 and -1.22 against the old yard in two cells, round 1 measured +0.4 to +0.5 for the same bloom on this GPU | +0, 0 | Medium |
+
+Reading: what the pass costs is geometry (the decor is 28.7k triangles, the props 4.4k; about 48k more primitives on screen, and double that on HIGH because the sun's shadow pass draws them again), the prop
+shader and the halos; what it saves is the old floor shader. The bloom cannot be priced separately on this machine today; take round 1's +0.4 to +0.5 ms and the warning there (a tile-based phone GPU
+may pay far more) as the figure until a phone says otherwise. One-time build (not per frame), desktop, headless, shared machine, three runs: floor tile 40 to 55 ms, props 32 to 50 ms, decor 200 to 280 ms,
+reactor 14 to 18 ms, and the whole styled `ArenaView.setup` 425 to 490 ms against about 60 ms for the old yard (`src/debug/env_build_timing.gd`). On a phone that is a second or more of GDScript at boot: it is the first
+thing to trim (halve the decor's pipe flanges and lamp posts, build the decor on a thread, or bake the meshes to a resource) before this ships.
+
+### Gap list against `topdown_approved.png` (honest)
+
+What we match (in kind, not in fidelity): a dark, wet, worn floor with slab seams, cracks, patches and stains; painted hazard stripes and the `B-4` stencil; warm lamp and reactor light
+against the cold cyan of the pads and the Warden; red, grey and teal corrugated containers with rust, door bars and lit windows; white jersey barriers with red stripes; barrels and crates;
+lamp posts with a lit lens and a halo; a vignette; rain; a reactor with lit rings. What we do not match, biggest first:
+1. **The camera.** The concept is a perspective view from about 40 to 50 degrees; ours is orthographic at 60 (the recommendation above closes most of it).
+2. **Reflections.** The concept's floor is a mirror of the fire, the lamps and every muzzle flash. Ours are soft streaks of four kinds of source on MID and HIGH; nothing reflects the muzzle
+   flashes, the tracers, the explosions or the enemies (that needs per-frame light sources on the floor: a pooled ground light under each flash is the next step, see below), and nothing is a sharp mirror.
+3. **Scale and richness of the reactor.** The concept's core is a huge multi-storey cage of ducts and panels; ours is the same 6 m column with lit rings and greebles.
+4. **Prop richness.** Our props are bevelled boxes and corrugation; no cables, ducts, hatches, stencils, hoses or debris on the floor, no shell casings, no tilted containers.
+5. **Contrast and glow.** The concept has blown-out highlights and deep blacks; ours is kept under the legibility floor (a linear tonemap with a gentle contrast; bloom on HIGH only).
+6. **Atmosphere.** No haze, smoke, steam or volumetric light; the sparks and fire of the concept are VFX work (not the environment's).
+7. **Characters and enemies.** Outside this task (W3-D is rolling the hard-surface look out to them).
+
+### Honest assessment
+
+- **Is the yard clearly better than CURRENT?** Yes at the real camera: the floor reads as wet worn asphalt instead of flat teal, the barriers read as concrete with hazard stripes, the containers as
+  corrugated steel with rust and lit windows, the lamps and the core throw warm light against the cold pads, and the frame has a mood (dark edges, warm pools). Still a stylised procedural yard, not the
+  concept: see the gap list.
+- **It is darker.** The floor's mean is clearly below the characters' (the legibility table), which is the point of the pass; on a phone in daylight the overall darkness should be checked.
+- **LOW** keeps the new floor (no reflections), the new props (baked colours), the halos and the vignette; it looks like MID without the wet sheen and the prop streaks.
+- **Bloom** costs what the cost table says on this iGPU and, as in round 1, must be re-measured on a phone before it ships (HIGH only here).
+
+### Known defects
+
+- The wet sheen's puddle edges show the texel grid of the 128 px tile where the breakup is stretched (a little blocky at 3x); the reflection streaks are soft, not mirror-like.
+- Rain rings (HIGH) are small and sparse; the rain itself is the old streak mesh.
+- The lamp halos read a little brown on the dark floor; the reactor's lit rings read yellow rather than amber on HIGH (an HDR amber clips toward yellow).
+- The screen vignette is a full-screen blended pass (`CanvasLayer`), so it is HIGH only; MID and LOW keep only the floor shader's world-space darkening, which leaves props and actors undarkened.
+- The first styled `ArenaView.setup` builds the floor tile, the props and the decor in GDScript (about 0.4 s on the desktop, see the cost section); it belongs in the boot warm-up, which it is (the warm-up draws every new material).
+- The vignette's canvas shader (HIGH) compiles on its first draw: a `CanvasItem` pipeline cannot be drawn by `ShaderWarmup`, and I did not check where the compile lands in the boot sequence.
+- Phone and emulator checks: NOT RUN (the emulator cannot present Vulkan frames; the owner resolves that before Wave 4).
+- Under the perspective camera (if taken) the world text labels and the health bars were only looked at in the sandbox captures (they read), not measured on a phone.
+
+### What is next (cheapest first)
+
+1. A pooled ground light under each muzzle flash and explosion (one additive quad per flash in `VfxLayer`): the single biggest step toward the concept's lit floor.
+2. A sharper reflection layer for the reactor and the lamps (a vertically flipped, blurred copy of the lit meshes) if a phone shows headroom.
+3. Debris, cables and stencils on the floor (decals in the same floor shader or a few merged quads), shell casings from the Warden.
+4. A larger, more ornate reactor (a second tier of ducts and a roof), authored rather than procedural.
+5. Haze and steam near the far edge (not tried).
+6. Roll the same grit onto the actors (W3-D) so the characters and the yard share one value structure.
+
+### Tests and commands
+
+- `tools\check.ps1` on the environment commits (before the camera commit): `CHECK OK`, `TEST SUMMARY: tests=1172 failures=0 errors=0 skipped=0 exit=0`. With the camera commit on top: CHECK_CAMERA.
+- New suites in `tests/unit/view/`: `env_style_test.gd` (the tier gates, the overrides), `env_tex_test.gd` (the tile is deterministic, tileable, has its channels; checksum pinned),
+  `env_arena_test.gd` (CURRENT meshes pinned by hash, the originals come back after a styled round trip, 50 look switches add no node, no material, no object, every prop keeps its footprint
+  from the data, the decor keeps DecorKit's layout and stays outside the playable rectangle and clear of the spawn edges, the boot warm-up covers the new materials, the lamp and core gains),
+  `env_shapes_test.gd` (the corrugated wall, the extruded barrier, vertex colours in range, deterministic containers inside their triangle budget). Changed deliberately:
+  `look_dev_view_test.gd` `test_bloom_is_a_plus_touch...` (the styled yard adds its own bloom gate at HIGH).
+- Commands: `powershell -NoProfile -ExecutionPolicy Bypass -File tools\capture.ps1 -Scene "res://src/debug/look_dev_sandbox.tscn --look=stylised --scenario=hold28 --quality=2" -Out C:/.../x.png -Size 1080x2400 -Frames 240`
+  (add `--env=off` for today's yard with the new Warden, `--look=current` for CURRENT, `--cam-pitch=50 --cam-persp=30 --cam-report` for the camera study); the legibility pair `--msaa=0` and `--hide-warden`,
+  scored with `Godot --headless --path . --script res://src/debug/look_dev_legibility.gd -- --without=<png> --with=LABEL|<png>`; sheets with `look_dev_compare.gd` (new `--shrink`, `--fit`, `--cols`);
+  cost with `docs/reports/lookdev/measure_env.ps1`; the one-time build with `src/debug/env_build_timing.gd`.
+- CURRENT unchanged, three ways: the mesh hashes in `env_arena_test.gd`; the state round trip in the same suite; and an A/B capture of the baseline commit against this branch with `--look=current` at LOW
+  (306 of 2,592,000 pixels differ, by at most 2 of 255, the same as two captures of one build differ among themselves). At HIGH the rain and the lamp flicker use the real frame time, so two captures
+  of the same build differ by about 3 percent of the pixels (up to 99 of 255 on the rain streaks): a HIGH pixel comparison is not meaningful.
+
+### Images (`env/`, sheets only, JPG quality 0.85, every one opened and looked at)
+
+All captures went through `tools/capture.ps1` (`CAPTURE OK`, `renderer=mobile/vulkan`, Intel Iris Plus), the real game camera at 1080x2400, HIGH tier with the shipped anti-aliasing
+unless stated, the same simulation frame (240 = 4 s) for both columns. CURRENT is `--look=current` (old yard, old Warden); NEW is `--look=stylised` (new yard, hard-surface Warden).
+
+| File | What it shows |
+|---|---|
+| `env_1_hold10_1x.jpg`, `env_2_hold28_1x.jpg`, `env_3_hold50_1x.jpg`, `env_4_boss_1x.jpg` | The real camera at 1x pixels, a 700x900 crop around the core, the Warden and the pad, CURRENT then NEW, scenarios hold10, hold28, hold50 and boss |
+| `env_5_floor_3x.jpg` | A 230x230 crop of the floor and the drum cluster, enlarged 3x with nearest neighbour (what the 1x pixels contain) |
+| `env_6_container_3x.jpg` | A 250x210 crop of the top-left container, 3x: corrugated wall, lit windows, rust at the foot |
+| `env_7_tiers_1x.jpg` | NEW at LOW, MID and HIGH (1x crop): LOW has the new floor and props without reflections, MID adds the wet sheen and the prop streaks, HIGH adds bloom and rain rings |
+| `env_8_camera_new_yard.jpg` | The new yard at the game camera (pitch 60, orthographic) and at the recommended camera (pitch 50, perspective, fov 30), hold50 |
+| `env_9_camera_study_hold50.jpg` | The camera study: orthographic 60, 50, 42 and perspective 55, 50, 42 (old yard, hold50, same HUD band) |
+
+What I saw: **1x (env_2, env_3):** CURRENT is a flat teal floor with big soft blobs and plain boxes; NEW is a darker floor with slab seams and cracks, damp patches with a cool sheen, warm
+light spilling from the reactor and the lamps against the cyan pads, the reactor's lit rings, white barriers with red stripes, crates with lit handles, a railing. The Warden still reads (cyan ring on a
+darker pad). **3x (env_5, env_6):** the floor tile (grain, hairline cracks, stains), rimmed barrels with bungs, corrugated container walls with dirty ribs and amber windows are visible at 3x and
+mostly below pixel size at 1x. **Tiers (env_7):** LOW is clean and dark without the sheen, MID and HIGH differ in the bloom around the pads and the reactor, the rain, the rings on the puddles and the 4x anti-aliasing.
+**Camera (env_8, env_9):** see the camera study.
+
+### Needs owner
+
+- **Take or leave the camera commit** (above). It changes GDD 4.1 and four lines of ARCH; the pitch is one number in `data/arena.json`.
+- **Bloom on STYLISED at HIGH** (`EnvStyle.GLOW`) is new policy: ARCH 8 says "no glow" with one exception (STYLISED_PLUS at MID and HIGH). The exact line to change is below. Its cost is in the table.
+- **Phone measurement** of the floor shader (a full-screen ALU cost on a tile-based GPU), the vignette pass and bloom (Adreno, Mali, PowerVR), thermals and a 50-enemy run, before this ships. NOT RUN here.
+- ARCH and WORK_PLAN are not mine: the lines are in the task report.
