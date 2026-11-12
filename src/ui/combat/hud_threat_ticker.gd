@@ -24,8 +24,18 @@ func _init() -> void:
 
 
 ## Re-reads the events that are warning or running (RunApi.active_events) and shows the first MAX_LINES lines.
-func refresh(events: Array[Dictionary], content: ContentSet) -> void:
+## `crate` is RunApi.crate_status(): a crate on the field gets the first line, "ACCORD DROP  7 s" with the bar filling
+## while the area is clear, "DROP CONTESTED" (red, the bar frozen) while an enemy stands on it.
+func refresh(events: Array[Dictionary], content: ContentSet, crate: Dictionary = {}) -> void:
 	var shown: int = 0
+	if not crate.is_empty():
+		var crate_left: int = crate.get("ticks_left", 0)
+		var crate_all: int = crate.get("ticks_total", 1)
+		var crate_total: int = maxi(crate_all, 1)
+		var contested: bool = crate.get("contested", false)
+		var crate_text: String = Strings.tf("hud.ticker.on", [event_name(&"supply_drop", content), HudStyle.secs(crate_left)])
+		lines[shown].show_line(Strings.t("hud.crate.contested") if contested else crate_text, contested, 1.0 - float(crate_left) / float(crate_total))
+		shown += 1
 	for e: Dictionary in events:
 		if shown >= MAX_LINES:
 			break

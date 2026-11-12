@@ -33,6 +33,10 @@ var fake_boss_phase: int = 0
 var fake_boss_phase_count: int = 1
 var fake_run_seed: int = 48211
 var fake_variety_paused: bool = false  ## FakeRunApi keeps it equal to fake_paused
+var fake_buyout_used: bool = false
+var fake_draft_locked: bool = false
+var fake_crate_status: Dictionary = {}  ## the shape of RunApi.crate_status(); empty = no crate on the field
+var fake_wave_route: Dictionary = {}  ## the shape of RunApi.route_option(): what the current wave sends
 
 
 ## Implemented by FakeRunApi: appends the entry to `calls`.
@@ -213,6 +217,22 @@ func boss_phase_count() -> int:
 
 func run_seed() -> int:
 	return fake_run_seed
+
+
+func draft_buyout_used() -> bool:
+	return fake_buyout_used
+
+
+func draft_actions_locked() -> bool:
+	return fake_draft_locked
+
+
+func crate_status() -> Dictionary:
+	return fake_crate_status
+
+
+func wave_route() -> Dictionary:
+	return fake_wave_route
 
 
 func _draft_id(slot: int) -> StringName:

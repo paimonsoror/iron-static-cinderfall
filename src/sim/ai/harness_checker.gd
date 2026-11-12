@@ -77,7 +77,8 @@ func finish(world: SimWorld, commands_submitted: int) -> void:
 	var level_sum: int = 0
 	for level: int in world.upgrade_levels:
 		level_sum += level
-	if level_sum != purchases_ok:
+	# A directive may grant an upgrade level (turret_deploy), so a generated run only bounds the sum from below.
+	if (_scripted and level_sum != purchases_ok) or level_sum < purchases_ok:
 		_bad(world, "upgrade levels add up to %d but %d purchases succeeded" % [level_sum, purchases_ok])
 	if world.command_log.entries.size() != commands_submitted:
 		_bad(world, "%d commands submitted, %d applied and logged" % [commands_submitted, world.command_log.entries.size()])

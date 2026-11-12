@@ -124,7 +124,7 @@ func test_a_generated_plan_may_repair_the_core_and_spend_scrap_on_drafts() -> vo
 
 
 func test_the_scripted_waves_keep_every_invariant() -> void:
-	var w: SimWorld = VarietyHKit.world()  # the V1-S stub plan has no bosses: scripted
+	var w: SimWorld = TestContent.world()  # the legacy content has no plan: scripted (the V1-S stub plan is gone since V2-A)
 	var chk: HarnessChecker = HarnessChecker.new(w)
 	w.set_core_hp(w.core_max_hp - 100.0)
 	chk.after_step(w, [])

@@ -47,7 +47,7 @@ func setup(summary: RunSummary, content: ContentSet, profile: Profile, reward_gr
 	subtitle_label.text = Strings.t("results.sub.victory" if won else "results.sub.defeat")
 	speaker_label.text = Strings.t("lore.results.speaker.victory" if won else "lore.results.speaker.defeat")
 	lore_label.text = Strings.t("lore.results.victory" if won else "lore.results.defeat")
-	waves_cell.set_value(Strings.tf("results.waves_value", [summary.waves_completed, content.waves.size()]))
+	waves_cell.set_value(Strings.tf("results.waves_value", [summary.waves_completed, RunRoster.wave_count(content)]))
 	time_cell.set_value(UiKit.clock(summary.duration_ticks))
 	core_cell.set_value(Strings.tf("results.core_value", [
 		summary.core_hp, summary.core_max_hp, UiKit.percent(float(summary.core_hp), float(summary.core_max_hp)),
@@ -176,14 +176,13 @@ func _fill_kills(summary: RunSummary, content: ContentSet) -> void:
 		child.queue_free()
 	kill_rows.clear()
 	var total: int = 0
-	# TODO(V4-U): rows for the variety types. Until then the kill list keeps the four legacy rows.
-	for i: int in mini(content.enemies.size(), Ids.LEGACY_ENEMY_COUNT):
-		var enemy: EnemyDef = content.enemies[i]
+	for enemy: EnemyDef in RunRoster.enemies(content):  # the legacy four, or what the generated run can field
+		var i: int = enemy.index
 		var n: int = summary.kills_by_type[i] if i < summary.kills_by_type.size() else 0
 		total += n
 		var row: HBoxContainer = HBoxContainer.new()
 		row.add_theme_constant_override("separation", 20)
-		row.add_child(UiEnemyGlyph.new(enemy.id, 88.0))
+		row.add_child(RunEnemyGlyph.new(enemy.id, 88.0))
 		var name_label: Label = UiKit.label_text(Strings.t(enemy.name_key).to_upper())
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER

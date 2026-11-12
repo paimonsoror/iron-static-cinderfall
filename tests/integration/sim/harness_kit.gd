@@ -86,17 +86,26 @@ static func group(enemy_index: int, count: int, start_ticks: int, interval_ticks
 	return g
 
 
-## The shipped content with five waves that out-spawn the Warden for far longer than ten minutes: every wave
-## sends a flood of all the cheap types at once, so 50 stay alive with the queue behind them. Pair it with
-## SimConfig.debug_invulnerable_core so the run cannot end.
-static func stress_content() -> ContentSet:
-	var c: ContentSet = shipped()
-	for w: int in 5:
-		var groups: Array[SpawnGroupDef] = [
-			group(Ids.EN_SKITTER, 260, 0, 15, &"right"),
-			group(Ids.EN_HOLLOW, 50, 60, 60, &"upper_right"),
-			group(Ids.EN_RUSHER, 50, 120, 60, &"right"),
-			group(Ids.EN_HULK, 1, 1200, 60, &"upper_right"),
-		]
-		c.waves[w].groups = groups
-	return c
+## Turns the run plan of `w` (a world on the shipped data, before its first wave) into floods that out-spawn the
+## Warden for far longer than ten minutes: every option of every wave sends all the slice types at once, bodied and
+## minis, so the bodied cap of 50 stays full with the queue behind it and the swarm of minis keeps arriving. Pair it
+## with SimConfig.debug_invulnerable_core so the run cannot end. (A debug write of the plan: the real one is built
+## from the seed; the stress test wants a fixed, heavy spawn list on the shipped enemy numbers.)
+## The bodies arrive only a little faster than they die. SpawnSystem walks its whole pending queue every tick (an entry
+## blocked by one cap does not hold up the others), so a queue of thousands, which no real wave has, costs
+## milliseconds per tick: a first flood with 3,000 waiting entries measured 4.9 ms a tick, this one stays in the
+## hundreds.
+static func flood_plan(w: SimWorld) -> void:
+	for wave_number: int in range(1, w.plan.wave_count() + 1):
+		for option: RouteOption in w.plan.wave(wave_number).options:
+			var groups: Array[SpawnGroupDef] = [
+				group(Ids.EN_SKITTER, 60, 0, 15, &"right"),  # fills the yard to the cap in the first seconds
+				group(Ids.EN_SKITTER, 600, 900, 60, &"right"),  # then more than the Warden can kill
+				group(Ids.EN_HOLLOW, 300, 60, 120, &"upper_right"),
+				group(Ids.EN_RUSHER, 180, 120, 200, &"right"),
+				group(Ids.EN_BURSTER, 60, 90, 600, &"right"),
+				group(Ids.EN_MOTE, 1800, 30, 20, &"upper_right"),
+				group(Ids.EN_HULK, 1, 1200, 60, &"upper_right"),
+			]
+			option.groups = groups
+			option.elites.clear()

@@ -58,9 +58,7 @@ func wave() -> int:
 
 func wave_count() -> int:
 	var w: SimWorld = _world()
-	if w == null:
-		return super.wave_count()
-	return w.plan.wave_count() if w.plan != null else w.content.waves.size()
+	return PhaseSystem.wave_count(w) if w != null else super.wave_count()
 
 
 func phase_ticks_left() -> int:
@@ -171,9 +169,7 @@ func ability_active_total(id: StringName) -> int:
 
 func weapon_id() -> StringName:
 	var w: SimWorld = _world()
-	if w == null:
-		return super.weapon_id()
-	return w.content.weapons[w.warden.weapon_index].id
+	return w.content.weapons[w.warden.weapon_index].id if w != null else super.weapon_id()
 
 
 func magazine() -> int:
@@ -203,17 +199,13 @@ func pending_spawn_count() -> int:
 
 func boss_hp() -> float:
 	var w: SimWorld = _world()
-	if w == null:
-		return -1.0
-	var i: int = w.boss_store_index()
+	var i: int = w.boss_store_index() if w != null else -1
 	return w.enemies.hp[i] if i >= 0 else -1.0
 
 
 func boss_max_hp() -> float:
 	var w: SimWorld = _world()
-	if w == null:
-		return 0.0
-	var i: int = w.boss_store_index()
+	var i: int = w.boss_store_index() if w != null else -1
 	return w.enemies.max_hp[i] if i >= 0 else 0.0
 
 
@@ -341,10 +333,8 @@ func event_charges(id: StringName) -> int:
 
 func call_block_reason(id: StringName) -> int:
 	var w: SimWorld = _world()
-	if w == null:
-		return super.call_block_reason(id)
-	if controller.paused:
-		return Reason.Id.PAUSED
+	if w == null or controller.paused:
+		return Reason.Id.PAUSED if w != null else super.call_block_reason(id)
 	return EventSystem.block_reason(w, w.content.event_index(id))
 
 
@@ -376,6 +366,22 @@ func boss_phase_count() -> int:
 func run_seed() -> int:
 	var w: SimWorld = _world()
 	return w.config.run_seed if w != null else super.run_seed()
+
+
+func draft_buyout_used() -> bool:
+	return SimRunQueries.buyout_used(_variety())
+
+
+func draft_actions_locked() -> bool:
+	return SimRunQueries.draft_locked(_variety())
+
+
+func crate_status() -> Dictionary:
+	return SimRunQueries.crate_status(_variety())
+
+
+func wave_route() -> Dictionary:
+	return SimRunQueries.wave_route(_variety())
 
 
 func _send(command_id: int, kind: int, arg: int) -> void:

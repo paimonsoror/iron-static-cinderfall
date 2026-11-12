@@ -22,7 +22,20 @@ static func route_option(w: SimWorld, i: int) -> Dictionary:
 	var pw: PlannedWave = next_wave(w)
 	if pw == null or pw.is_boss or i < 0 or i >= pw.options.size():
 		return {}
-	var o: RouteOption = pw.options[i]
+	return describe_option(w, pw.options[i], pw.act)
+
+
+## The option the current wave spawns (RunApi.wave_route); {} before the first wave, without a plan and for null.
+static func wave_route(w: SimWorld) -> Dictionary:
+	if w == null or w.plan == null or w.wave < 1:
+		return {}
+	var pw: PlannedWave = w.plan.wave(w.wave)
+	var o: RouteOption = w.plan.option(w.wave)
+	return describe_option(w, o, pw.act) if pw != null and o != null else {}
+
+
+## One RouteOption in the shape of RunApi.route_option().
+static func describe_option(w: SimWorld, o: RouteOption, act_number: int) -> Dictionary:
 	var content: ContentSet = w.content
 	var run: RunDef = content.run
 	var counts: Dictionary = {}
@@ -50,7 +63,7 @@ static func route_option(w: SimWorld, i: int) -> Dictionary:
 		var reward: RewardDef = run.route_rewards[o.reward_index]
 		out["reward"] = reward.id
 		out["reward_key"] = reward.name_key
-		out["reward_amount"] = _reward_amount(reward, pw.act)
+		out["reward_amount"] = _reward_amount(reward, act_number)
 	return out
 
 
@@ -155,6 +168,26 @@ static func active_events(w: SimWorld) -> Array[Dictionary]:
 			"x": es.a_x[k] if k < es.a_x.size() else 0.0, "z": es.a_z[k] if k < es.a_z.size() else 0.0,
 		})
 	return out
+
+
+## The three queries below take the variety world or null (no run, legacy content) and then give the base defaults.
+static func buyout_used(w: SimWorld) -> bool:
+	return w != null and w.draft.open and (w.draft.bought_out or w.draft.slots_left() < 2)
+
+
+static func draft_locked(w: SimWorld) -> bool:
+	return w != null and w.draft.open and w.draft.reroll_locked
+
+
+static func crate_status(w: SimWorld) -> Dictionary:
+	if w == null or not w.salvage.crate_active:
+		return {}
+	var s: SalvageState = w.salvage
+	var total: int = SalvageSystem.secure_ticks(w)
+	return {
+		"contested": SalvageSystem.is_contested(w), "ticks_left": maxi(0, total - s.crate_progress), "ticks_total": total,
+		"life_left": -1 if w.mods.has_flag(&"crate_never_lost") else maxi(0, s.crate_life_left), "x": s.crate_x, "z": s.crate_z,
+	}
 
 
 static func build_tags(w: SimWorld) -> Dictionary:

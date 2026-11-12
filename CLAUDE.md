@@ -181,8 +181,19 @@ Source of truth: `docs/design/VARIETY_SPEC.md` (contracts: section 13; tasks and
 - **Awaiting.** While `world.phase_state.awaiting != PhaseState.Await.NONE` a `step()` with an empty queue does nothing
   and the tick does not advance. The UI reads it as `RunApi.awaiting()` (`RunApi.AWAIT_*`).
 - **RNG.** Stream names are exactly those of VARIETY_SPEC 9.2. Building a world draws from no stream (a test checks it).
-- **Until V2-A lands** `RunPlanSystem.build` returns the legacy waves as a one-option plan, so the game still plays the
-  tuned 5 waves on variety content; `mission.shop_enabled` is false in the data but nothing reads it before V2-B.
+- **The shipped run is the slice** (V3-I; VARIETY_SPEC 15.2): `RunPlanSystem.build` makes a generated plan from the seed
+  (act I: four waves and a boss wave, the Siege Hulk standing in), the shop is closed (`mission.shop_enabled` false,
+  `SHOP_CLOSED`), every intermission is SALVAGE, DRAFT, ROUTE or BOSS_BRIEF and a 3 s breather. `content.waves` is still
+  loaded on variety content but nothing plays it: ask `PhaseSystem.wave_count(world)`, `RunApi.wave_count()` or
+  `RunRoster.wave_count(content)` (UI), never `content.waves.size()`. The legacy five scripted waves live on in
+  `TestContent.baseline()` only.
+- **Whole-run tests.** A driver of a generated run must answer every await (a bot does; `GameHarness.play_intermission`
+  does it through the RunApi; `VarietyAKit.run_to_await` for units). `tools\sim_run.ps1 -Policy balanced` and
+  `--autoplay=balanced` (any name of `PolicyBot.NAMES`) play the same game hash for hash. Legacy whole-run facts (the
+  greedy corridor, the SMG purchase, Scrap equal to kills) are tested on the baseline fixture (`test_full_run.gd`).
+- **Screenshots of the real game:** `Godot --path . res://src/debug/game_shots.tscn -- --shots=<dir> --autoplay=balanced
+  --seed=1 --capture-size=1080x2400` (GameShots: one PNG per choice overlay and combat moment, `SHOTS DONE <n>` last).
+  `tools\capture.ps1` on `scenes/main.tscn` never ends (main.gd starts a capture inside the capture): do not use it.
 - **Sandboxes.** `hud_sandbox.tscn --state=draft|route|boss_brief|salvage|combat2` (FakeRunPresets; the overlays are
   `src/ui/run/*_overlay.tscn` with `setup(api, content)`), `view_sandbox.tscn --scenario=chain|hold<N>+<M>` (PuppetChaos).
   The puppet puts minis and bursters into the store only when `ActorLayer.supports_enemy_type(type_index)` exists and

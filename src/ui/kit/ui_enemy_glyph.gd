@@ -7,6 +7,7 @@ extends Control
 const BOX: float = 100.0
 
 var enemy_id: StringName = &"skitter"
+var hide_art: bool = false  ## true when a child draws the silhouette (a type this class has no drawing for)
 
 
 func _init(id: StringName = &"skitter", px: float = 140.0) -> void:
@@ -17,7 +18,7 @@ func _init(id: StringName = &"skitter", px: float = 140.0) -> void:
 
 func _draw() -> void:
 	var k: float = minf(size.x, size.y) / BOX
-	if k <= 0.0:
+	if k <= 0.0 or hide_art:
 		return
 	draw_set_transform(Vector2((size.x - BOX * k) * 0.5, (size.y - BOX * k) * 0.5), 0.0, Vector2(k, k))
 	var plate: Color = UiTheme.color(&"bone_ceramic").lerp(UiTheme.color(&"obsidian"), 0.12)

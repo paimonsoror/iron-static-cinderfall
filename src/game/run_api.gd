@@ -341,3 +341,28 @@ func boss_phase_count() -> int:
 
 func run_seed() -> int:
 	return 0
+
+
+# --- slice integration (V3-I; append only) ---
+
+
+## True once the open draft's one buy-out was used (the KEEP ALSO buttons go away).
+func draft_buyout_used() -> bool:
+	return false
+
+
+## True when the open draft allows neither a reroll nor a patch (the wave before it carried NO BREATHER).
+func draft_actions_locked() -> bool:
+	return false
+
+
+## The crate on the field: { "contested": bool, "ticks_left": int (uncontested ticks until it is secured), "ticks_total":
+## int, "life_left": int (ticks until it is lost; -1 = never), "x": float, "z": float }. Empty when no crate is out.
+func crate_status() -> Dictionary:
+	return {}
+
+
+## The route option that spawns in the current wave, in the shape of route_option(). Empty before the first wave and
+## on the legacy content; a boss wave has no pack ("name_key" is empty).
+func wave_route() -> Dictionary:
+	return {}

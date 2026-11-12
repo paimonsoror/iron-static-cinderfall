@@ -57,6 +57,8 @@ var music: int = -1
 var loop_trim: int = 0
 var loop_off: bool = false
 var audio_trace: bool = false
+## --shots=<dir>: the screenshot run of the real game (src/debug/game_shots.tscn, V3-I) saves its PNGs there.
+var shots: String = ""
 
 ## Extra arguments for a DEBUG build on a device (one line, blank separated), read when the file exists: the way to change
 ## the flags of an exported APK without rebuilding it (`adb shell run-as <package> ...` writes it into the app's files).
@@ -123,6 +125,8 @@ static func parse(args: PackedStringArray) -> DebugArgs:
 				a.loop_off = true
 			"--audio-trace":
 				a.audio_trace = true
+			"--shots":
+				a.shots = value
 			"--quality":
 				if value.is_valid_int():
 					a.quality = clampi(value.to_int(), 0, 2)

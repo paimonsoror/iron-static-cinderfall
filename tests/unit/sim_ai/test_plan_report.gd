@@ -56,7 +56,9 @@ func _joined(plan: RunPlan) -> String:
 
 
 func test_the_scaffold_stub_is_recognised_and_a_plan_with_bosses_is_not() -> void:
-	assert_bool(PlanReport.is_legacy_stub(w.plan)).is_true()  # RunPlanSystem.build still returns RunPlan.from_legacy
+	assert_bool(PlanReport.is_legacy_stub(w.plan)).is_false()  # since V2-A RunPlanSystem.build makes a real plan
+	assert_bool(PlanReport.is_legacy_stub(TestContent.world().plan)).is_true()  # the legacy content has none
+	assert_bool(PlanReport.is_legacy_stub(RunPlan.new())).is_true()  # no boss ids: the shape of the old stub
 	assert_bool(PlanReport.is_legacy_stub(null)).is_true()
 	assert_bool(PlanReport.is_legacy_stub(_plan())).is_false()
 

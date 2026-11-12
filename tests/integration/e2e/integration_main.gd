@@ -54,8 +54,7 @@ func play_to_the_end(max_frames: int) -> int:
 	for i: int in max_frames:
 		if r.sim.is_over():
 			return i
-		if r.sim.phase == GameState.Id.INTERMISSION:
-			r.api.skip_intermission()
+		GameHarness.play_intermission(r)
 		r.step_frame(DT)
 		peak_alive = maxi(peak_alive, r.sim.alive_count())
 		max_pending = maxi(max_pending, r.api.pending_spawn_count())

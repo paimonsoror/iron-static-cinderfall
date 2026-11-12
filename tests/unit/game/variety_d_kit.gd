@@ -69,11 +69,14 @@ static func play_until_cleared(rc: RunController, waves: int, max_frames: int) -
 
 
 ## In the intermission: buy one affordable upgrade per frame for the first frames, then CONTINUE. In combat: the EMP
-## every 600 ticks and the shield every 900 when they are ready.
+## every 600 ticks and the shield every 900 when they are ready. A generated run (the variety content) has choices
+## instead of the shop: `decide_choice` answers them, from the state alone.
 static func decide(rc: RunController) -> void:
 	var w: SimWorld = rc.sim
 	var api: SimRunApi = rc.api
-	if w.phase == GameState.Id.INTERMISSION:
+	if w.plan != null and w.phase == GameState.Id.INTERMISSION:
+		decide_choice(rc)
+	elif w.phase == GameState.Id.INTERMISSION:
 		var spent: int = w.content.mission.intermission_ticks - w.phase_ticks_left
 		if spent < 4:
 			for id: StringName in UPGRADE_ORDER:
@@ -87,6 +90,34 @@ static func decide(rc: RunController) -> void:
 			api.activate_ability(api.next_command_id(), &"emp")
 		elif w.tick % 900 == 450 and api.ability_block_reason(&"shield") == Reason.Id.OK:
 			api.activate_ability(api.next_command_id(), &"shield")
+
+
+## One answer to what a generated run waits for, at most one command per frame and none while one is queued: the crate
+## goes into the second slot when that is empty (else it is scrapped), the draft takes its first open slot, the route
+## alternates with the wave number, the boss briefing and the breather are continued.
+static func decide_choice(rc: RunController) -> void:
+	var w: SimWorld = rc.sim
+	var api: SimRunApi = rc.api
+	if not w.command_queue.is_empty():
+		return
+	match api.awaiting():
+		RunApi.AWAIT_SALVAGE:
+			var empty_slot: bool = api.weapon_slot_count() > 1 and api.weapon_slot(1).get("id", &"") == &""
+			api.resolve_salvage(api.next_command_id(), 0, 1 if empty_slot else RunApi.SALVAGE_SCRAP)
+		RunApi.AWAIT_DRAFT:
+			var offer: PackedInt32Array = api.draft_offer()
+			var slot: int = -1
+			for k: int in offer.size():
+				if offer[k] >= 0 and slot < 0:
+					slot = k
+			if slot >= 0:
+				api.pick_directive(api.next_command_id(), slot)
+			else:
+				api.skip_draft(api.next_command_id())
+		RunApi.AWAIT_ROUTE:
+			api.pick_route(api.next_command_id(), w.wave % maxi(1, api.route_option_count()))
+		_:
+			api.continue_run()
 
 
 ## The run file as the Save autoload holds it right now ({} when there is none).
@@ -105,7 +136,8 @@ static func through_json(world: SimWorld) -> SimWorld:
 	return fresh
 
 
-## Steps a bare world (no controller) until `waves` waves are cleared, pressing CONTINUE in every intermission.
+## Steps a bare world (no controller) until `waves` waves are cleared, pressing CONTINUE in every intermission (and, in
+## a generated run, scrapping the crate, skipping the draft and taking route A).
 static func step_until_cleared(world: SimWorld, waves: int, max_ticks: int) -> bool:
 	var next_id: int = 100000 + world.tick
 	for i: int in max_ticks:
@@ -113,7 +145,15 @@ static func step_until_cleared(world: SimWorld, waves: int, max_ticks: int) -> b
 			return true
 		if world.phase == GameState.Id.INTERMISSION:
 			next_id += 1
-			world.submit(SimCommand.skip(next_id))
+			match world.phase_state.awaiting:
+				PhaseState.Await.SALVAGE:
+					world.submit(SimCommand.salvage(next_id, 0, SalvageSystem.ACTION_SCRAP))
+				PhaseState.Await.DRAFT:
+					world.submit(SimCommand.skip_draft(next_id))
+				PhaseState.Await.ROUTE:
+					world.submit(SimCommand.pick_route(next_id, 0))
+				_:
+					world.submit(SimCommand.skip(next_id))
 		world.step()
 		world.events.drain()
 	return world.is_over() or world.waves_completed >= waves

@@ -23,6 +23,11 @@ func _init(enemy: EnemyDef = null, rank: int = 1, ranks: int = 4) -> void:
 		id = enemy.id
 		name_text = Strings.t(enemy.name_key).to_upper()
 	glyph = UiEnemyGlyph.new(id, GLYPH_PX)
+	if not RunEnemyGlyph.LEGACY.has(id):  # a type of the variety roster: its silhouette is drawn by RunEnemyGlyph
+		glyph.hide_art = true
+		var art: RunEnemyGlyph = RunEnemyGlyph.new(id, GLYPH_PX)
+		UiKit.fill(art)
+		glyph.add_child(art)
 	glyph.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(glyph)
 	var text: VBoxContainer = VBoxContainer.new()

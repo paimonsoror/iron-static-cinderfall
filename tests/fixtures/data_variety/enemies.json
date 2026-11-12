@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "note": "First-pass numbers from VARIETY_CONTENT 4 and 5; the movement fields (mass, separation, weave, height) are scaffold guesses for V4-N. The slice (VARIETY_SPEC 15.2) uses mote and burster only, and the Siege Hulk stands in as the act I boss with its legacy hit points. `overrides` does not lower the Scrap of the four old types yet: the legacy 5-wave run that still plays until V2-A and V2-B land is tuned on the old values (V3-I applies 5 / 15 / 8).",
+  "note": "First-pass numbers from VARIETY_CONTENT 4 and 5; the movement fields (mass, separation, weave, height) are scaffold guesses for V4-N. The slice (VARIETY_SPEC 15.2) uses mote and burster only, and the Siege Hulk stands in as the act I boss with its legacy hit points. `overrides` lowers the Scrap of the three old types to 5 / 15 / 8 (CONTENT 4.1; applied by V3-I once the shop was closed); the legacy fixture keeps the old values.",
   "enemies": {
     "mote": { "hp": 12, "speed_mps": 3.0, "armor": 0, "core_damage": 6, "attack_period_s": 1.0, "scrap": 1,
               "radius": 0.18, "mass": 0.2, "separation_weight": 0.0, "weave_amp_m": 0.3, "weave_period_s": 0.8,
@@ -66,9 +66,9 @@
                     "class": "bodied", "cost": 0, "min_act": 2, "alive_cap": 1 }
   },
   "overrides": {
-    "skitter": { "class": "bodied", "cost": 1.0, "alive_cap": 50 },
-    "hollow_warden": { "class": "bodied", "cost": 3.0, "alive_cap": 24 },
-    "rusher": { "class": "bodied", "cost": 1.5, "alive_cap": 32 },
+    "skitter": { "scrap": 5, "class": "bodied", "cost": 1.0, "alive_cap": 50 },
+    "hollow_warden": { "scrap": 15, "class": "bodied", "cost": 3.0, "alive_cap": 24 },
+    "rusher": { "scrap": 8, "class": "bodied", "cost": 1.5, "alive_cap": 32 },
     "siege_hulk": { "class": "bodied", "cost": 0, "alive_cap": 2 }
   },
   "elite": { "hp_mult": 2.2, "scale": 1.25, "scrap_mult": 4 },

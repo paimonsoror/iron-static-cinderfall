@@ -92,6 +92,69 @@ func test_detach_removes_every_connection_and_attach_does_not_double_them() -> v
 	assert_int(_log.count(&"hint_requested")).is_equal(0)
 
 
+func _generated() -> GameFeedback:
+	_fb.detach()
+	var fb: GameFeedback = GameFeedback.new()
+	fb.attach(TestContent.variety())
+	return fb
+
+
+func test_a_generated_run_never_shows_the_two_shop_hints() -> void:
+	var fb: GameFeedback = _generated()
+	assert_bool(fb.generated).is_true()
+	Events.scrap_changed.emit(5000)  # there is no upgrade drawer to tap
+	Events.intermission_started.emit(1, 0)  # and no timed intermission to upgrade in
+	assert_int(_log.count(&"hint_requested")).is_equal(0)
+	assert_bool(Save.has_seen_hint("hint.tap_upgrades")).is_false()
+	Events.core_hit.emit(3, &"skitter", 12.0, 0.0)
+	assert_array(_log.first_args(&"hint_requested")).is_equal(["hint.core_hit"])  # the shield hint still holds
+	fb.detach()
+
+
+func test_a_generated_run_shows_its_combat_hints_once() -> void:
+	var fb: GameFeedback = _generated()
+	Events.crate_dropped.emit(1.0, 2.0)
+	Events.crate_dropped.emit(1.0, 2.0)
+	Events.event_warned.emit(&"deadfall_strike", 120, 0.0, 0.0)
+	Events.event_warned.emit(&"deadfall_strike", 120, 0.0, 0.0)
+	var shown: Array[String] = []
+	for r: Dictionary in _log.rows:
+		if r["name"] == &"hint_requested":
+			var a: Array = r["args"]
+			shown.append(str(a[0]))
+	assert_array(shown).is_equal(["hint.crate", "hint.event"])
+	for key: String in shown:
+		assert_bool(Content.db.strings.has(key)).is_true()
+	fb.detach()
+
+
+func test_the_swap_hint_waits_for_a_wave_with_a_second_weapon() -> void:
+	var fb: GameFeedback = _generated()
+	var api: FakeRunApi = FakeRunApi.new()
+	Events.wave_started.emit(1)  # no run to ask: nothing
+	fb.api = api
+	Events.wave_started.emit(2)  # one weapon: nothing
+	assert_int(_log.count(&"hint_requested")).is_equal(0)
+	api.fake_weapon_slots = [{"id": &"pistol"}, {"id": &""}]
+	Events.wave_started.emit(2)  # the second slot is empty: nothing
+	assert_int(_log.count(&"hint_requested")).is_equal(0)
+	api.fake_weapon_slots = [{"id": &"pistol"}, {"id": &"arc_projector"}]
+	Events.wave_started.emit(3)
+	assert_array(_log.last_args(&"hint_requested")).is_equal(["hint.swap"])
+	Events.wave_started.emit(4)
+	assert_int(_log.count(&"hint_requested")).is_equal(1)
+	fb.detach()
+	assert_object(fb.api).is_null()
+
+
+func test_the_legacy_content_keeps_its_three_hints_and_none_of_the_new_ones() -> void:
+	assert_bool(_fb.generated).is_false()
+	Events.crate_dropped.emit(1.0, 2.0)
+	Events.event_warned.emit(&"deadfall_strike", 120, 0.0, 0.0)
+	Events.wave_started.emit(1)
+	assert_int(_log.count(&"hint_requested")).is_equal(0)
+
+
 func test_haptics_do_nothing_off_android() -> void:
 	assert_bool(Haptics.enabled()).is_false()
 	Haptics.tick()  # must not crash on desktop

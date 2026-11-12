@@ -185,17 +185,25 @@ func test_magazine_and_reload_follow_the_modifiers() -> void:
 	assert_int(ticks[16]).is_equal(540)  # 60 ticks of reload
 
 
-func test_a_legacy_shop_purchase_on_variety_content_is_taken_into_the_active_slot() -> void:
-	# Until the shop is closed on variety content, EconomySystem still writes the Warden directly on the SMG unlock.
-	var w: SimWorld = _two_weapons()
+func test_a_shop_purchase_on_variety_content_goes_through_give_weapon() -> void:
+	# V3-I: the shop is closed in the shipped data. A content that opens it again puts the SMG into the active slot
+	# through ArsenalSystem.give_weapon: nothing writes the Warden directly on variety content.
+	var c: ContentSet = TestContent.variety()
+	c.mission.shop_enabled = true
+	var w: SimWorld = SimWorld.new(SimConfig.create(c, 1))
+	w.phase = GameState.Id.SPAWNING
+	w.wave = 2
 	ArsenalSystem.give_weapon(w, 1, Ids.WP_ARC_PROJECTOR)
-	VarietyCKit.run_weapon(w, 60)
-	w.warden.weapon_index = Ids.WP_SMG  # what the purchase does
-	w.warden.magazine = 30
-	w.warden.reload_ticks_left = 0
-	VarietyCKit.weapon_tick(w)
+	w.add_scrap(5000)
+	assert_int(EconomySystem.purchase(w, 1, Ids.UP_SMG)).is_equal(Reason.Id.OK)
 	assert_int(w.arsenal.slot_weapon[0]).is_equal(Ids.WP_SMG)
+	assert_int(w.arsenal.slot_level[0]).is_equal(1)
+	assert_int(w.arsenal.slot_magazine[0]).is_equal(30)
 	assert_int(w.arsenal.slot_weapon[1]).is_equal(Ids.WP_ARC_PROJECTOR)
 	assert_int(w.warden.weapon_index).is_equal(Ids.WP_SMG)
-	assert_array(VarietyCKit.shot_ticks(w, 29)).is_equal([70, 80, 90])  # 6 rounds per second from an empty accumulator
-	assert_int(w.warden.magazine).is_equal(27)
+	assert_int(w.warden.magazine).is_equal(30)
+	assert_int(VarietyCKit.count(w, SimEventKind.Id.WEAPON_CHANGED)).is_equal(1)
+	VarietyCKit.tough(w, VarietyCKit.place_rel(w, Ids.EN_HULK, 10.0, 0.0))
+	VarietyCKit.run_weapon(w, 30)  # a direct write of the Warden would be undone by the mirror on the first tick
+	assert_int(w.warden.weapon_index).is_equal(Ids.WP_SMG)
+	assert_int(w.arsenal.slot_weapon[0]).is_equal(Ids.WP_SMG)

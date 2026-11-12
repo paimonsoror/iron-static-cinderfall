@@ -1,20 +1,24 @@
 extends GdUnitTestSuite
-## The DEFEAT path through Game on the tuned game data: `--autoplay=none` buys nothing, the core falls in wave 3 or 4
-## (GDD 8.4), the results show DEFEAT, the reward is 10 Data per cleared wave, written to the profile exactly once, and a
-## relaunch shows the same totals (A14, A15). The run is played once in before().
+## The DEFEAT path through Game on the shipped game data (a generated run): `--autoplay=none` drafts nothing, scraps
+## every crate and takes route A, the core falls before the boss dies, the results show DEFEAT, the reward is the defeat
+## formula (Data per cleared wave), written to the profile exactly once, and a relaunch shows the same totals (A14,
+## A15). The run is played once in before().
+
+const NONE_KINDS: Array[int] = [
+	SimCommand.Kind.SKIP_DRAFT, SimCommand.Kind.PICK_ROUTE, SimCommand.Kind.SALVAGE, SimCommand.Kind.SKIP_INTERMISSION,
+]
 
 var _h: GameHarness
 var _fs: IntegrationCountingFs
 
 
 func before() -> void:
-	_h = GameHarness.create(self, PackedStringArray(["--autoplay=none", "--seed=1"]))
-	_h.game.set(&"content", Content.db)  # the tuned game data, not the frozen baseline
+	_h = GameHarness.create(self, PackedStringArray(["--autoplay=none", "--seed=1"]), Callable(), HarnessKit.shipped())
 	_fs = IntegrationCountingFs.new()
 	Save.use_fs(_fs)
 	Save.load_profile()
 	_h.boot()
-	_h.frames_until_over(60000)
+	_h.frames_until_over(SimHarness.VARIETY_MAX_TICKS)
 
 
 func after() -> void:
@@ -23,29 +27,36 @@ func after() -> void:
 		_h = null
 
 
-func test_a_run_that_buys_nothing_is_lost_in_wave_3_or_4() -> void:
+func test_a_run_that_drafts_nothing_is_lost_before_the_boss_dies() -> void:
 	assert_int(_h.state()).is_equal(GameState.Id.DEFEAT)
 	assert_int(_h.rc().sim.result()).is_equal(RunResult.Id.DEFEAT)
 	assert_float(_h.rc().sim.core_hp).is_equal(0.0)
-	assert_int(_h.rc().sim.wave).is_between(3, 4)
+	assert_int(_h.rc().sim.wave).is_between(2, 5)
+	assert_int(_h.rc().sim.waves_completed).is_less(5)
 	for cmd: SimCommand in _h.rc().sim.command_log.entries:
-		assert_int(cmd.kind).is_equal(SimCommand.Kind.SKIP_INTERMISSION)  # only the CONTINUE taps of the harness
+		assert_bool(NONE_KINDS.has(cmd.kind)).override_failure_message("command kind %d" % cmd.kind).is_true()
+	for stacks: int in _h.rc().sim.draft.stacks:
+		assert_int(stacks).is_equal(0)
 	assert_object(_h.find_in("ScreenRoot", &"ResultsScreen")).is_not_null()
 	assert_object(_h.hud()).is_null()
+	assert_int(_h.child_count("UI/HudRoot")).is_equal(0)  # no choice overlay outlives the run's HUD
 
 
-func test_the_defeat_pays_10_data_per_cleared_wave_once_and_nothing_else() -> void:
+func test_the_defeat_pays_the_defeat_formula_once_and_nothing_else() -> void:
 	var waves: int = _h.summary().waves_completed
+	var expected: int = Formulas.data_reward(RunResult.Id.DEFEAT, waves, 0.0, _h.content.mission)
+	assert_int(waves).is_greater(0)
 	assert_int(_h.summary().result).is_equal(RunResult.Id.DEFEAT)
-	assert_int(_h.summary().data_reward).is_equal(10 * waves)
-	assert_int(Save.profile.data).is_equal(10 * waves)
+	assert_int(_h.summary().data_reward).is_equal(expected)
+	assert_int(Save.profile.data).is_equal(expected)
 	assert_int(Save.profile.runs_played).is_equal(1)
 	assert_int(Save.profile.missions_completed).is_equal(0)
 	assert_int(Save.profile.best_core_hp).is_equal(0)
 	assert_int(_h.events_log.count(&"run_finished")).is_equal(1)
 	assert_array(_h.events_log.first_args(&"run_finished")).is_equal([RunResult.Id.DEFEAT, _h.rc().run_id])
 	assert_bool(GameRewards.grant(_h.summary())).is_false()  # a second finish of the same run pays nothing
-	assert_int(Save.profile.data).is_equal(10 * waves)
+	assert_int(Save.profile.data).is_equal(expected)
+	assert_bool(RunStore.exists(_fs)).is_false()  # the run ended: its run file is gone, nothing to resume
 
 
 func test_the_defeat_is_on_disk_once_and_a_relaunch_shows_the_same_totals() -> void:

@@ -80,6 +80,11 @@ func test_continue_run_is_the_intermission_skip() -> void:
 	var rc: RunController = GameRunKit.controller(self, VarietyDKit.config(c, 2, 2), null, "v-2")
 	assert_int(VarietyDKit.play_until_cleared(rc, 1, 20000)).is_greater(0)
 	assert_int(rc.sim.phase).is_equal(GameState.Id.INTERMISSION)
+	for _n: int in 6:  # the draft and the route are answered first: a pending choice cannot be skipped
+		if rc.api.awaiting() == RunApi.AWAIT_NONE:
+			break
+		VarietyDKit.play_frame(rc)
+	assert_int(rc.sim.wave).is_equal(1)  # the breather
 	rc.api.continue_run()
 	rc.step_frame(GameRunKit.DT)
 	assert_int(_last_command(rc).kind).is_equal(SimCommand.Kind.SKIP_INTERMISSION)

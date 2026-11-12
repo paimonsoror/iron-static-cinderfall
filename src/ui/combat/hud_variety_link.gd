@@ -41,7 +41,7 @@ func refresh() -> void:
 		return
 	_hud.top_bar.set_act_wave(_api.act(), _api.wave(), _api.wave_count())
 	_hud.bottom.weapon_bar.refresh()
-	_hud.banners.ticker.refresh(_api.active_events(), _content)
+	_hud.banners.ticker.refresh(_api.active_events(), _content, _api.crate_status())
 	_hud.banners.boss_bar.pips.set_phase(_api.boss_phase(), _api.boss_phase_count())
 	var def: BossDef = _content.boss(_boss_kind)
 	_hud.banners.boss_bar.title_text = Strings.t(def.name_key) if def != null else ""
@@ -50,7 +50,7 @@ func refresh() -> void:
 ## Counts the ticker's notices down.
 func process(delta: float) -> void:
 	if active and _hud.banners.ticker.tick(delta):
-		_hud.banners.ticker.refresh(_api.active_events(), _content)
+		_hud.banners.ticker.refresh(_api.active_events(), _content, _api.crate_status())
 
 
 ## Connects the variety signals through `bind` (CombatHud._bind: signal, handler).
@@ -65,8 +65,27 @@ func bind_events(bind: Callable) -> void:
 	bind.call(Events.event_ended, refresh.unbind(1))
 	bind.call(Events.boss_phase, refresh.unbind(1))
 	bind.call(Events.await_changed, refresh.unbind(1))
+	bind.call(Events.crate_dropped, refresh.unbind(2))
+	bind.call(Events.crate_secured, refresh)
+	bind.call(Events.crate_lost, refresh)
 	bind.call(Events.act_started, on_act_started)
 	bind.call(Events.elite_spawned, on_elite)
+
+
+## The wave banner of a generated run: WAVE n over what the chosen route sends ("POWDER TRAIN // VOLATILE SWARM"), from
+## RunApi.wave_route. The whisper lines of the legacy banner describe the five scripted waves ("armored frames on the
+## gantry line") and would be wrong here. False on the legacy content (the HUD then shows its old banner).
+func show_wave(index: int) -> bool:
+	if not active:
+		return false
+	var route: Dictionary = _api.wave_route()
+	var words: PackedStringArray = PackedStringArray()
+	for key_name: String in ["name_key", "modifier_key"]:
+		var key: String = route.get(key_name, "")
+		if key != "" and RunUi.has_key(key):
+			words.append(Strings.t(key))
+	_hud.banners.show_text(Strings.tf("hud.banner.wave", [index]), " // ".join(words), 3.2)
+	return true
 
 
 ## ACT II: THE GANTRY LINE over the plating tier ("CHORUS PLATING: TIER 2").
@@ -83,7 +102,7 @@ func on_elite(_id: int, kind: StringName, affixes: int) -> void:
 			words.append(Strings.t(def.name_key))
 	words.append(Strings.t("enemy.%s.name" % String(kind)).to_upper())
 	_hud.banners.ticker.push_notice(Strings.tf("hud.ticker.elite", [" ".join(words)]))
-	_hud.banners.ticker.refresh(_api.active_events(), _content)
+	_hud.banners.ticker.refresh(_api.active_events(), _content, _api.crate_status())
 
 
 ## The boss banner of the variety run (NODE n // NAME over its CHORUS log line). False when the boss has no BossDef.

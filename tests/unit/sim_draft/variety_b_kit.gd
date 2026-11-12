@@ -2,7 +2,9 @@ class_name VarietyBKit
 extends RefCounted
 ## Helpers of the V2-B suites (drafts, directives, modifiers). Content is always the frozen variety fixture
 ## (WORK_PLAN rule 5); the synthetic directives below exist only inside a ContentSet copy a test builds for itself.
-## PhaseSystem does not open drafts yet (V2-A), so `draft_world` puts a world in the intermission and opens one by hand.
+## `draft_world` puts a world in the intermission and opens a draft by hand, so these suites test the draft alone:
+## the intermission of the kit is a long breather (PhaseSystem walks SALVAGE, DRAFT and ROUTE only outside the breather;
+## the real chain is tested in tests/unit/sim_plan/test_slice_intermission.gd).
 
 static var _next_id: int = 1000
 
@@ -101,7 +103,7 @@ static func world_after(c: ContentSet, wave_number: int, run_seed: int = 1, act:
 	return w
 
 
-## The same, in INTERMISSION with a long countdown (nothing is awaited yet, no draft is open).
+## The same, in INTERMISSION with a long breather countdown (nothing is awaited yet, no draft is open).
 static func intermission_world(c: ContentSet, wave_number: int = 3, run_seed: int = 1, act: int = 1) -> SimWorld:
 	var w: SimWorld = SimWorld.new(SimConfig.create(c, run_seed))
 	w.set_phase(GameState.Id.SPAWNING)
@@ -109,6 +111,7 @@ static func intermission_world(c: ContentSet, wave_number: int = 3, run_seed: in
 	w.phase_state.act = act
 	w.set_phase(GameState.Id.CLEARING)
 	w.set_phase(GameState.Id.INTERMISSION)
+	w.phase_state.breather = true  # the flow of PhaseAwaits stays out of the way: a closed draft does not open the next step
 	w.phase_ticks_left = 1000000
 	return w
 

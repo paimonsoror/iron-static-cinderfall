@@ -37,13 +37,15 @@ func test_a_variety_world_has_every_state_and_the_larger_store() -> void:
 	assert_object(w.boss).is_not_null()
 
 
-func test_the_plan_stub_returns_the_legacy_waves() -> void:
+func test_the_plan_is_generated_from_the_run_data() -> void:
+	# V2-A replaced the V1-S stub (the legacy waves as a one-option plan): the plan now follows data/run.json.
 	var w: SimWorld = _world()
 	assert_object(w.plan).is_not_null()
-	assert_int(w.plan.wave_count()).is_equal(c.waves.size())
-	for n: int in range(1, c.waves.size() + 1):
-		assert_int(w.plan.wave(n).options.size()).is_equal(1)
-		assert_int(w.plan.option(n).total_count()).is_equal(c.waves[n - 1].total_count())
+	assert_int(w.plan.wave_count()).is_equal(c.run.waves.size())
+	for n: int in range(1, c.run.waves.size() + 1):
+		var normal: bool = c.run.wave_slot(n).kind == WaveSlotDef.Kind.NORMAL
+		assert_int(w.plan.wave(n).options.size()).is_equal(2 if normal else 1)
+		assert_int(w.plan.option(n).total_count()).is_greater(0)
 
 
 func test_building_a_world_draws_from_no_stream() -> void:
