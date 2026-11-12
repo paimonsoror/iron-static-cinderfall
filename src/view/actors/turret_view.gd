@@ -15,6 +15,7 @@ var pad: int = 0
 
 var _sim: SimWorld
 var _rise: Node3D
+var _base_mesh: MeshInstance3D
 var _head: Node3D
 var _head_mesh: MeshInstance3D
 var _muzzle: Node3D
@@ -37,6 +38,7 @@ func setup(pad_index: int) -> void:
 	base.mesh = ActorMeshes.turret_base()
 	base.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_rise.add_child(base)
+	_base_mesh = base
 	_head = Node3D.new()
 	_head.name = "Head"
 	_head.position = Vector3(0.0, HeroMeshes.TURRET_HEAD_Y, 0.0)
@@ -50,6 +52,13 @@ func setup(pad_index: int) -> void:
 	_muzzle.name = "Muzzle"
 	_muzzle.position = HeroMeshes.TURRET_MUZZLE
 	_head.add_child(_muzzle)
+
+
+## Dresses the two meshes for a look and quality tier (W3-D): the hard-surface turret with the Warden's shared materials, or the
+## old meshes and palette materials in CURRENT. Swaps meshes and surface overrides on the same nodes: nothing is created.
+func apply_look(look: int, tier: int) -> void:
+	_dress(_base_mesh, ActorMeshes.turret_part(&"base", look), look, tier)
+	_dress(_head_mesh, ActorMeshes.turret_part(&"head", look), look, tier)
 
 
 func bind(sim: SimWorld) -> void:
@@ -125,6 +134,18 @@ func recoil_amount() -> float:
 
 func upper_yaw() -> float:
 	return _yaw
+
+
+func _dress(node: MeshInstance3D, mesh_res: ArrayMesh, look: int, tier: int) -> void:
+	node.mesh = mesh_res
+	for s: int in mesh_res.get_surface_count():
+		var chosen: Material = null
+		if LookActorsStyle.enabled(look):
+			var base: Material = mesh_res.surface_get_material(s)
+			chosen = LookDevMat.surface(StringName(base.resource_name), look, tier)
+			if chosen == base:
+				chosen = null
+		node.set_surface_override_material(s, chosen)
 
 
 func _start_deploy(elapsed: float) -> void:

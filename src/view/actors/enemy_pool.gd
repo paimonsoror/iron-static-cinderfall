@@ -18,14 +18,16 @@ class KindPool:
 	var used: Array[EnemyActor] = []  ## oldest first
 
 
-func setup(parent: Node3D, content: ContentSet) -> void:
+func setup(parent: Node3D, content: ContentSet, look: int = -1, tier: int = VisualQuality.Tier.HIGH) -> void:
+	var use_look: int = LookDevStyle.current() if look < 0 else look
 	for k: int in SIZES.size():
 		var kp: KindPool = KindPool.new()
 		var def: EnemyDef = content.enemies[k]
-		var mesh_res: ArrayMesh = ActorMeshes.enemy(Ids.ENEMIES[k])
+		var mesh_res: ArrayMesh = ActorMeshes.enemy_look(Ids.ENEMIES[k], use_look)
 		for n: int in SIZES[k]:
 			var actor: EnemyActor = EnemyActor.new()
 			actor.setup(parent, k, mesh_res, "%s_%02d" % [String(Ids.ENEMIES[k]), n])
+			actor.apply_look(use_look, tier, mesh_res)
 			actor.shadow_radius = def.radius * 1.55
 			actor.hit_height = def.visual_height_m * 0.55
 			actor.bar_height = def.visual_height_m + 0.3
@@ -91,6 +93,16 @@ func release_all() -> void:
 			var actor: EnemyActor = kp.used.pop_back()
 			actor.release()
 			kp.free.append(actor)
+
+
+## Dresses every pooled view (free ones included) for a look and quality tier: one shared mesh per kind, shared materials.
+func set_look(look: int, tier: int) -> void:
+	for k: int in _kinds.size():
+		var mesh_res: ArrayMesh = ActorMeshes.enemy_look(Ids.ENEMIES[k], look)
+		for actor: EnemyActor in _kinds[k].free:
+			actor.apply_look(look, tier, mesh_res)
+		for actor: EnemyActor in _kinds[k].used:
+			actor.apply_look(look, tier, mesh_res)
 
 
 ## High Contrast look for every pooled view, free ones included (they carry it on into their next life).

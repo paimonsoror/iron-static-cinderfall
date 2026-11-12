@@ -2,6 +2,8 @@ class_name EnemyActor
 extends RefCounted
 ## One pooled enemy view: a Node3D root (ground position and yaw) holding ONE MeshInstance3D (merged mesh, at most
 ## 3 surfaces) that carries the procedural pose. Hit flash swaps `material_override` for a few frames (ARCH 8).
+## The look (W3-D) swaps the shared mesh and the SURFACE override materials of the same node (`apply_look`); the flash is a
+## `material_override`, which wins over them, so it works unchanged. High Contrast replaces an override by its variant.
 
 const FLASH_FRAMES: int = 3
 const YAW_RATE: float = 14.0
@@ -18,6 +20,10 @@ var shadow_radius: float = 0.6
 var hit_height: float = 0.5  ## height of a hit point above the feet
 var bar_height: float = 1.0  ## height of the world health bar above the feet
 
+var look: int = LookDevStyle.Look.CURRENT
+var tier: int = VisualQuality.Tier.HIGH
+
+var _contrast: bool = false
 var _flash_left: int = 0
 var _last_step: int = 0
 var _fresh: bool = true
@@ -73,14 +79,45 @@ func is_flashing() -> bool:
 	return mesh.material_override != null
 
 
-## High Contrast: brighter optic, rim lit plates and frame, as surface overrides (ActorContrast). Off clears them.
+## Dresses the actor for a look and quality tier: the shared mesh `mesh_res` of that look and its shared materials
+## (nothing is created or freed; the materials are cached per role, look and shader class).
+func apply_look(new_look: int, new_tier: int, mesh_res: ArrayMesh) -> void:
+	look = new_look
+	tier = new_tier
+	if mesh.mesh != mesh_res:
+		mesh.mesh = mesh_res
+	_dress()
+
+
+## High Contrast: brighter optic, rim lit plates and frame, as surface overrides (ActorContrast). Off restores the
+## look's own materials.
 func set_contrast(on: bool) -> void:
+	_contrast = on
+	_dress()
+
+
+## The surface override of every surface: the look's material (null when it is the plain palette one), or the High
+## Contrast variant of it.
+func _dress() -> void:
 	var m: ArrayMesh = mesh.mesh as ArrayMesh
 	for s: int in m.get_surface_count():
-		var variant: Material = null
-		if on:
-			variant = ActorContrast.variant_of(m.surface_get_material(s))
-		mesh.set_surface_override_material(s, variant)
+		var base: Material = m.surface_get_material(s)
+		var role: StringName = StringName(base.resource_name)
+		var chosen: Material = null
+		if LookActorsStyle.enabled(look):
+			chosen = LookActorsMat.surface(role, look, tier, _small())
+			if chosen == base:
+				chosen = null
+		if _contrast:
+			var variant: Material = ActorContrast.variant_for(role, look, tier, _small())
+			if variant != null:
+				chosen = variant
+		mesh.set_surface_override_material(s, chosen)
+
+
+## The Skitter and the Rusher take the baked material on every tier (`LookActorsStyle.shaded`).
+func _small() -> bool:
+	return kind == Ids.EN_SKITTER or kind == Ids.EN_RUSHER
 
 
 func world_position() -> Vector3:

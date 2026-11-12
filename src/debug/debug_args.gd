@@ -34,7 +34,10 @@ var render_size: Vector2i = Vector2i.ZERO  ## --render-size=1080x1920: render th
 var msaa: int = -1  ## --msaa=0|2|4: force the 3D viewport's MSAA (-1 = by look and tier, see LookDevStyle.msaa_samples)
 var fxaa: int = -1  ## --fxaa=0|1: force FXAA off or on
 var glow: int = -1  ## --glow=0|1: force bloom off or on for the cost measurement (-1 = by look and tier)
-var tune: String = ""  ## --tune=name:value,name:value  shader parameter overrides of the stylised materials (look-dev)
+var tune: String = ""  ## --tune=name:value,name:value  shader parameter overrides of the stylised materials (look-dev; `e_<name>` = enemies only)
+var rollout: int = -1  ## --rollout=0|1 (W3-D): 0 keeps the turret and the enemies in CURRENT while the Warden is styled (cost measurement)
+var small_baked: int = -1  ## --small-baked=0|1 (W3-D): 0 = the shader on every enemy kind on MID and HIGH (cost measurement)
+var focus: String = ""  ## --focus=warden|skitter|hollow_warden|rusher|siege_hulk|turret (W3-D): close-up and solo cameras follow that actor
 ## Sound switches for bisecting an audio problem on a device (GameAudioDebug): --sfx=0|1 and --music=0|1 override the saved
 ## settings (-1 = not forced), --loop-trim=<frames> pulls the beds' loop end back, --loop-off plays the beds once,
 ## --audio-trace logs every started sound.
@@ -154,6 +157,14 @@ static func parse(args: PackedStringArray) -> DebugArgs:
 					a.fxaa = value.to_int()
 			"--tune":
 				a.tune = value
+			"--rollout":
+				if value == "0" or value == "1":
+					a.rollout = value.to_int()
+			"--small-baked":
+				if value == "0" or value == "1":
+					a.small_baked = value.to_int()
+			"--focus":
+				a.focus = value.to_lower()
 			"--solo":
 				a.solo = true
 			"--hide-warden":

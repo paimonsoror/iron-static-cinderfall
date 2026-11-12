@@ -612,3 +612,211 @@ mean-luma contrast and pixel contrast at least CURRENT's on HIGH, MID and LOW, a
   switch at run time (`src/debug/view_sandbox.gd` shows the pair).
 - The warm-up: `ArenaView._ready` calls `ShaderWarmup.attach(self, center, extra, LookDevMat.warm_materials(_look))`, so the hard-surface materials are drawn once during the boot
   screen. If the look is chosen after `ArenaView` is built, call `LookDevMat.warm_materials(look)` and attach a `ShaderWarmup` with it.
+
+## Round 5: actor rollout (W3-D)
+
+The Warden is frozen (v4); this round rolls the same look out to the rest of the battlefield so it is coherent: the auto turret, the three
+pooled enemies (Skitter, Hollow Warden, Rusher) and the Siege Hulk. The look is still hard-surface, not cel shaded and not cartoon: rounded and
+bevelled forms, ambient occlusion and weathering baked in the vertex colours, a soft ramp, a thin rim and emissive accents. New direction from
+the owner during the round: the gritty look of `docs/handoff/04_VISUAL_REFERENCES/topdown_approved.png` is the target for the enemies, the turret
+and the Hulk ("the closer we get, the greater your success"). Original and procedural only: nothing was traced or copied from that image, no concept
+image is used as a texture, nothing from any franchise. The image shows skull-like faces with two eyes; that is NOT reproduced (GDD: one red optic, never
+a skull, never several eyes).
+The shipped game boots with `STYLISED` (`GameViewSettings.SHIPPED_LOOK`), so this is what the player now sees; `--look=current` keeps every old mesh
+byte-identical (hash-pinned, see Tests).
+
+### What is new
+
+| Piece | Where | What it does |
+|---|---|---|
+| `LookActorsStyle` | `src/view/kit/look_actors_style.gd` | The gates of the rollout: `enabled(look)`, `grit_enabled(look, tier)`, `warm_rim_strength`, `optic_energy` (above 1 only where `LookDevStyle.glow_enabled`, and only in the red channel), `optic_color`, and `shaded(look, tier, small)`: the Skitter and the Rusher (40 of the 50 at hold50, 40 to 60 px tall) take the baked material on every tier (measured, see Measurements). `rollout_override` (sandbox `--rollout=0`) keeps the actors in CURRENT while the Warden is styled: the state of main before this task, used to measure what the rollout costs. |
+| `LookActorsGrit` | `src/view/kit/look_actors_grit.gd` | Weathering baked into the vertex colours at build time: hash-noise dirt blotches, grime climbing from the ground, warm oil stains, soft chips (vertex alpha = bare metal), the red light spill of the optic on the plates around it. Deterministic, free at run time. |
+| `LookActorsKit` | `src/view/kit/look_actors_kit.gd` | Colour plan (`frame(k)` dark gunmetal, `plate(k)` neutral off-white), `limb2`, `cone`, the single optic (`optic`: a bright emissive band that follows the head, a dim halo band under it and a dark bezel band, all in the existing surfaces) and `finish` (AO bake, grit, spill, build). |
+| `LookActorsMat` + `look_actors_enemy.gdshader` | `src/view/kit/` | Shared enemy materials per (role, look, shaded class). MID and HIGH, Hollow Warden and Hulk only (the Skitter and the Rusher take the LOW material on every tier, see `LookActorsStyle.shaded`): a sibling of the Warden's shader (the Warden's is untouched) with a warm orange rim and bounce instead of the cyan rim, per-pixel grit (speckle, scratches, gravity streaks, chips) and panel seams on near axis-aligned faces, all from hash noise, no texture. LOW: a `StandardMaterial3D` that shows the baked vertex colours only. The optic is an unshaded `StandardMaterial3D` that takes the vertex colour (so the halo and bezel dim it). |
+| `LookActorsSkitter`, `LookActorsHollow`, `LookActorsRusher`, `LookActorsHulk`, `LookActorsTurret` | `src/view/actors/` | The meshes (see below). |
+| `ActorMeshes.enemy_look(id, look)`, `turret_part(part, look)` | `src/view/actors/actor_meshes.gd` | CURRENT (or a switched-off rollout) returns the old mesh; the hard-surface looks return a cached styled mesh under a separate key. `TRI_BUDGET` raised on purpose. |
+| `EnemyActor.apply_look`, `EnemyPool.set_look`, `ActorLayer.set_look/set_quality`, `TurretView.apply_look` | `src/view/actors/` | The 108 pooled `MeshInstance3D`s still share ONE `ArrayMesh` per kind and ONE material per (kind surface, look, tier class); a look or tier change swaps `mesh.mesh` and the surface overrides in place (nothing is created or freed). The hit flash is a `material_override` and wins over them, unchanged. |
+| `ActorContrast.variant_for(role, look, tier)` | `src/view/actors/actor_contrast.gd` | High Contrast twins of the look materials (shader twin with a stronger warm rim, fill and value gain; baked twin with the emission lift on LOW; a hotter optic). Without it High Contrast would silently have brought the old look back. |
+| Warm-up | `LookDevMat.warm_materials` (two added lines with the `refresh` hook) | Appends `LookActorsMat.warm_materials(look)`: the enemy shader and baked variants, the optic and `flash_white` (the hit flash is drawn over a coloured vertex format, so it needs its own pipeline), drawn once by the existing `ShaderWarmup` during the boot screen. `LookDevMat.refresh()` also repaints the enemy materials. |
+| Debug | `src/debug/` | Sandbox flags `--focus=warden\|skitter\|hollow_warden\|rusher\|siege_hulk\|turret` (the close-up and the solo cameras follow that actor; `LookActorsFocus`) `--rollout=0\|1` and `--small-baked=0\|1` (measurement switches); `--tune=e_<uniform>:<v>` reaches the enemy shader only. |
+
+Existing kit and view files that were edited (all additive, no signature changed): `look_dev_mat.gd` (two lines: warm-up list and refresh hook),
+`actor_meshes.gd`, `actor_layer.gd`, `enemy_actor.gd`, `enemy_pool.gd`, `turret_view.gd`, `actor_contrast.gd`, `debug_args.gd`, `look_dev_sandbox.gd`.
+
+
+### The five actors
+
+All five are original designs drawn from scratch in code, deterministic, with at most 3 surfaces per mesh, baked ambient occlusion, dirt, chips and the
+optic light spill in the vertex colours, a hunched forward lean built into the three small machines (inside the old sim footprint, view only) and asymmetric
+damage so no two halves match. The single red optic is the identity of every enemy: a bright emissive band that follows the head, on a dark bezel, with a dim
+halo band around it (no skull, no pair of eyes; the head is dark with a narrow pale crest so the red reads against it from above and from the front).
+
+| Actor | Triangles (budget) | Design |
+|---|---|---|
+| Skitter | 336 (450) | A low, hunched crawler: a pitched dark thorax under three overlapping pale shell plates with dark gaps, a dark helm with the optic band on its upper front, two raised mantis forelimbs with pale claws, four digitigrade legs. **Footprint**: the old legs spread 1.32 m wide and piled up at 50 enemies; the new feet stay within 0.4 m of the centre (0.77 m wide, farthest vertex 0.56 m against 1.10 m before), so individual machines separate at hold50. Damage: the rear left leg is broken at the shin, the left forelimb hangs bent. |
+| Hollow Warden | 466 (500) | A heavy, hunched biped, upper body leaning forward 11 degrees: a broad tapered chest on a dark frame, a half-width pale chest slab (the left half is gone), a big plated right shoulder dome and a bare frame stub on the left, a small dark helm sunk between the shoulders with the visor bar, thigh plates, long arms (a heavy plated ram on the right, a thin clawed arm on the left). |
+| Rusher | 436 (500) | A lean sprinter with the torso pitched 34 degrees forward, reverse-jointed legs, forward-reaching arms with blades, three swept-back dorsal spines (the third is snapped) and a dim red glow strip along the spine (a secondary light, dimmer than the optic, not an eye). The left blade is broken and the left shoulder plate is missing. |
+| Siege Hulk | 1,494 (1,500) | The heaviest and most menacing machine: a pitched dark frame under rounded off-white armour, two huge shoulder blocks with layered plates and swept spikes (the left plate is cracked off its block, one spike is broken), pillar forearms ending in big fists with knuckle spikes, short hind legs, a domed back with two exhaust stacks and cables, a dark helm sunk between the shoulders with the optic band, and a red core in a dark housing on the chest (visible from the front and the three-quarter view; GDD: "red chest core"). Same pivot and pitch as the old mesh, so the footprint is unchanged. |
+| Turret | 538 (600, base plus head) | A very dark gunmetal tripod with a slewing ring and a yawing gun head: armour plates in the Warden's clean off-white, a mantlet, twin shrouded barrels ending exactly at `HeroMeshes.TURRET_MUZZLE` (the tracers and shots leave from the same place), a side ammo box, an antenna, a cyan sensor lens and a cyan status strip. Friendly colours only (cyan, never red). Uses the Warden's shared materials (`LookDevMat`). |
+
+
+### Gap list against the owner's target (`topdown_approved.png`), final
+
+Written after every capture round (rounds 1 to 4 fixed the largest gaps first: the beige "balloon" heads, a tiny optic, flat plates; round 5 the panels, grit and the turret).
+What is still different, largest first:
+
+1. **Detail density.** The target actors carry hundreds of small parts: hydraulics, cables, vents, bolts, hands with fingers, layered plates. Ours are 430 to 1,500 triangles of
+   rounded forms with procedural panel seams, chips and streaks. At the real camera the swarm reads well; in the three-quarter view the Hollow Warden and the Rusher still read as
+   stylised hard-surface robots, with tube limbs and block hands, not as the weathered machines of the image.
+2. **Material.** The target is chipped paint over dark metal, rust, oil, wet grime. Ours: baked dirt, edge wear and chips (every tier) plus, on MID and HIGH, per-pixel speckle, scratches,
+   gravity streaks and panel seams. LOW has the baked part only (flatter). No wetness, no reflections, no emissive grime.
+3. **Light.** The target has strong orange fire light on the plates. Ours: a warm orange rim and a warm bounce in the enemy shader (MID and HIGH), no new light node, so the orange is
+   an edge accent, weak at 1x. The red optic has a dark bezel and a geometric halo band; a real glow halo needs bloom (the optic goes above 1 in the red channel only when
+   `LookDevStyle.glow_enabled`, so it blooms red, never white, if W3-E switches bloom on; without bloom it is a hot saturated red).
+4. **Poses.** The target enemies are hunched, long-limbed, predatory. The Skitter, Hollow Warden and Rusher have a forward lean built in, but their limbs are rigid and symmetrical in motion
+   (`ActorMotion` moves the whole mesh); no limb animation.
+5. **Hulk.** Menacing and clearly the heaviest (spiked shoulders, knuckle spikes, red chest core, red optic, exhaust stacks), but it is a chunkier, simpler mech than the image: no pistons or
+   cables between the plates, the forearm pillars are plain cylinders.
+6. **Turret.** Very dark metal with clean off-white plates, twin shrouded barrels, an ammo box, cyan lights. The image's turret is dark metal with amber parts; amber is the core's colour and
+   cyan is the friendly accent here, so the turret has no amber. Simpler than the image.
+7. **Camera.** The image is a perspective view at about 40 to 50 degrees. The shipped camera is orthographic at 60 degrees: roofs dominate, faces and optics are seen less. Judged from both
+   the shipped camera and the three-quarter solo views (`--view=three`, `front`, `side`, `back`).
+8. **Not reproduced on purpose.** Skull-like faces and paired eyes (GDD lore guard).
+
+
+### Measurements (desktop Intel Iris Plus iGPU, NOT phone numbers; the machine was shared)
+
+Same method as the earlier rounds (`look_dev_sandbox`, the real arena and camera, 50 enemies at `hold50`, or the `boss` scenario: the Hulk and 14 escorts, rendered in a 1080x1920
+SubViewport, vsync off, `Engine.max_fps = 0`, four 5-second `[PERF]` windows per run after a discarded warm-up window), with every configuration of a cell interleaved
+(cur, sty0, sty, cur, sty0, sty, ...), 2 runs per cell (3 on HIGH hold50), **one measure.lock held around every single run**. Three configurations per cell:
+`CURRENT` (nothing styled; the shipped baseline), `styled Warden only` (`--rollout=0`: the Warden in STYLISED and the turret and enemies in CURRENT, i.e. what main was before this task,
+with the tier MSAA) and `STYLISED` (this task: the whole battlefield). The cost of the rollout is the last minus the middle column; CURRENT to STYLISED also contains the per-tier MSAA of the
+look (MID 2x, HIGH 4x: +2 to +3 ms, W3-C round 3), which this task did not add.
+
+| Scenario, tier | CURRENT frame_ms | styled Warden only | STYLISED (rollout) | **rollout cost** | vs CURRENT | draws (cur / styled) | primitives (cur / Warden only / rollout) |
+|---|---|---|---|---|---|---|---|
+| hold50 LOW | 5.77 (6.05, 5.49) | 5.56 (5.91, 5.21) | 5.84 (5.59, 6.09) | **+0.28** | +0.07 | 92 / 99 | 26.6k / 28.7k / 36.5k |
+| hold50 MID | 10.09 (9.77, 10.42) | 12.11 (12.12, 12.09) | 13.84 (13.81, 13.86) | **+1.73** | +3.75 | 92 / 99 | 26.7k / 28.8k / 36.6k |
+| hold50 HIGH | 13.30 (12.72, 14.47, 12.71) | 16.06 (15.91, 16.20, 16.09) | 17.02 (16.53, 17.30, 17.22) | **+0.96** | +3.72 | 98 / 105 | 38.6k / 40.7k / 48.5k |
+| boss LOW | 5.26 (5.41, 5.12) | 5.19 (5.11, 5.27) | 5.14 (5.15, 5.13) | **-0.05** | -0.12 | 57 / 64 | 17.4k / 19.5k / 23.1k |
+| boss MID | 9.69 (9.42, 9.95) | 11.59 (11.31, 11.86) | 12.72 (12.54, 12.90) | **+1.13** | +3.03 | 57 / 64 | 17.4k / 19.5k / 23.1k |
+| boss HIGH | 12.73 (12.67, 12.79) | 15.18 (15.51, 14.84) | 16.80 (16.79, 16.81) | **+1.62** | +4.07 | 63 / 70 | 29.3k / 31.4k / 35.0k |
+
+Honest reading:
+
+- **LOW costs nothing measurable** (+0.28 ms at hold50, inside the run-to-run spread; the budget was +0.3). LOW has no shader: geometry and baked vertex colours only.
+- **HIGH hold50 +0.96 ms** is at the +1.0 ms limit, **MID hold50 +1.73 ms and the boss scenes +1.1 (MID) and +1.6 ms (HIGH) are over it.** Draw calls are the same with and without the rollout
+  (the 108 pooled instances already existed; they just wear 3-surface meshes), so the cost is fill and primitives: the swarm goes from 28.8k to 36.6k primitives (MID) and the boss scene gets the
+  big Hulk. The three earlier runs of this round on the same code but with the first geometry (432 to 1,494 triangles, all kinds on the shader) were +1.4 to +2.6 ms on HIGH hold50.
+- **What I did to get under the limit** (each step measured, HIGH hold50, 3 interleaved rounds, rollout cost against the styled Warden only: 15.72 ms; rows `w3d_d`, `w3d_e`): the first
+  version cost +2.6 ms (one noisy pass) and about +1.4 ms (the clean window); (1) the Skitter and the Rusher (40 of the 50, 40 to 60 px tall) take the baked vertex-colour material on every tier
+  instead of the shader (`LookActorsStyle.shaded`): +1.19 ms against +1.36 ms with the shader on all kinds, so the shader fill is only about 0.2 ms; with the grit, streaks and seams switched off
+  (shader uniforms to 0) the saving was 0.3 ms; (2) fewer sides on the limbs, heads and shells of the three small kinds (Skitter 430 to 336 triangles, Rusher 464 to 436, Hollow Warden 490 to 466:
+  -3.6k primitives at hold50): +1.08 ms; then the final clean matrix above: +0.96 ms. So most of the remaining cost is primitive and MSAA work on tiny triangles, not shader ALU. Further levers, not
+  taken because each costs looks: fewer triangles in the Skitter again, baked material for the Hollow Warden on MID, no MSAA on HIGH
+  (`LookDevStyle.MSAA_HIGH`, +4.2 ms by itself, owned by W3-C and the owner), or a LOD swap to the CURRENT meshes beyond a screen size.
+- **Noise.** The same configuration varies by 0.3 to 1.8 ms between runs and drifts up over a window on this machine; the first passes of this round (rows `w3d_*` without `_final`, also in
+  `measurements.csv`) were taken while the owner's game window and W3-E were using the same GPU (the lock was held by someone else for most of the time, and the coordinator exported an APK from 21:13 to
+  21:17 with the lock free: none of the final rows below fall in that window), and were up to 2 times slower (CURRENT HIGH 14.7 to 16.8 ms against 12.7 to 13.3 ms in the final rows). Treat
+  differences under about 0.5 ms as noise; the columns of one row are interleaved runs of the same minute, which is why the rollout cost is more reliable than the absolute times.
+- **One-time build cost** (not per frame): the five styled meshes (AO bake, weathering, build) take about 150 ms in GDScript on this desktop CPU (`ACTOR_BUILD_MS`: Hulk 70, the others 7 to 18 each;
+  it was 200 ms before the grit bake got a position cache) at the first use of a hard-surface look, plus the Warden's 75 ms; a phone is several times slower, so this belongs behind the boot screen
+  (the pool is built in `ActorLayer.setup`, before the first frame; the warm-up draws the new materials once afterwards).
+
+
+### Tests
+
+`tools\check.ps1` (layer lint, import, compile with warnings as errors, every suite) is the gate; the new suites are `look_actors_meshes_test.gd` (13 tests) and
+`look_actors_view_test.gd` (12 tests), helpers in `look_actors_test_kit.gd` (`LookActorsTestKit`; every new class is prefixed `LookActors`).
+What they pin:
+
+- **CURRENT byte-identical**: the hash table `BASELINE` of `look_dev_meshes_test.gd` already covered every actor (skitter, hollow warden, rusher, siege hulk, turret, base,
+  head); `look_actors_meshes_test.gd` repeats the pins through the new accessors *after* every styled mesh has been built, and checks that CURRENT returns the very same
+  mesh instances (and that a switched-off rollout does too).
+- **Budgets**: every styled mesh within `TRI_BUDGET` (printed as `ACTOR_TRIS`), at most 3 surfaces, palette roles only (enemies: gunmetal, ceramic, emit_red; turret: gunmetal,
+  ceramic, emit_cyan).
+- **Palette roles and the optic**: on every enemy exactly one full-bright red piece (the optic; the Rusher's spine strip and the Hulk's chest core are dimmer), no red piece with a
+  mirror image across the body axis (no second eye), no cyan; the turret has cyan and never red.
+- **Vertex colours**: in range, darker in the creases than on the open plates, weathered (relative spread), edge wear present.
+- **Determinism**: two builds hash equal. **Footprint**: the Skitter is at most one slot wide, every enemy reaches no farther from its centre than the old mesh did, heights follow
+  the content, silhouettes stay different, the Hulk's footprint is at least 4 Hollow Wardens, the turret's barrels end at `TURRET_MUZZLE`. **Build time** is printed (`ACTOR_BUILD_MS`).
+- **View**: 108 pooled instances share one mesh per kind and one material per (kind, surface); the hit flash still wins and leaves the overrides in place; the look switch swaps and
+  restores; 50 look and tier switches grow neither nodes nor materials nor resources; High Contrast twins (shader, baked, optic) and the way back; tier gating; the optic is above 1
+  only with glow and only in the red channel; the warm-up list; the turret view; pooled enemies still turn to face their movement direction.
+
+### How to reproduce the images and the numbers
+
+```
+# solo cameras and close-ups of one actor (add --solo to hide the others; --view=front|three|side|back; --zoom=<f> is the top-down close-up)
+Godot --path <project> res://src/debug/look_dev_sandbox.tscn -- --look=stylised --quality=2 --scenario=hold50 --focus=skitter --view=three --solo
+# the cost of the rollout alone: the Warden styled, the actors in CURRENT (what main was before this task)
+Godot --path <project> res://src/debug/look_dev_sandbox.tscn -- --look=stylised --rollout=0 ...
+# every enemy kind on the shader instead of the baked material for the small ones
+... --small-baked=0
+```
+
+`measure.ps1` (this folder) is the base of the measurement; the runs of this round used the same loop with a lock file around every single run (`C:\dev\tower-two-wt\measure.lock`), configurations
+interleaved, rows in `measurements.csv` (tags `w3d_*`).
+
+
+### Images
+
+All in `rollout_actors/` (15 files, 2.45 MB together), sheets only (no full-frame captures; the captures stay in the build directory), JPG quality 0.85, every capture through `tools/capture.ps1` (`CAPTURE OK`,
+`renderer=mobile/vulkan`, Intel Iris Plus), HIGH tier unless stated, the same simulation frame (240 frames = 4 s) for CURRENT and STYLISED, every image opened and looked at. Left is CURRENT, right is
+STYLISED unless a label says otherwise.
+
+| File | What it shows |
+|---|---|
+| `r5_1_game_hold10.jpg`, `r5_1_game_hold28.jpg`, `r5_1_game_hold50.jpg`, `r5_1_game_boss.jpg` | The real game camera at 1x pixels (a crop of the 1080x2400 capture around the fight), CURRENT | STYLISED at 10, 28 and 50 enemies and at the boss scene. |
+| `r5_2_close_enemies.jpg` | The three pooled enemies at 7x to 11x zoom (a 2x crop of the top-down close-up, `--focus=<kind> --zoom=...`, i.e. far larger than the 3x of the brief so that the surface is visible): Skitter, Hollow Warden, Rusher, CURRENT | STYLISED. |
+| `r5_3a_close_hulk.jpg`, `r5_3b_close_turret.jpg` | The Hulk (2.4x) and the turret (8x, in a 2x sheet), top-down close-ups, CURRENT | STYLISED. |
+| `r5_4_angles_<actor>.jpg` | Front, three-quarter, side and back low perspective cameras (`--view=...`) of the Skitter, Hollow Warden, Rusher, Hulk and turret (STYLISED): the check for the three-quarter camera the owner likes. |
+| `r5_5_tiers.jpg` | STYLISED at LOW, MID and HIGH (hold50, 1x). |
+| `r5_6_swarm_before_after.jpg` | The hold50 swarm at 2x, CURRENT | STYLISED: the Skitters no longer pile up. |
+| `r5_7_high_contrast.jpg` | STYLISED normal | High Contrast (hold50, 1x). |
+
+What I saw (honest):
+
+- **1x, the shipped camera.** The swarm is now countable: every Skitter is a pale segmented shell with a dark head and a red band, dark spidery legs inside its own slot, where CURRENT is a pile of
+  overlapping boxes and legs. The Hollow Warden reads as a heavy biped with a pale slab and a bulky shoulder, the Rusher as a forward-leaning sprinter, the Hulk as a spiked grey mass with a red band
+  on its head. The plates are neutral off-white over dark frames (the old ones were cream), the optic is the brightest and most saturated thing on each machine. The warm orange of the
+  target is hardly visible at this size.
+- **3x.** Rounded forms, dark bezels around the optics, edge wear, dirt blotches, panel seams (MID and HIGH), the Hulk's knuckle spikes and shoulder layers, the turret's barrels and ammo box.
+  Also visible: it is still a stylised hard-surface look (see the gap list): flat-ish plates, tube limbs.
+- **Three-quarter and side (`r5_4_*`).** The optic is readable from the front and the side on every enemy; the silhouettes stay different (Skitter: low spider; Hollow: upright slab; Rusher: bent over;
+  Hulk: wide, spiked, red core; turret: tripod with twin barrels). The Hulk has a strong front (the red hex core in a dark housing between the shoulders) and side (the shoulder block and the
+  pillar arm); the turret's front is the mantlet and the lens. The Hollow Warden and the Rusher are the weakest from the side (tube limbs, block hands).
+- **At 1x the STYLISED enemies are darker than CURRENT's pale boxes** (neutral off-white plates over dark frames, instead of cream-white boxes): against the dark floor they carry a little less brightness, and the red optics do more of the counting. This is the price of the grey-white and dark-frame palette of the target.
+- **The turret's three-quarter view is partly hidden** by a foreground arena barrier and a tracer of its own shot (the low camera sits on the pad); front, side and back are clean.
+- **Tiers.** LOW keeps the shapes, the baked dirt and the optics, with a flatter surface and no warm rim. MID and HIGH add the ramp, rim and grit on the big machines.
+- **High Contrast.** Nearly the same as normal at 1x: a hotter optic and a stronger rim on the plates; the effect is subtle.
+
+### Assessment (honest)
+
+- **Better than CURRENT, clearly, at every distance**: individual machines separate at hold50, the optic is a strong, single identity, the Hulk is the heaviest thing on the field, and the
+  battlefield is now coherent with the Warden (rounded hard-surface forms, baked occlusion, cool dark frames, clean plates).
+- **Still far from the owner's target image** in detail and mood (gap list above): it is a stylised hard-surface rollout, not weathered concept art. The biggest levers left, in order: a
+  warm orange light that really lights the plates (a pooled warm light or an emissive-rim pass on the enemies, which needs W3-E's lighting), more small parts on the Hulk and the Hollow Warden
+  (cables, pistons, hands), and limb animation (`ActorMotion` moves the whole mesh).
+- **Cost** is a real but modest +0.3 (LOW), +1.0 to +1.7 (MID and HIGH) ms on this iGPU on top of the styled Warden; phone numbers are NOT RUN (no phone, the emulator cannot present Vulkan frames).
+
+### Known defects
+
+1. The Hollow Warden and the Rusher read as stylised robots from the side: tube limbs and block hands; no hands or fingers, no cables or pistons.
+2. The optic halo is a dim geometric band, not light: no glow on the plates around it except a baked red tint of the nearest vertices; real halo needs bloom (works red-only if switched on).
+3. Panel seams are triplanar on near axis-aligned faces; on rotated plates (the Rusher's torso, the pitched Hulk frame) fewer faces qualify, so the seams are uneven there; they are subtle at 1x.
+4. The Skitter and the Rusher use the baked material on MID and HIGH (cost): no warm rim, ramp or grit on them; only the baked dirt and chips. They look like the LOW tier.
+5. The Rusher's "spark trail" of the old mesh (two red quads on the ground behind it) is not in the styled mesh (they were flat red rectangles); a spark trail is a VFX job (W3-E / VfxLayer).
+6. The turret has no amber (amber is the core's colour, cyan the friendly accent); it is dark metal with clean plates and cyan lights.
+7. `ActorMotion` poses the whole mesh, so the broken leg of the Skitter, the claw of the Rusher and so on never move on their own.
+8. Rollout cost on MID (hold50 +1.7 ms, boss +1.1) and on HIGH (boss +1.6 ms) is over the 1 ms guidance; the levers are listed under Measurements.
+9. The one-time mesh build (about 150 ms desktop) happens at the first use of the look; on a phone it is several times that and has to sit behind the boot screen.
+10. No phone or emulator check (NOT RUN).
+
+### What the next agent needs
+
+- Everything of this round is in `LookActors*` files plus the edits listed above; a new enemy follows the Warden recipe and `LookActorsKit` (colour plan, `optic`, `finish`).
+- To change the cost: `LookActorsStyle.shaded` (which kinds use the shader), `LookActorsMat` (shader parameters per role), `ActorMeshes.TRI_BUDGET` and the builders' side counts.
+- To add bloom for the optics: `LookDevStyle.glow_enabled` already decides; `LookActorsStyle.optic_energy` puts the red channel above 1 only then.
+- Boot wiring needs nothing new: `GameViewSettings` sets the look before `BattleView.setup`; the warm-up list is `LookDevMat.warm_materials` (called by `ArenaView._ready`, not mine).
+- ARCH 8 and WORK_PLAN 6 (docs, not mine) need the new budgets and the warm-up list: see the report of this task.

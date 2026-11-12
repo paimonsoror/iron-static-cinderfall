@@ -89,10 +89,12 @@ func test_the_warden_budget_is_twenty_five_hundred_and_every_styled_loadout_fits
 			var n: int = ActorMeshes.warden_triangles(look, weapon)
 			print("WARDEN_TRIS look=%s weapon=%d tris=%d" % [LookDevStyle.name_of(look), weapon, n])
 			assert_int(n).is_between(1500, ActorMeshes.TRI_BUDGET[&"warden"])
-	# the other actors keep their budgets
-	assert_int(ActorMeshes.TRI_BUDGET[&"skitter"]).is_equal(300)
-	assert_int(ActorMeshes.TRI_BUDGET[&"siege_hulk"]).is_equal(900)
-	assert_int(ActorMeshes.TRI_BUDGET[&"turret"]).is_equal(300)
+	# the rollout (W3-D) raised the other budgets deliberately; look_actors_meshes_test.gd measures the styled meshes against them
+	assert_int(ActorMeshes.TRI_BUDGET[&"skitter"]).is_equal(450)
+	assert_int(ActorMeshes.TRI_BUDGET[&"hollow_warden"]).is_equal(500)
+	assert_int(ActorMeshes.TRI_BUDGET[&"rusher"]).is_equal(500)
+	assert_int(ActorMeshes.TRI_BUDGET[&"siege_hulk"]).is_equal(1500)
+	assert_int(ActorMeshes.TRI_BUDGET[&"turret"]).is_equal(600)
 
 
 func test_every_styled_part_has_at_most_three_surfaces_and_the_palette_roles() -> void:
