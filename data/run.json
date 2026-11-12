@@ -62,5 +62,5 @@
                "tier_weights": [ [0, 0, 0, 100], [20, 45, 30, 5], [0, 25, 45, 30] ], "dupe_bias": 0.35 },
   "caps": { "swarm_cap": 40, "max_elites_alive": 4, "max_blasts_per_tick": 8 },
   "reward": { "per_wave": 6, "boss_by_act": [30, 45], "victory_base": 100, "victory_core_bonus": 50 },
-  "mission": { "shop_enabled": false, "breather_seconds": 3 }
+  "mission": { "shop_enabled": true, "breather_seconds": 3 }
 }
