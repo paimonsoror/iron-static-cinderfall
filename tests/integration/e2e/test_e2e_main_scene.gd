@@ -48,7 +48,7 @@ func test_five_waves_and_the_boss_complete_every_hostile_dies_once_and_the_cap_h
 	for wave: WaveDef in content.waves:
 		scheduled += wave.total_count()
 	var kills: int = 0
-	for type_index: int in Ids.ENEMIES.size():
+	for type_index: int in Ids.LEGACY_ENEMY_COUNT:
 		kills += summary.kills_by_type[type_index]
 		scrap += summary.kills_by_type[type_index] * content.enemies[type_index].scrap
 	assert_int(kills).is_equal(scheduled)  # A07: every scheduled hostile, the Hulk and its escorts included, died

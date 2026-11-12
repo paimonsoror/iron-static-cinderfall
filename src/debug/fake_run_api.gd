@@ -1,5 +1,5 @@
 class_name FakeRunApi
-extends RunApi
+extends FakeVarietyApi
 ## RunApi with public state for every query, recording every command in `calls` and emitting the matching
 ## Events signals, so the HUD can be built and tested with no simulation (ARCH 7.2).
 ##
@@ -15,6 +15,8 @@ extends RunApi
 ## Events.purchase_resolved(id, false, Reason.Id.PAUSED) / Events.ability_rejected(id, Reason.Id.PAUSED) and
 ## nothing else. Otherwise a purchase resolves with fake_purchase_block[id] (Reason.Id.OK = success; the state
 ## is NOT changed, tests set it themselves).
+## The queries and commands of the variety milestone (draft, route, salvage, weapon slots, events) are in the parent
+## class FakeVarietyApi; their calls land in the same `calls` list with an extra "arg" entry.
 
 var calls: Array[Dictionary] = []
 
@@ -84,6 +86,10 @@ func clear_calls() -> void:
 	calls.clear()
 
 
+func _record(entry: Dictionary) -> void:
+	calls.append(entry)
+
+
 # --- commands ---
 
 
@@ -115,11 +121,13 @@ func skip_intermission() -> void:
 func pause() -> void:
 	calls.append({"cmd": "pause", "command_id": 0, "id": &""})
 	fake_paused = true
+	fake_variety_paused = true
 
 
 func resume() -> void:
 	calls.append({"cmd": "resume", "command_id": 0, "id": &""})
 	fake_paused = false
+	fake_variety_paused = false
 
 
 # --- queries ---

@@ -1,0 +1,14 @@
+{
+	"rule": "schema versions match (variety files)",
+	"stage": "loader",
+	"patches": [
+		{
+			"file": "directives.json",
+			"path": "schema_version",
+			"set": 2
+		}
+	],
+	"expect": [
+		"directives.json: $.schema_version: expected 1, got 2"
+	]
+}

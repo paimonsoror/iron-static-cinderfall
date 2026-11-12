@@ -1,0 +1,14 @@
+{
+	"rule": "unknown top-level keys are reported (variety files)",
+	"stage": "loader",
+	"patches": [
+		{
+			"file": "events.json",
+			"path": "bonus",
+			"set": 1
+		}
+	],
+	"expect": [
+		"events.json: $.bonus: unknown key"
+	]
+}

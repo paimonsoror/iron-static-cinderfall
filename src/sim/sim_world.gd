@@ -272,6 +272,8 @@ func spawn_enemy(type_index: int, x: float, z: float, affix_mask: int = 0) -> in
 		events.push(SimEventKind.Id.BOSS_SPAWNED, enemy_id, type_index)
 		BossSystem.on_spawned(self, i)
 	if affix_mask != 0:
+		ext.flags[i] |= EnemyExtState.F_ELITE
+		ext.affix_mask[i] = affix_mask
 		EliteSystem.apply(self, i, affix_mask)
 	return i
 

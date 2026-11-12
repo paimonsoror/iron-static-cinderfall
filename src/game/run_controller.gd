@@ -49,6 +49,7 @@ func start(config: SimConfig, run_id_value: String, view: BattleView) -> void:
 	api.bind(self)
 	sim = SimWorld.new(config)
 	_relay = GameEventRelay.new(config.content)
+	_relay.world = sim
 	driver = TickDriver.new()
 	driver.before_tick = _before_tick
 	_view = view

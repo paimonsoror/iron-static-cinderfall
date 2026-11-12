@@ -2,6 +2,7 @@ extends Node
 ## BattleView + SimPuppet (ARCH 11). The puppet runs a scenario on the real sim systems; the view renders it exactly
 ## as it will render a run. Works inside the game, in the main window, and inside the capture SubViewport.
 ##   --scenario=hold10|hold28|hold50|boss   crowd (default hold50)
+##   --scenario=hold<N>+<M>|chain           variety: N bodies plus M minis; a burster chain with a strike (PuppetChaos)
 ##   --quality=0|1|2                        LOW, MID, HIGH (default MID)
 ##   --high-contrast  --reduced-flash       accessibility looks
 ##   --debug-overlay[=all|flow,slots,stuck,spawns]   debug layers   --debug-perf   PerfHud and the [PERF] log line
@@ -39,7 +40,10 @@ func _ready() -> void:
 		_view.arena_view.set_look(args.look)
 	_puppet = SimPuppet.new()
 	add_child(_puppet)
-	_puppet.setup(_content, args.scenario if args.scenario != "" else "hold50", args.run_seed if args.has_seed else 1)
+	_puppet.setup(
+		_content, args.scenario if args.scenario != "" else "hold50", args.run_seed if args.has_seed else 1,
+		view_draws_variety(_view)
+	)
 	_view.bind(_puppet.world)
 	_overlay = BattleDebugOverlay.new()
 	_overlay.setup(_content.arena)
@@ -107,3 +111,13 @@ func _refit() -> void:
 	var top: float = HudLayout.top_band_px(size, Vector4.ZERO, _content.tokens)
 	var bottom: float = HudLayout.bottom_band_px(size, Vector4.ZERO, _content.tokens)
 	_view.fit_camera(size, top, bottom)
+
+
+## True when the ActorLayer says it can draw the variety enemy types. The handshake with the view task (V2-F): once
+## `ActorLayer.supports_enemy_type(type_index: int) -> bool` exists and answers true for motes and bursters, the puppet
+## puts those bodies into the store; until then it keeps to the four legacy types (the pools would have no actor).
+static func view_draws_variety(view: BattleView) -> bool:
+	var layer: Object = view.actor_layer
+	if layer == null or not layer.has_method("supports_enemy_type"):
+		return false
+	return layer.call("supports_enemy_type", Ids.EN_MOTE) == true and layer.call("supports_enemy_type", Ids.EN_BURSTER) == true

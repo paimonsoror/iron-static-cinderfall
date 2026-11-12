@@ -8,10 +8,12 @@ var kinds: Dictionary[int, int] = {}  ## enemy id -> type index
 var counts: Dictionary[int, int] = {}  ## SimEventKind.Id -> how many were forwarded (tests, reports)
 
 var _content: ContentSet
+var _relay: GameEventRelay  ## the variety kinds go through the real relay (same mapping as a run)
 
 
 func _init(content: ContentSet) -> void:
 	_content = content
+	_relay = GameEventRelay.new(content)
 
 
 ## Forwards every event in `list`; returns how many were forwarded.
@@ -70,5 +72,9 @@ func _one(e: SimEvent) -> void:
 			Events.enemy_stunned.emit(e.a, e.b)
 		SimEventKind.Id.ENEMY_STUCK:
 			Events.enemy_stuck.emit(e.a)
+		SimEventKind.Id.ELITE_SPAWNED:
+			var elite_type: int = kinds.get(e.a, 0)
+			Events.elite_spawned.emit(e.a, Ids.ENEMIES[elite_type], e.b)
 		_:
-			pass
+			if e.kind > SimEventKind.Id.RUN_FINISHED:
+				var _relayed: bool = _relay.relay(e)

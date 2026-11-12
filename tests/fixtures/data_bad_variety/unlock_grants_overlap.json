@@ -1,0 +1,16 @@
+{
+	"rule": "unlock grants are disjoint",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "unlocks.json",
+			"path": "unlocks[1].grants",
+			"set": [
+				"hornet_rack"
+			]
+		}
+	],
+	"expect": [
+		"unlocks.json: $.unlocks[1].grants: 'hornet_rack' is already granted by 'u_w_hornet'"
+	]
+}

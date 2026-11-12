@@ -1,0 +1,15 @@
+{
+	"rule": "minis need a swarm cap",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "run.json",
+			"path": "caps.swarm_cap",
+			"set": 0
+		}
+	],
+	"expect": [
+		"run.json: $.caps.swarm_cap: must be >= 1 when a mini enemy ('mote') exists",
+		"run.json: $.caps.swarm_cap: must be >= 1 when a mini enemy ('shard') exists"
+	]
+}

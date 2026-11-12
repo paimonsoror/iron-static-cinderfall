@@ -142,7 +142,7 @@ func test_each_view_is_one_node_with_one_mesh_instance() -> void:
 	var pair: Array = _bound(3)
 	var layer: ActorLayer = pair[1]
 	var total: int = 0
-	for k: int in Ids.ENEMIES.size():
+	for k: int in Ids.LEGACY_ENEMY_COUNT:
 		total += layer.enemy_pool().capacity(k)
 	assert_int(total).is_equal(108)
 	for c: Node in layer.get_children():

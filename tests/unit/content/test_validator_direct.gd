@@ -86,7 +86,7 @@ func test_flow_field_is_found_by_path() -> void:
 func test_content_autoload_reloads_the_shipped_data() -> void:
 	assert_bool(Content.reload()).is_true()
 	assert_int(Content.load_errors.size()).is_equal(0)
-	assert_int(Content.db.enemies.size()).is_equal(4)
+	assert_int(Content.db.enemies.size()).is_equal(Ids.ENEMIES.size())  # the shipped data is variety content
 	assert_int(Content.db.waves.size()).is_equal(5)
 
 

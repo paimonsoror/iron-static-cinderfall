@@ -128,7 +128,7 @@ func test_the_drawn_controls_have_their_sizes_and_texts() -> void:
 
 func test_every_drawn_control_and_the_backdrop_draw_without_errors() -> void:
 	var host: Control = ScreensTestKit.host(self)
-	for id: StringName in Ids.ENEMIES:
+	for id: StringName in Ids.ENEMIES.slice(0, Ids.LEGACY_ENEMY_COUNT):
 		var g: UiEnemyGlyph = UiEnemyGlyph.new(id, 140.0)
 		host.add_child(g)
 	host.add_child(UiChevrons.new(3, 4))

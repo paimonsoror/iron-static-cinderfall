@@ -1,0 +1,14 @@
+{
+	"rule": "kit 0 is the free standard kit",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "unlocks.json",
+			"path": "kits[0].cost",
+			"set": 10
+		}
+	],
+	"expect": [
+		"unlocks.json: $.kits: kit 0 must exist and cost 0 (the standard kit)"
+	]
+}

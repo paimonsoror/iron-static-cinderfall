@@ -1,0 +1,20 @@
+{
+	"rule": "kits reference unlocked-or-base items",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "unlocks.json",
+			"path": "kits[0].ops",
+			"set": [
+				{
+					"grant": "weapon",
+					"id": "blunderbuss",
+					"n": 1
+				}
+			]
+		}
+	],
+	"expect": [
+		"unlocks.json: $.kits[0].ops[0].id: unknown id 'blunderbuss' for grant 'weapon'"
+	]
+}

@@ -1,0 +1,16 @@
+{
+	"rule": "an op has exactly one form",
+	"stage": "loader",
+	"patches": [
+		{
+			"file": "directives.json",
+			"path": "directives[0].ops[0]",
+			"set": {
+				"stat": "lvl_damage"
+			}
+		}
+	],
+	"expect": [
+		"directives.json: $.directives[0].ops[0]: a stat op needs exactly one of add or mul"
+	]
+}

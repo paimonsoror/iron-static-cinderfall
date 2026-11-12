@@ -1,0 +1,17 @@
+{
+	"rule": "breach points are inside the arena",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "arena.json",
+			"path": "breach_points[1]",
+			"set": {
+				"x": 14.0,
+				"z": 2.5
+			}
+		}
+	],
+	"expect": [
+		"arena.json: $.breach_points[1]: (14.0, 2.5) is outside the bounds or inside an obstacle"
+	]
+}

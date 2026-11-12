@@ -1,0 +1,15 @@
+{
+	"rule": "rail lines cross no Warden",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "arena.json",
+			"path": "rail_lines[1].z",
+			"set": 7.5
+		}
+	],
+	"expect": [
+		"arena.json: $.rail_lines[1]: the lane crosses the Warden",
+		"arena.json: $.rail_lines[1]: the lane crosses turret pad 1"
+	]
+}

@@ -152,3 +152,192 @@ func boss_hp() -> float:
 
 func boss_max_hp() -> float:
 	return 0.0
+
+
+# ================================================================ variety milestone (VARIETY_SPEC 13.4; append only)
+
+## awaiting(): the intermission sub-step that waits for a choice. Mirrors PhaseState.Await (the UI may not name sim classes).
+const AWAIT_NONE: int = 0
+const AWAIT_SALVAGE: int = 1
+const AWAIT_DRAFT: int = 2
+const AWAIT_ROUTE: int = 3
+const AWAIT_BOSS_BRIEF: int = 4
+## weapon_slot()["state"]. Mirrors ArsenalSystem.ST_*.
+const SLOT_READY: int = 0
+const SLOT_RELOADING: int = 1
+const SLOT_VENTING: int = 2
+const SLOT_SWAPPING: int = 3
+const SLOT_CHARGING: int = 4
+const SLOT_EMPTY: int = 5
+## resolve_salvage() actions. Mirror SalvageSystem.ACTION_*: 0..2 = take the weapon in that slot.
+const SALVAGE_LEVEL_UP: int = 8
+const SALVAGE_SCRAP: int = 9
+
+
+# --- commands (each takes a fresh next_command_id(); a refusal arrives as Events.command_rejected) ---
+
+
+func pick_directive(command_id: int, slot: int) -> void:
+	pass
+
+
+func skip_draft(command_id: int) -> void:
+	pass
+
+
+func reroll_draft(command_id: int) -> void:
+	pass
+
+
+## Before picking: also keep the directive in `slot` for Scrap (once per draft).
+func buy_out(command_id: int, slot: int) -> void:
+	pass
+
+
+func patch_core(command_id: int) -> void:
+	pass
+
+
+func pick_route(command_id: int, option: int) -> void:
+	pass
+
+
+## `choice` = which weapon of the crate (0 unless a boss crate); `action` = 0..2 slot, SALVAGE_LEVEL_UP or SALVAGE_SCRAP.
+func resolve_salvage(command_id: int, choice: int, action: int) -> void:
+	pass
+
+
+func swap_weapon(command_id: int, slot: int) -> void:
+	pass
+
+
+## A HUD call button: an EventDef id (&"deadfall_strike", &"core_vent", &"freight_call").
+func call_event(command_id: int, event_id: StringName) -> void:
+	pass
+
+
+## The CONTINUE button of the boss briefing (and the breather skip): same as skip_intermission.
+func continue_run() -> void:
+	skip_intermission()
+
+
+# --- queries ---
+
+
+## AWAIT_*.
+func awaiting() -> int:
+	return AWAIT_NONE
+
+
+## 1-based act of the current wave.
+func act() -> int:
+	return 1
+
+
+func act_count() -> int:
+	return 1
+
+
+## Directive index per slot of the open draft (ContentSet.directives); -1 = slot already taken. Empty = no draft.
+func draft_offer() -> PackedInt32Array:
+	return PackedInt32Array()
+
+
+## Scrap for the next reroll; 0 while a free reroll is left.
+func draft_reroll_cost() -> int:
+	return 0
+
+
+func draft_buyout_cost() -> int:
+	return 0
+
+
+func patch_cost() -> int:
+	return 0
+
+
+func free_rerolls() -> int:
+	return 0
+
+
+func route_option_count() -> int:
+	return 0
+
+
+## { "pack": StringName, "name_key": String, "counts": { enemy id: int }, "total": int, "modifier": StringName (&"" =
+## none), "modifier_key": String, "elites": int, "hot": bool, "reward": StringName, "reward_key": String,
+## "reward_amount": int }. Empty for an unknown option.
+func route_option(i: int) -> Dictionary:
+	return {}
+
+
+## { "id": StringName, "name_key": String, "banner_key": String, "variant": StringName (&"" = none),
+## "attack_key": String, "answer_key": String }. Empty when the next wave is not a boss wave.
+func boss_brief() -> Dictionary:
+	return {}
+
+
+## { "weapons": [StringName], "tiers": [int], "level_up_slot": [int] (the carried slot a duplicate would level up, or
+## -1), "boss": bool, "scrap_value": int }. Empty when no crate is being resolved.
+func salvage_offer() -> Dictionary:
+	return {}
+
+
+func weapon_slot_count() -> int:
+	return 1
+
+
+## { "id": StringName, "level": int, "magazine": int, "size": int, "heat": int, "heat_cap": int (0 = a magazine weapon),
+## "state": SLOT_*, "ticks_left": int (of the reload, vent, swap or charge) }. The default describes the one legacy weapon.
+func weapon_slot(i: int) -> Dictionary:
+	if i != 0:
+		return {}
+	var reloading: int = reload_ticks_left()
+	return {
+		"id": weapon_id(), "level": 1, "magazine": magazine(), "size": magazine_size(), "heat": 0, "heat_cap": 0,
+		"state": SLOT_RELOADING if reloading > 0 else SLOT_READY, "ticks_left": reloading,
+	}
+
+
+func active_slot() -> int:
+	return 0
+
+
+## Charges of a player-triggered event (an EventDef id).
+func event_charges(id: StringName) -> int:
+	return 0
+
+
+## Reason.Id: OK when the event can be called right now.
+func call_block_reason(id: StringName) -> int:
+	return Reason.Id.WRONG_STATE
+
+
+## The events that are warning or running, oldest first: { "id": StringName, "phase": 0 warning | 1 running,
+## "ticks_left": int, "ticks_total": int, "harmful": bool, "x": float, "z": float }.
+func active_events() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	return out
+
+
+## Stacks held of a directive (a DirectiveDef id).
+func directive_stacks(id: StringName) -> int:
+	return 0
+
+
+## { tag (StringName): stacks held with that tag }.
+func build_tags() -> Dictionary:
+	return {}
+
+
+## 0-based phase of the living boss; 0 without one.
+func boss_phase() -> int:
+	return 0
+
+
+func boss_phase_count() -> int:
+	return 1
+
+
+func run_seed() -> int:
+	return 0

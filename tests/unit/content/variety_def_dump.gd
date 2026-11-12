@@ -31,6 +31,18 @@ const ARENA: PackedStringArray = [
 ]
 const REGION: PackedStringArray = ["id", "x0", "z0", "x1", "z1"]
 const OBSTACLE: PackedStringArray = ["id", "shape", "x", "z", "radius", "size_x", "size_z", "rot_deg", "visual"]
+## sha256 of every file of tests/fixtures/data_baseline at main 9705a77 (the fixture must stay byte-identical).
+const BASELINE_FILE_HASHES: Dictionary[String, String] = {
+	"arena.json": "d36f237e7a6e9abf815a728ad366ea36efc31dd58e9e2ef889baf5ba3c87c599",
+	"content_ext.json": "2a5a5bcb6f3918bc1aa055e3b1a33315318faf59af780dba7f3d1235c6ebf029",
+	"vertical_slice_balance.json": "f04927c5b68d7ab586c32824eee12860f8bde8608b0d9517aecbb6f75e69eee4",
+	"visual_tokens.json": "268416a7d8d5fc63f7ff8adf7c57e359fb8322c1aef580434ceee8d3ad966ed7",
+	"waves.json": "e5e9b7f9f948daacf57f99b8e6957c748150a443de2a0e879f5188828d94fb2e",
+	"strings/combat_en.json": "f66e1b75a57279bbc5c18bdd94255395e8802ded253152c7597d3fe41c1dccea",
+	"strings/content_en.json": "3610191d67ae6f875d8bf525624d439f7451f967d1852a1131b977378bdd1509",
+	"strings/lore_en.json": "b451cd8918943eee1867adae610914f47c1ab99ea4af2cd1d2d18347c384e622",
+	"strings/screens_en.json": "81e3b66082312874c6fa2eb7f61264e2d39180cea33200d8336438a6af6a1a50",
+}
 const TOKENS: PackedStringArray = [
 	"palette", "top_hud_fraction", "bottom_controls_fraction", "touch_target_min_dp", "text_contrast_target",
 	"down_angle_min_deg", "down_angle_max_deg",

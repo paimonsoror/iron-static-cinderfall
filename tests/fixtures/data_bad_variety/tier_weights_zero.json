@@ -1,0 +1,19 @@
+{
+	"rule": "weights not all zero (crate tiers)",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "run.json",
+			"path": "salvage.tier_weights[0]",
+			"set": [
+				0,
+				0,
+				0,
+				0
+			]
+		}
+	],
+	"expect": [
+		"run.json: $.salvage.tier_weights[0]: weights are all zero"
+	]
+}

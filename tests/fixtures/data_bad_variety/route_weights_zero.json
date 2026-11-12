@@ -1,0 +1,34 @@
+{
+	"rule": "weights not all zero (route rewards)",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "run.json",
+			"path": "route_rewards[0].weight_standard",
+			"set": 0
+		},
+		{
+			"file": "run.json",
+			"path": "route_rewards[1].weight_standard",
+			"set": 0
+		},
+		{
+			"file": "run.json",
+			"path": "route_rewards[2].weight_standard",
+			"set": 0
+		},
+		{
+			"file": "run.json",
+			"path": "route_rewards[3].weight_standard",
+			"set": 0
+		},
+		{
+			"file": "run.json",
+			"path": "route_rewards[4].weight_standard",
+			"set": 0
+		}
+	],
+	"expect": [
+		"run.json: $.route_rewards: weight_standard is zero for every reward"
+	]
+}

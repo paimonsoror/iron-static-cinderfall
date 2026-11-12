@@ -1,0 +1,124 @@
+{
+  "schema_version": 2,
+  "mission_id": "mission_001",
+  "mission_name": "Hold the Line",
+  "core_max_hp": 1000,
+  "target_duration_seconds": [
+    270,
+    360
+  ],
+  "sim_ticks_per_second": 60,
+  "simultaneous_enemy_cap": 50,
+  "intermission_seconds": 8,
+  "weapons": {
+    "pistol": {
+      "damage": 30,
+      "shots_per_second": 2,
+      "magazine": 12,
+      "reload_seconds": 1.25,
+      "range_m": 25
+    },
+    "smg": {
+      "damage": 15,
+      "shots_per_second": 6,
+      "magazine": 30,
+      "reload_seconds": 1.6,
+      "range_m": 25,
+      "unlock_scrap": 300
+    }
+  },
+  "enemies": {
+    "skitter": {
+      "hp": 45,
+      "speed_mps": 2.3,
+      "armor": 0,
+      "core_damage": 12,
+      "attack_period_s": 1.5,
+      "scrap": 20
+    },
+    "hollow_warden": {
+      "hp": 150,
+      "speed_mps": 1.1,
+      "armor": 8,
+      "core_damage": 30,
+      "attack_period_s": 2,
+      "scrap": 35
+    },
+    "rusher": {
+      "hp": 65,
+      "speed_mps": 3.6,
+      "armor": 2,
+      "core_damage": 28,
+      "attack_period_s": 1.2,
+      "scrap": 25
+    },
+    "siege_hulk": {
+      "hp": 2800,
+      "speed_mps": 0.65,
+      "armor": 12,
+      "core_damage": 90,
+      "attack_period_s": 2.5,
+      "scrap": 400
+    }
+  },
+  "upgrades": {
+    "damage": {
+      "base_cost": 175,
+      "growth": 1.7,
+      "max_level": 5,
+      "per_level": 0.2
+    },
+    "fire_rate": {
+      "base_cost": 150,
+      "growth": 1.6,
+      "max_level": 5,
+      "per_level": 0.15
+    },
+    "armor_piercing": {
+      "base_cost": 200,
+      "growth": 1.8,
+      "max_level": 5,
+      "per_level": 0.15
+    },
+    "auto_turret": {
+      "base_cost": 350,
+      "growth": 2,
+      "max_level": 2,
+      "turret_damage": 12,
+      "turret_sps": 3,
+      "turret_range_m": 17
+    }
+  },
+  "abilities": {
+    "emp": {
+      "normal_stun_s": 3,
+      "boss_stun_s": 1,
+      "cooldown_s": 35
+    },
+    "shield": {
+      "absorb_damage": 100,
+      "duration_s": 8,
+      "cooldown_s": 50
+    },
+    "overdrive": {
+      "fire_rate_multiplier": 2,
+      "duration_s": 6,
+      "cooldown_s": 60
+    }
+  },
+  "reward": {
+    "victory_base_data": 100,
+    "victory_bonus_core_hp_divisor": 20,
+    "defeat_data_per_completed_wave": 10
+  },
+  "targeting": {
+    "lock_seconds": 0.4,
+    "priorities": [
+      "attacking_core",
+      "shortest_eta",
+      "rusher",
+      "distance",
+      "stable_id"
+    ]
+  }
+}

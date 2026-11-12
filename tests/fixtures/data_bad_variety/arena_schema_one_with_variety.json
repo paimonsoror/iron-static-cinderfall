@@ -1,0 +1,14 @@
+{
+	"rule": "variety content needs arena.json schema 2",
+	"stage": "loader",
+	"patches": [
+		{
+			"file": "arena.json",
+			"path": "schema_version",
+			"set": 1
+		}
+	],
+	"expect": [
+		"arena.json: $.schema_version: expected 2, got 1"
+	]
+}

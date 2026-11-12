@@ -1,0 +1,14 @@
+{
+	"rule": "ops name real stats",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "directives.json",
+			"path": "directives[0].ops[0].stat",
+			"set": "lvl_dmg"
+		}
+	],
+	"expect": [
+		"directives.json: $.directives[0].ops[0].stat: unknown stat 'lvl_dmg'"
+	]
+}

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "note": "The index of a directive is its position in this list, forever: append only. The slice (VARIETY_SPEC 15.2) has 8 of the 60 directives of VARIETY_CONTENT 3; V4-C appends the other 52.",
+  "directives": [
+    { "id": "hot_loads", "category": "weapon", "rarity": "common", "max": 5, "tags": ["bullet"], "requires": {},
+      "ops": [ { "stat": "lvl_damage", "add": 1 } ], "pool": "base" },
+    { "id": "cyclic_tuning", "category": "weapon", "rarity": "common", "max": 5, "tags": ["bullet"], "requires": {},
+      "ops": [ { "stat": "lvl_fire_rate", "add": 1 } ], "pool": "base" },
+    { "id": "penetrator_cores", "category": "weapon", "rarity": "common", "max": 5, "tags": ["bullet", "gunline"], "requires": {},
+      "ops": [ { "stat": "lvl_armor_piercing", "add": 1 } ], "pool": "base" },
+    { "id": "turret_deploy", "category": "turret", "rarity": "common", "max": 2, "tags": ["gunline"], "requires": { "free_pad": 1 },
+      "ops": [ { "stat": "turrets", "add": 1 } ], "pool": "base" },
+    { "id": "reinforced_cage", "category": "core", "rarity": "common", "max": 3, "tags": ["fortress"], "requires": {},
+      "ops": [ { "stat": "core_max_add", "add": 150 }, { "grant": "core_repair", "n": 150 } ], "pool": "base" },
+    { "id": "emp_capacitor", "category": "ability", "rarity": "common", "max": 3, "tags": ["tempo", "arc"], "requires": {},
+      "ops": [ { "stat": "emp_cd_mul", "add": -0.15 } ], "pool": "base" },
+    { "id": "incendiary_tips", "category": "weapon", "rarity": "rare", "max": 3, "tags": ["blast", "bullet"], "requires": {},
+      "ops": [ { "stat": "burn_dps", "add": 8 } ], "hook": "on_warden_hit", "pool": "base" },
+    { "id": "glass_cannon", "category": "corrupted", "rarity": "corrupted", "max": 1, "tags": ["bullet", "rail"], "requires": {},
+      "ops": [ { "stat": "w_dmg_mul", "add": 0.8 }, { "stat": "core_max_mul", "add": -0.3 } ], "pool": "base" }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+	"rule": "boss pools have at least 1 entry per act with a boss wave",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "enemies.json",
+			"path": "bosses.siege_hulk.pool_act",
+			"set": 2
+		}
+	],
+	"expect": [
+		"enemies.json: $.bosses: no boss has pool_act 1 (needed by wave 5)"
+	]
+}

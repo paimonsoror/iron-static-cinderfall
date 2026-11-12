@@ -1,0 +1,18 @@
+{
+	"rule": "weights not all zero (draft rarities)",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "run.json",
+			"path": "acts[0].rarity_weights",
+			"set": [
+				0,
+				0,
+				0
+			]
+		}
+	],
+	"expect": [
+		"run.json: $.acts[0].rarity_weights: needs 3 weights that are not all zero"
+	]
+}

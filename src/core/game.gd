@@ -1,18 +1,11 @@
 extends Node
 ## `Game` autoload (ARCH 7.4): the application state machine, the screens, and the life of a run.
-##
-## Flow: BOOT -> MENU -> BRIEFING -> a run (PREPARING .. VICTORY or DEFEAT, mirrored from the sim) -> results ->
-## retry or menu. PAUSED exists only here: the sim is simply not stepped. A run is a RunController (RunHost), a
-## BattleView (World), a CombatHud (HudRoot) and GameFeedback; they are built by `_begin_run` and torn down by
-## `_teardown_run`, which leaves no node, no Events connection and no sim reference behind. The BattleView is built
-## once per visit to the battlefield and reused by retries (its pools are reset by `bind`); it is freed on the way to
-## the menu. The very first one is built while the boot screen shows (ARCH 8: ShaderWarmup draws every material variant
-## then, so the first shot of the first run does not hitch); it waits, hidden, in `_warm_view` and the first deploy
-## adopts it, so `battle_view` stays null outside a run.
-##
-## Debug arguments (ARCH 11): --seed, --autoplay[=none|greedy], --scenario=hold<N>, --quality, --debug-perf,
-## --debug-overlay[=all|flow,slots,stuck,spawns], --mute, --quit-after-run. --autoplay and --scenario skip the boot
-## screen and the menus and deploy at once.
+## Flow: BOOT -> MENU -> BRIEFING -> a run (PREPARING .. VICTORY or DEFEAT, mirrored from the sim) -> results -> retry or
+## menu. PAUSED exists only here (the sim is not stepped). `_begin_run` builds a run (RunController, BattleView, CombatHud,
+## GameFeedback) and `_teardown_run` leaves no node, Events connection or sim reference behind. The BattleView is built
+## once per battlefield visit and reused by retries; the first one is built during the boot screen (ShaderWarmup, ARCH 8)
+## and waits hidden in `_warm_view`. Debug arguments (ARCH 11, DebugArgs): --autoplay and --scenario=hold<N> skip the
+## menus and deploy at once. The variety entry points delegate to GameRunFlow (this file is at the line cap).
 
 const SCREEN_BOOT: String = "res://src/ui/screens/boot_screen.tscn"
 const SCREEN_MENU: String = "res://src/ui/screens/main_menu_screen.tscn"
@@ -133,10 +126,19 @@ func goto_briefing() -> void:
 	briefing.back_pressed.connect(goto_menu)
 
 
-## Deploys from the briefing. -1 = the fixed `--seed` if one was given, else a time-based seed.
-func start_run(run_seed: int = -1) -> void:
+## Deploys from the briefing. -1 = the fixed `--seed`, else a time-based seed. `kit_id`: a KitDef id; `daily`: Daily Run.
+func start_run(run_seed: int = -1, kit_id: StringName = &"", daily: bool = false) -> void:
 	if machine.current == GameState.Id.BRIEFING:
+		GameRunFlow.set_launch(kit_id, daily)
 		_begin_run(run_seed)
+
+
+func resume_run_from_disk() -> bool:
+	return GameRunFlow.resume_from_disk(self)
+
+
+func open_archive() -> bool:
+	return GameRunFlow.open_archive(self)
 
 
 ## Retry: from the pause overlay (restart) or the results screen.
@@ -208,6 +210,7 @@ func _begin_run(run_seed: int) -> void:
 		return
 	var seed_value: int = GameLaunch.pick_seed(run_seed, args)
 	var config: SimConfig = SimConfig.create(content, seed_value)
+	GameRunFlow.apply_launch(config, content)
 	run = RunController.new()
 	run.name = "RunController"
 	_layers.run_host.add_child(run)
@@ -361,9 +364,6 @@ func _refit_later() -> void:
 func _refit_camera() -> void:
 	if battle_view != null and is_inside_tree():
 		GameCameraFit.refit(battle_view, hud, get_viewport().get_visible_rect().size, content.tokens)
-
-
-# --- small helpers ---
 
 
 ## --autoplay and --scenario: BOOT -> MENU -> BRIEFING -> deploy, with no screens in between.
