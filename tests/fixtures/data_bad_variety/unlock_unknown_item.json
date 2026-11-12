@@ -1,0 +1,16 @@
+{
+	"rule": "every id referenced exists (unlock grants)",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "unlocks.json",
+			"path": "unlocks[0].grants",
+			"set": [
+				"plasma_rifle"
+			]
+		}
+	],
+	"expect": [
+		"unlocks.json: $.unlocks[0].grants: unknown item 'plasma_rifle' for branch armory"
+	]
+}

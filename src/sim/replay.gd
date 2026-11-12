@@ -17,6 +17,10 @@ static func run(config: SimConfig, log: CommandLog, max_ticks: int) -> SimWorld:
 		while next_entry < rows.size() and rows[next_entry].tick <= due:
 			world.submit(_copy(rows[next_entry]))
 			next_entry += 1
+		# A world that waits for a choice does not advance its tick: with no logged command left it would spin
+		# forever, so the replay stops there (resume relies on the same stop; VARIETY_SPEC 13.2).
+		if world.phase_state.awaiting != PhaseState.Await.NONE and world.command_queue.is_empty():
+			break
 		world.step()
 		world.events.drain()
 	return world

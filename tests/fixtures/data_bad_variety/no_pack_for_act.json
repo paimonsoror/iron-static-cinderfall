@@ -1,0 +1,27 @@
+{
+	"rule": "every wave has a pack available for its act",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "run.json",
+			"path": "packs[0].min_act",
+			"set": 2
+		},
+		{
+			"file": "run.json",
+			"path": "packs[1].min_act",
+			"set": 2
+		},
+		{
+			"file": "run.json",
+			"path": "packs[2].min_act",
+			"set": 2
+		}
+	],
+	"expect": [
+		"run.json: $.waves[0]: no pack is available in act 1",
+		"run.json: $.waves[1]: no pack is available in act 1",
+		"run.json: $.waves[2]: no pack is available in act 1",
+		"run.json: $.waves[3]: no pack is available in act 1"
+	]
+}

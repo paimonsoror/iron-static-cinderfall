@@ -1,0 +1,14 @@
+{
+	"rule": "rail lines cross no core",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "arena.json",
+			"path": "rail_lines[0].z",
+			"set": 5.5
+		}
+	],
+	"expect": [
+		"arena.json: $.rail_lines[0]: the lane crosses the core"
+	]
+}

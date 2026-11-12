@@ -1,0 +1,14 @@
+{
+	"rule": "rail lines cross no pad",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "arena.json",
+			"path": "rail_lines[0].z",
+			"set": -1.5
+		}
+	],
+	"expect": [
+		"arena.json: $.rail_lines[0]: the lane crosses turret pad 0"
+	]
+}

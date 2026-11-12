@@ -1,0 +1,15 @@
+{
+	"rule": "standoff points never overlap the attack slots",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "arena.json",
+			"path": "standoff.radii[0]",
+			"set": 8.0
+		}
+	],
+	"expect": [
+		"arena.json: $.standoff.radii[0]: must be > approach_radius (standoff points never overlap the attack slots)",
+		"arena.json: $.standoff.radii: no ring at 10.5 m (needed by 'spitter')"
+	]
+}

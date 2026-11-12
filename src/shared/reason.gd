@@ -1,6 +1,6 @@
 class_name Reason
 extends RefCounted
-## Command outcomes (ARCH 4).
+## Command outcomes (ARCH 4). Append only (VARIETY_SPEC 13.2): the first LEGACY_COUNT values are the original ones.
 
 enum Id {
 	OK,
@@ -13,6 +13,11 @@ enum Id {
 	ON_COOLDOWN,
 	ALREADY_ACTIVE,
 	PAUSED,
+	NOT_AWAITING,
+	INVALID_CHOICE,
+	NO_CHARGES,
+	LOCKED_BY_EVENT,
+	SHOP_CLOSED,
 }
 
 const KEYS: PackedStringArray = [
@@ -26,7 +31,15 @@ const KEYS: PackedStringArray = [
 	"reason.on_cooldown",
 	"reason.already_active",
 	"reason.paused",
+	"reason.not_awaiting",
+	"reason.invalid_choice",
+	"reason.no_charges",
+	"reason.locked_by_event",
+	"reason.shop_closed",
 ]
+
+## The reasons that existed before the variety milestone (their strings are in every string table, the legacy one too).
+const LEGACY_COUNT := 10
 
 
 ## String-table key for a reason, e.g. "reason.insufficient_scrap".

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "note": "The index of an event is its position in this list (the argument of the CALL_EVENT command): append only. The slice (VARIETY_SPEC 15.2) has the player-triggered Deadfall Strike only; V4-V appends the other nine events of VARIETY_CONTENT 6 and the fuel drums.",
+  "events": [
+    { "id": "deadfall_strike", "who": "player", "name_key": "event.deadfall_strike.name", "warn_s": 2.0, "duration_s": 0,
+      "weights": [0, 0, 0], "boss_safe": true, "harmful": false,
+      "params": { "damage": 450, "radius_m": 4.0, "edge_frac": 0.5, "boss_mult": 0.5, "start_charges": 1, "charges_per_act": 1, "charge_cap": 3 } }
+  ],
+  "hazards": {
+    "burn": { "seconds": 3 }
+  },
+  "rules": { "window_min": 0.25, "window_max": 0.70, "mercy_core_frac": 0.15 }
+}

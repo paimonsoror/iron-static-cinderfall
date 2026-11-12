@@ -1,0 +1,14 @@
+{
+	"rule": "pack shares sum to 1",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "run.json",
+			"path": "packs[0].groups[0].share",
+			"set": 0.5
+		}
+	],
+	"expect": [
+		"run.json: $.packs[0].groups: shares must sum to 1 (got 0.8)"
+	]
+}

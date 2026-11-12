@@ -1,0 +1,14 @@
+{
+	"rule": "ops name real flags",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "run.json",
+			"path": "modifiers[0].ops[0].flag",
+			"set": "explode"
+		}
+	],
+	"expect": [
+		"run.json: $.modifiers[0].ops[0].flag: unknown flag 'explode'"
+	]
+}

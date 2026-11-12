@@ -85,3 +85,9 @@ static func _finish_run(world: SimWorld) -> void:
 	world.phase_state.run_finished = true
 	AbilitySystem.end_all(world)
 	world.events.push(SimEventKind.Id.RUN_FINISHED, world.result(), world.waves_completed, world.core_hp)
+
+
+## PICK_ROUTE (VARIETY_SPEC 2.4): records the option in RunPlan.chosen and leaves the ROUTE await. Returns a Reason.Id.
+# TODO(V2-A): the stub refuses, because nothing awaits a route yet.
+static func pick_route(_world: SimWorld, _command_id: int, _option: int) -> int:
+	return Reason.Id.NOT_AWAITING

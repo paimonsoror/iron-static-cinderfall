@@ -20,6 +20,12 @@ var debug_overlay: String = ""  ## "", "all" or a comma list of flow, slots, stu
 var high_contrast: bool = false
 var reduced_flash: bool = false
 var hud_step: int = -1  ## --hud-step=<n>: pin the HUD sandbox to one state instead of cycling
+## Variety milestone (VARIETY_SPEC 13.8). --state=draft|route|boss_brief|salvage|combat2 pins the HUD sandbox to a
+## FakeRunPresets state; --kit=<id>, --unlock=all|none|<id,id>, --daily are parsed here and wired into the launch by V2-D.
+var hud_state: String = ""
+var kit: String = ""
+var unlock: String = ""
+var daily: bool = false
 ## Look-dev sandbox (W3-C): --look=current|stylised|stylised_plus (-1 = not forced), --zoom=<factor> (a top-down close-up of
 ## the Warden), --view=game|top|front|side (camera), --solo (hide the enemies), --reload-pose (hold the reload pose),
 ## --measure=<seconds> (quit after that long; the perf line is logged every 5 s with --debug-perf).
@@ -191,6 +197,14 @@ static func parse(args: PackedStringArray) -> DebugArgs:
 			"--measure":
 				if value.is_valid_float():
 					a.measure_s = maxf(value.to_float(), 0.0)
+			"--state":
+				a.hud_state = value.to_lower()
+			"--kit":
+				a.kit = value
+			"--unlock":
+				a.unlock = value
+			"--daily":
+				a.daily = true
 			"--hud-step":
 				if value.is_valid_int():
 					a.hud_step = maxi(0, value.to_int())

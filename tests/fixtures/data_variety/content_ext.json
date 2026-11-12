@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "mission": { "prepare_seconds": 3.0, "eta_bucket_seconds": 0.5, "max_spawns_per_tick": 4,
+               "stuck_seconds": 4.0, "stuck_min_progress_m": 0.5 },
+  "enemies": {
+    "skitter":       { "radius": 0.35, "mass": 0.5,  "separation_weight": 1.0, "weave_amp_m": 0.5, "weave_period_s": 1.2,
+                       "direct_seek": false, "is_boss": false, "priority_class": false, "slot_span": 1, "visual_height_m": 0.9 },
+    "hollow_warden": { "radius": 0.55, "mass": 3.0,  "separation_weight": 0.4, "weave_amp_m": 0.0, "weave_period_s": 1.0,
+                       "direct_seek": false, "is_boss": false, "priority_class": false, "slot_span": 1, "visual_height_m": 1.7 },
+    "rusher":        { "radius": 0.40, "mass": 1.0,  "separation_weight": 0.3, "weave_amp_m": 0.0, "weave_period_s": 1.0,
+                       "direct_seek": true,  "is_boss": false, "priority_class": true,  "slot_span": 1, "visual_height_m": 1.4 },
+    "siege_hulk":    { "radius": 1.60, "mass": 50.0, "separation_weight": 0.0, "weave_amp_m": 0.0, "weave_period_s": 1.0,
+                       "direct_seek": false, "is_boss": true,  "priority_class": false, "slot_span": 3, "visual_height_m": 3.4 }
+  },
+  "upgrades": {
+    "damage": { "kind": "stat", "min_wave": 1 }, "fire_rate": { "kind": "stat", "min_wave": 1 },
+    "armor_piercing": { "kind": "stat", "min_wave": 1, "cap": 0.90 },
+    "auto_turret": { "kind": "turret", "min_wave": 1, "lock_seconds": 0.4 },
+    "smg_unlock": { "kind": "weapon_unlock", "weapon": "smg", "min_wave": 2 }
+  },
+  "abilities": {
+    "emp": { "cooldown_starts": "on_activate", "boss_immunity_s": 5.0 },
+    "shield": { "cooldown_starts": "on_end" },
+    "overdrive": { "cooldown_starts": "on_end" }
+  }
+}

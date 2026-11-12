@@ -1,0 +1,113 @@
+{
+  "schema_version": 2,
+  "note": "Tuned in W2-D with deterministic balance runs toward GDD 8.4; every change and its before/after numbers are in docs/reports/BALANCE_REPORT.md. The untouched baseline stays in docs/handoff/03_DATA/. Cap 50 living enemies; queue excess rather than drop.",
+  "waves": [
+    {
+      "index": 1,
+      "peak_target": 10,
+      "groups": [
+        {
+          "enemy": "skitter",
+          "count": 28,
+          "start_s": 0.5,
+          "interval_s": 0.75,
+          "region": "right"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "peak_target": 18,
+      "groups": [
+        {
+          "enemy": "skitter",
+          "count": 30,
+          "start_s": 0,
+          "interval_s": 0.52,
+          "region": "right"
+        },
+        {
+          "enemy": "hollow_warden",
+          "count": 6,
+          "start_s": 21.5,
+          "interval_s": 5.08,
+          "region": "upper_right"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "peak_target": 28,
+      "groups": [
+        {
+          "enemy": "skitter",
+          "count": 71,
+          "start_s": 0,
+          "interval_s": 0.3,
+          "region": "right"
+        },
+        {
+          "enemy": "hollow_warden",
+          "count": 24,
+          "start_s": 8.5,
+          "interval_s": 1.8,
+          "region": "upper_right"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "peak_target": 40,
+      "groups": [
+        {
+          "enemy": "skitter",
+          "count": 64,
+          "start_s": 0,
+          "interval_s": 0.12,
+          "region": "right"
+        },
+        {
+          "enemy": "rusher",
+          "count": 32,
+          "start_s": 6,
+          "interval_s": 1.7,
+          "region": "upper_right"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "peak_target": 50,
+      "groups": [
+        {
+          "enemy": "skitter",
+          "count": 90,
+          "start_s": 0,
+          "interval_s": 0.1,
+          "region": "right"
+        },
+        {
+          "enemy": "rusher",
+          "count": 24,
+          "start_s": 8,
+          "interval_s": 1.8,
+          "region": "upper_right"
+        },
+        {
+          "enemy": "hollow_warden",
+          "count": 14,
+          "start_s": 5,
+          "interval_s": 2.6,
+          "region": "right"
+        },
+        {
+          "enemy": "siege_hulk",
+          "count": 1,
+          "start_s": 45,
+          "interval_s": 1,
+          "region": "upper_right"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+	"rule": "drop points are free cells",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "arena.json",
+			"path": "drop_points[0]",
+			"set": {
+				"x": 4.5,
+				"z": 0.5
+			}
+		}
+	],
+	"expect": [
+		"arena.json: $.drop_points[0]: (4.5, 0.5) is outside the bounds or inside an obstacle"
+	]
+}

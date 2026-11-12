@@ -176,7 +176,8 @@ func _fill_kills(summary: RunSummary, content: ContentSet) -> void:
 		child.queue_free()
 	kill_rows.clear()
 	var total: int = 0
-	for i: int in content.enemies.size():
+	# TODO(V4-U): rows for the variety types. Until then the kill list keeps the four legacy rows.
+	for i: int in mini(content.enemies.size(), Ids.LEGACY_ENEMY_COUNT):
 		var enemy: EnemyDef = content.enemies[i]
 		var n: int = summary.kills_by_type[i] if i < summary.kills_by_type.size() else 0
 		total += n

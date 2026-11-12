@@ -1,0 +1,14 @@
+{
+	"rule": "every id referenced exists (directive pool)",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "directives.json",
+			"path": "directives[0].pool",
+			"set": "u_p_nope"
+		}
+	],
+	"expect": [
+		"directives.json: $.directives[0].pool: unknown unlock id 'u_p_nope'"
+	]
+}

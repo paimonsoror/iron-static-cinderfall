@@ -18,7 +18,7 @@ func _has_material(mesh: Mesh, mat_id: StringName) -> bool:
 
 
 func test_enemy_meshes_fit_their_triangle_budgets() -> void:
-	for enemy_id: StringName in Ids.ENEMIES:
+	for enemy_id: StringName in Ids.ENEMIES.slice(0, Ids.LEGACY_ENEMY_COUNT):
 		var mesh: ArrayMesh = ActorMeshes.enemy(enemy_id)
 		var budget: int = ActorMeshes.TRI_BUDGET[enemy_id]
 		assert_int(_tris(mesh)).is_greater(40)
@@ -40,14 +40,14 @@ func test_every_actor_mesh_has_at_most_three_surfaces() -> void:
 		ActorMeshes.warden_legs(), ActorMeshes.warden_torso(), ActorMeshes.pistol(), ActorMeshes.smg(),
 		ActorMeshes.turret_base(), ActorMeshes.turret_head(), ActorMeshes.turret(),
 	]
-	for enemy_id: StringName in Ids.ENEMIES:
+	for enemy_id: StringName in Ids.ENEMIES.slice(0, Ids.LEGACY_ENEMY_COUNT):
 		meshes.append(ActorMeshes.enemy(enemy_id))
 	for m: ArrayMesh in meshes:
 		assert_int(m.get_surface_count()).is_between(1, ActorMeshes.MAX_SURFACES)
 
 
 func test_every_enemy_has_one_emissive_red_optic_surface_and_no_cyan() -> void:
-	for enemy_id: StringName in Ids.ENEMIES:
+	for enemy_id: StringName in Ids.ENEMIES.slice(0, Ids.LEGACY_ENEMY_COUNT):
 		var mesh: ArrayMesh = ActorMeshes.enemy(enemy_id)
 		assert_bool(_has_material(mesh, &"emit_red")).is_true()
 		assert_bool(_has_material(mesh, &"emit_cyan")).is_false()

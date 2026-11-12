@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "note": "The slice has no Archive yet (VARIETY_SPEC 15.2: 'Meta: none yet'). A weapon, directive or kit that no unlock grants is base content. The five armory unlocks below keep the weapons that are not implemented in the slice out of the crate pool; arc_projector has no unlock here on purpose, so the guaranteed crate of the slice can hold it (V4-M adds u_w_arc and the other 18 unlocks of VARIETY_CONTENT 12). The index of a kit is its position in `kits` (SimConfig.kit_index); kit 0 is the standard kit.",
+  "unlocks": [
+    { "id": "u_w_hornet", "branch": "armory", "tier": 1, "cost": 80, "grants": ["hornet_rack"] },
+    { "id": "u_w_lmg", "branch": "armory", "tier": 1, "cost": 120, "grants": ["lmg"] },
+    { "id": "u_w_mortar", "branch": "armory", "tier": 2, "cost": 160, "grants": ["slag_mortar"] },
+    { "id": "u_w_torch", "branch": "armory", "tier": 2, "cost": 220, "grants": ["cutting_torch"] },
+    { "id": "u_w_rail", "branch": "armory", "tier": 3, "cost": 300, "grants": ["rail_lance"] }
+  ],
+  "kits": [
+    { "id": "k_standard", "name_key": "kit.standard.name", "cost": 0, "ops": [] }
+  ],
+  "tier_gates": [3, 8],
+  "milestones": [
+    { "id": "ms_first_victory", "data": 200 }
+  ]
+}

@@ -11,7 +11,17 @@ extends RefCounted
 ## every enemy it saw spawn (enemy id -> type index) until it dies.
 
 ## Kinds this class deliberately does not turn into a signal.
-const NO_SIGNAL: Array[int] = [SimEventKind.Id.ENEMY_REACHED_SLOT, SimEventKind.Id.SPAWN_QUEUED]
+## The variety kinds in this list are read through RunApi queries or arrive as another signal (a refused SALVAGE as
+## COMMAND_REJECTED, a split as the spawns of the shards, heals as the hp the view reads from the sim).
+const NO_SIGNAL: Array[int] = [
+	SimEventKind.Id.ENEMY_REACHED_SLOT, SimEventKind.Id.SPAWN_QUEUED, SimEventKind.Id.BOSS_BRIEFED,
+	SimEventKind.Id.SALVAGE_RESOLVED, SimEventKind.Id.ENEMY_SPLIT, SimEventKind.Id.ENEMY_HEALED, SimEventKind.Id.CORE_HEALED,
+]
+const CM: float = 0.01  ## sim events carry radii in centimeters, the signals in meters
+
+## Optional: the world whose events are relayed. With it `draft_offered` carries the offered ids (DraftState.offer);
+## without it the list is empty and listeners read RunApi.draft_offer().
+var world: SimWorld
 
 var _content: ContentSet
 var _types: Dictionary[int, int] = {}  ## enemy id -> type index
@@ -77,8 +87,88 @@ func relay(e: SimEvent) -> bool:
 		SimEventKind.Id.ENEMY_STUCK:
 			Events.enemy_stuck.emit(e.a)
 		_:
+			return _relay_variety(e)
+	return true
+
+
+## The kinds of the variety milestone (VARIETY_SPEC 13.2 to 13.4).
+func _relay_variety(e: SimEvent) -> bool:
+	match e.kind:
+		SimEventKind.Id.ACT_STARTED:
+			Events.act_started.emit(e.a)
+		SimEventKind.Id.DRAFT_OFFERED, SimEventKind.Id.DRAFT_REROLLED:
+			Events.draft_offered.emit(_offer_ids())
+		SimEventKind.Id.DIRECTIVE_PICKED:
+			Events.directive_picked.emit(_directive(e.a), e.b)
+		SimEventKind.Id.ROUTE_OFFERED:
+			Events.route_offered.emit()
+		SimEventKind.Id.ROUTE_PICKED:
+			Events.route_picked.emit(e.b)
+		SimEventKind.Id.AWAIT_CHANGED:
+			Events.await_changed.emit(e.a)
+			if e.a == PhaseState.Await.SALVAGE:
+				Events.salvage_offered.emit()
+		SimEventKind.Id.CRATE_DROPPED:
+			Events.crate_dropped.emit(e.f, e.g)
+		SimEventKind.Id.CRATE_SECURED:
+			Events.crate_secured.emit()
+		SimEventKind.Id.CRATE_LOST:
+			Events.crate_lost.emit()
+		SimEventKind.Id.WEAPON_SWAPPED:
+			Events.weapon_swapped.emit(e.a, _weapon(e.b))
+		SimEventKind.Id.WEAPON_VENTED:
+			Events.weapon_vented.emit(e.a)
+		SimEventKind.Id.AREA_BLAST:
+			Events.area_blast.emit(e.a, e.f, e.g, float(e.b) * CM)
+		SimEventKind.Id.CHAIN_ARC:
+			Events.chain_arc.emit(e.a, e.b)
+		SimEventKind.Id.DELAYED_HIT_LAUNCHED:
+			Events.delayed_hit.emit(e.a, e.f, e.g, e.b)
+		SimEventKind.Id.POOL_STARTED:
+			Events.pool_changed.emit(e.a, e.f, e.g, float(e.b) * CM, true)
+		SimEventKind.Id.POOL_ENDED:
+			Events.pool_changed.emit(e.a, e.f, e.g, 0.0, false)
+		SimEventKind.Id.ELITE_SPAWNED:
+			var type_index: int = _types.get(e.a, -1)
+			Events.elite_spawned.emit(e.a, _enemy(type_index), e.b)
+		SimEventKind.Id.WARD_CHANGED:
+			Events.ward_changed.emit(e.a, clampf(e.f / e.g, 0.0, 1.0) if e.g > 0.0 else 0.0)
+		SimEventKind.Id.WARD_BROKEN:
+			Events.ward_changed.emit(e.a, 0.0)
+		SimEventKind.Id.EVENT_WARNED:
+			Events.event_warned.emit(_event(e.a), e.b, e.f, e.g)
+		SimEventKind.Id.EVENT_STARTED:
+			Events.event_started.emit(_event(e.a))
+		SimEventKind.Id.EVENT_ENDED, SimEventKind.Id.EVENT_CANCELLED:
+			Events.event_ended.emit(_event(e.a))
+		SimEventKind.Id.BOSS_TELEGRAPH:
+			Events.boss_telegraph.emit(e.a, e.b)
+		SimEventKind.Id.BOSS_PHASE:
+			Events.boss_phase.emit(e.a)
+		SimEventKind.Id.CHARGES_CHANGED:
+			Events.charges_changed.emit(_event(e.a), e.b)
+		SimEventKind.Id.COMMAND_REJECTED:
+			Events.command_rejected.emit(e.a, e.b)
+		_:
 			return false
 	return true
+
+
+## The directive ids of the open draft, slot by slot (&"" for a slot that was taken); empty without a bound world.
+func _offer_ids() -> Array[StringName]:
+	var ids: Array[StringName] = []
+	if world != null:
+		for index: int in world.draft.offer:
+			ids.append(_directive(index))
+	return ids
+
+
+func _directive(index: int) -> StringName:
+	return _content.directives[index].id if index >= 0 and index < _content.directives.size() else &""
+
+
+func _event(index: int) -> StringName:
+	return _content.events[index].id if index >= 0 and index < _content.events.size() else &""
 
 
 ## enemy_killed, then enemy_died_at (position and Scrap for the effects).

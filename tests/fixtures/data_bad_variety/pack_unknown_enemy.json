@@ -1,0 +1,14 @@
+{
+	"rule": "every id referenced exists (pack enemy)",
+	"stage": "loader",
+	"patches": [
+		{
+			"file": "run.json",
+			"path": "packs[0].groups[0].enemy",
+			"set": "gremlin"
+		}
+	],
+	"expect": [
+		"run.json: $.packs[0].groups[0].enemy: unknown enemy id 'gremlin'"
+	]
+}

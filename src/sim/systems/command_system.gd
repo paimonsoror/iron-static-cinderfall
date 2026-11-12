@@ -39,7 +39,34 @@ static func _apply(world: SimWorld, cmd: SimCommand, bought_this_tick: Dictionar
 		SimCommand.Kind.SKIP_INTERMISSION:
 			PhaseSystem.skip_intermission(world)
 		_:
-			pass
+			_apply_variety(world, cmd)
+
+
+## The commands of the variety milestone (VARIETY_SPEC 13.2). Each goes to the system that owns it and returns a
+## Reason.Id; a refusal is answered here, once, with COMMAND_REJECTED(command id, reason).
+static func _apply_variety(world: SimWorld, cmd: SimCommand) -> void:
+	var reason: int = Reason.Id.UNKNOWN_ID
+	match cmd.kind:
+		SimCommand.Kind.PICK_DIRECTIVE:
+			reason = DraftSystem.pick(world, cmd.command_id, cmd.arg)
+		SimCommand.Kind.SKIP_DRAFT:
+			reason = DraftSystem.skip(world, cmd.command_id)
+		SimCommand.Kind.REROLL:
+			reason = DraftSystem.reroll(world, cmd.command_id)
+		SimCommand.Kind.BUY_OUT:
+			reason = DraftSystem.buy_out(world, cmd.command_id, cmd.arg)
+		SimCommand.Kind.PATCH_CORE:
+			reason = DraftSystem.patch_core(world, cmd.command_id)
+		SimCommand.Kind.PICK_ROUTE:
+			reason = PhaseSystem.pick_route(world, cmd.command_id, cmd.arg)
+		SimCommand.Kind.SALVAGE:
+			reason = SalvageSystem.resolve(world, cmd.command_id, cmd.arg)
+		SimCommand.Kind.SWAP_WEAPON:
+			reason = ArsenalSystem.swap(world, cmd.command_id, cmd.arg)
+		SimCommand.Kind.CALL_EVENT:
+			reason = EventSystem.call_event(world, cmd.command_id, cmd.arg)
+	if reason != Reason.Id.OK:
+		world.events.push(SimEventKind.Id.COMMAND_REJECTED, cmd.command_id, reason)
 
 
 ## The refusal for a repeated id or a second purchase of one upgrade in one tick. Nothing else changes.
@@ -49,5 +76,7 @@ static func _answer_duplicate(world: SimWorld, cmd: SimCommand) -> void:
 			world.events.push(SimEventKind.Id.PURCHASE_RESOLVED, cmd.command_id, Reason.Id.DUPLICATE_COMMAND, cmd.arg)
 		SimCommand.Kind.ABILITY:
 			world.events.push(SimEventKind.Id.ABILITY_REJECTED, cmd.arg, Reason.Id.DUPLICATE_COMMAND, cmd.command_id)
-		_:
+		SimCommand.Kind.SKIP_INTERMISSION:
 			pass
+		_:
+			world.events.push(SimEventKind.Id.COMMAND_REJECTED, cmd.command_id, Reason.Id.DUPLICATE_COMMAND)

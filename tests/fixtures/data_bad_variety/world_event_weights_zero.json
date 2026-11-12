@@ -1,0 +1,14 @@
+{
+	"rule": "weights not all zero (world events)",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "events.json",
+			"path": "events[0].who",
+			"set": "world"
+		}
+	],
+	"expect": [
+		"events.json: $.events[0].weights: a world event needs a weight above zero in at least one act"
+	]
+}

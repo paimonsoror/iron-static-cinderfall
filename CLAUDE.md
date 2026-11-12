@@ -151,3 +151,39 @@ Also: the sim is pure `RefCounted`; one writer per sim field (ARCH 6.6); numbers
   `MultiMeshInstance3D`. Fade or dim with material alpha instead (shared, pre-dimmed materials for pooled effects).
 - `SpawnSystem.begin_wave(world, n)` takes the 1-based wave number (the same value as `world.wave` and
   `WAVE_STARTED.a`); content wave `n` is `content.waves[n - 1]`.
+
+## Variety milestone: what the scaffold (V1-S) left for you
+
+Source of truth: `docs/design/VARIETY_SPEC.md` (contracts: section 13; tasks and owned paths: section 15) and
+`docs/design/VARIETY_CONTENT.md` (numbers).
+
+- **Two contents.** `TestContent.baseline()` is the legacy 5-wave content (4 enemies, 2 weapons, the shop, `run == null`,
+  no plan): every older test keeps using it and `tests/fixtures/data_baseline/` stays byte-identical.
+  `TestContent.variety()` / `variety_world(seed)` read `tests/fixtures/data_variety/` (a frozen copy of the slice data):
+  every variety test uses it. `ContentLoader.build` takes the six variety files as its 7th parameter (file name to parsed
+  JSON); empty = legacy. `content.is_variety()` tells them apart. `res://data/` is variety content.
+- **Shared files are frozen again** (VARIETY_SPEC 15.4): `src/shared/**`, `src/content/defs/**`, the loaders and validators
+  in `src/content/`, `sim_world.gd`, `sim_command.gd`, `sim_event_kind.gd`, `sim_config.gd`, `run_stats.gd`,
+  `run_summary.gd`, `snap_util.gd`, `event_bus.gd`, `run_api.gd`, `game_event_relay.gd`, `fake_run_api.gd`,
+  `fake_variety_api.gd`, `test_contracts.gd`, `test_content.gd`. Need a change there? Report it ("needs owner").
+- **Ids are append only.** `Ids.ENEMIES` has 18 entries and `Ids.WEAPONS` 10; the legacy content uses the first
+  `Ids.LEGACY_ENEMY_COUNT` / `LEGACY_WEAPON_COUNT`. Never loop over `Ids.ENEMIES` to index something sized for the
+  legacy four. Directive, event, kit and affix indices are positions in their data file (append only too).
+- **Stubs.** Every new system, fire kind, event, boss, hook and bot policy file exists with its final signature and a
+  `# TODO(<task id>)`; fill bodies in the files you own. The call points between systems are fixed: `SimWorld.step`
+  calls `EventSystem`, `StatusSystem`, `HazardSystem`, `BossSystem`, `SalvageSystem` on every tick of a live run (each
+  gates on the phase itself); `spawn_enemy` asks `EliteSystem.spawn_hp` and `apply`; `kill_enemy` asks
+  `DeathHooks.scrap_for` and `on_killed`; `CommandSystem` routes the nine new commands and answers a refusal once with
+  `COMMAND_REJECTED` (a system returns a `Reason.Id`, it does not push the refusal itself).
+- **State classes** list their fields in `FIELDS`; `SnapUtil` hashes, saves and loads by that list. A new field goes in
+  the list or the test `test_variety_state.gd` fails. `ModState` has one float per `OpDef.STATS` name and one flag per
+  `OpDef.FLAGS` name; a new stat is a change to `OpDef` (a shared file).
+- **Awaiting.** While `world.phase_state.awaiting != PhaseState.Await.NONE` a `step()` with an empty queue does nothing
+  and the tick does not advance. The UI reads it as `RunApi.awaiting()` (`RunApi.AWAIT_*`).
+- **RNG.** Stream names are exactly those of VARIETY_SPEC 9.2. Building a world draws from no stream (a test checks it).
+- **Until V2-A lands** `RunPlanSystem.build` returns the legacy waves as a one-option plan, so the game still plays the
+  tuned 5 waves on variety content; `mission.shop_enabled` is false in the data but nothing reads it before V2-B.
+- **Sandboxes.** `hud_sandbox.tscn --state=draft|route|boss_brief|salvage|combat2` (FakeRunPresets; the overlays are
+  `src/ui/run/*_overlay.tscn` with `setup(api, content)`), `view_sandbox.tscn --scenario=chain|hold<N>+<M>` (PuppetChaos).
+  The puppet puts minis and bursters into the store only when `ActorLayer.supports_enemy_type(type_index)` exists and
+  answers true; until then the effect events fire on legacy bodies.

@@ -69,7 +69,7 @@ func test_the_results_screen_gets_the_summary_and_the_grant_flag() -> void:
 	assert_int(summary.waves_completed).is_equal(_h.content.waves.size())
 	assert_str(summary.run_id).is_equal(_h.rc().run_id)
 	assert_int(summary.run_seed).is_equal(3)
-	assert_int(summary.kills_by_type.size()).is_equal(Ids.ENEMIES.size())
+	assert_int(summary.kills_by_type.size()).is_equal(Ids.LEGACY_ENEMY_COUNT)
 
 
 func test_the_run_log_shows_no_purchase_and_no_ability() -> void:

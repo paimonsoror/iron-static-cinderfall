@@ -100,7 +100,7 @@ func _fill_objectives(content: ContentSet) -> void:
 		Strings.tf("briefing.obj.core", [UiKit.group(roundi(content.mission.core_max_hp))]),
 	]
 	for enemy: EnemyDef in content.enemies:
-		if enemy.is_boss:
+		if enemy.is_boss and enemy.index < Ids.LEGACY_ENEMY_COUNT:  # TODO(V4-U): the boss of the run plan
 			lines.append(Strings.tf("briefing.obj.boss", [Strings.t(enemy.name_key), content.waves.size()]))
 	for line: String in lines:
 		var row: HBoxContainer = HBoxContainer.new()
@@ -120,7 +120,8 @@ func _fill_objectives(content: ContentSet) -> void:
 func _fill_threats(content: ContentSet) -> void:
 	_clear(_threats_col)
 	threat_rows.clear()
-	var ordered: Array[EnemyDef] = content.enemies.duplicate()
+	# TODO(V4-U): the threats of the run plan. Until then the briefing keeps the four legacy rows.
+	var ordered: Array[EnemyDef] = content.enemies.slice(0, Ids.LEGACY_ENEMY_COUNT)
 	ordered.sort_custom(func(a: EnemyDef, b: EnemyDef) -> bool: return a.hp < b.hp)
 	for i: int in ordered.size():
 		var row: BriefingThreatRow = BriefingThreatRow.new(ordered[i], i + 1, ordered.size())

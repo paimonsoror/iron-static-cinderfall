@@ -10,9 +10,18 @@ extends Control
 ## `--hud-step=<n>` pins the sandbox to state n (all earlier changes applied) so a capture shows exactly that state;
 ## `--high-contrast` builds the high contrast theme. While cycling, cooldowns, active timers and the reload count down
 ## live (60 per second); a pinned state stays exactly as applied.
+## `--state=draft|route|boss_brief|salvage|combat2` (VARIETY_SPEC 13.8) pins the sandbox to a FakeRunPresets state: the
+## variety queries of the FakeRunApi are filled, the matching signals are emitted and, for the four intermission
+## states, the overlay scene of src/ui/run/ is shown above the HUD.
 
 const STEP_SECONDS: float = 2.5
 const STEP_COUNT: int = 6
+const OVERLAY_SCENES: Dictionary[String, String] = {
+	"draft": "res://src/ui/run/draft_overlay.tscn",
+	"route": "res://src/ui/run/route_overlay.tscn",
+	"boss_brief": "res://src/ui/run/boss_brief_overlay.tscn",
+	"salvage": "res://src/ui/run/salvage_overlay.tscn",
+}
 
 var _api: FakeRunApi = FakeRunApi.new()
 var _hud: CombatHud
@@ -20,6 +29,7 @@ var _t: float = 0.0
 var _step: int = 0
 var _pinned: bool = false
 var _tick_acc: float = 0.0
+var _overlay: Control  ## the intermission overlay of the current --state, or null
 
 
 func _ready() -> void:
@@ -30,7 +40,10 @@ func _ready() -> void:
 	_hud = packed.instantiate() as CombatHud
 	add_child(_hud)
 	_hud.setup(_api, Content.db, null)
-	if args.hud_step >= 0:
+	if args.hud_state != "":
+		apply_step(0)
+		var _shown: bool = show_state(args.hud_state)
+	elif args.hud_step >= 0:
 		_pinned = true
 		_step = mini(args.hud_step, STEP_COUNT - 1)
 		for n: int in _step + 1:
@@ -62,6 +75,28 @@ func hud() -> CombatHud:
 
 func api() -> FakeRunApi:
 	return _api
+
+
+## The intermission overlay shown by `show_state`, or null.
+func overlay() -> Control:
+	return _overlay
+
+
+## Pins the sandbox to the variety state `state` (FakeRunPresets.STATES). False for an unknown name.
+func show_state(state: String) -> bool:
+	if _overlay != null:
+		_overlay.queue_free()
+		_overlay = null
+	if not FakeRunPresets.apply(_api, Content.db, state):
+		return false
+	_pinned = true
+	_hud.refresh()
+	if OVERLAY_SCENES.has(state):
+		var packed: PackedScene = load(OVERLAY_SCENES[state]) as PackedScene
+		_overlay = packed.instantiate() as Control
+		add_child(_overlay)
+		_overlay.call("setup", _api, Content.db)
+	return true
 
 
 ## Puts the HUD into state `n`. Cumulative: call 0 .. n in order (the sandbox does; `--hud-step` replays them).

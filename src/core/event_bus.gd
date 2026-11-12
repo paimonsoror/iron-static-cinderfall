@@ -35,4 +35,31 @@ signal enemy_stuck(id: int)
 signal profile_changed
 signal settings_changed(key: StringName)
 signal hint_requested(key: String)
+# --- variety milestone (VARIETY_SPEC 13.4; append only). Ids are StringNames of the data files. ---
+signal act_started(act: int)
+signal await_changed(kind: int)  ## RunApi.AWAIT_*
+signal draft_offered(ids: Array[StringName])  ## directive id per slot; also after a reroll
+signal directive_picked(id: StringName, stacks: int)
+signal route_offered
+signal route_picked(option: int)
+signal crate_dropped(x: float, z: float)
+signal crate_secured
+signal crate_lost
+signal salvage_offered
+signal weapon_swapped(slot: int, id: StringName)
+signal weapon_vented(slot: int)
+signal area_blast(kind: int, x: float, z: float, radius: float)  ## kind = HazardState.K_*, radius in meters
+signal chain_arc(from_id: int, to_id: int)  ## enemy ids; from_id 0 = the Warden
+signal delayed_hit(kind: int, x: float, z: float, ticks: int)
+signal pool_changed(id: int, x: float, z: float, radius: float, on: bool)
+signal elite_spawned(id: int, kind: StringName, affixes: int)  ## affixes = bit mask of AffixDef indices
+signal ward_changed(id: int, fraction: float)  ## 0.0 = broken
+signal event_warned(id: StringName, ticks: int, x: float, z: float)
+signal event_started(id: StringName)
+signal event_ended(id: StringName)
+signal boss_telegraph(attack: int, ticks: int)
+signal boss_phase(phase: int)
+signal charges_changed(id: StringName, n: int)
+signal command_rejected(command_id: int, reason: int)
+signal unlock_purchased(id: StringName)
 @warning_ignore_restore("unused_signal")

@@ -1,0 +1,14 @@
+{
+	"rule": "a heat weapon vents",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "weapons.json",
+			"path": "weapons.arc_projector.vent_s",
+			"set": 0
+		}
+	],
+	"expect": [
+		"weapons.json: $.weapons.arc_projector: a heat weapon needs heat_per_shot >= 1, cool_per_s >= 0 and vent_s > 0"
+	]
+}

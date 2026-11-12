@@ -1,0 +1,14 @@
+{
+	"rule": "ids are unique",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "directives.json",
+			"path": "directives[1].id",
+			"set": "hot_loads"
+		}
+	],
+	"expect": [
+		"directives.json: $.directives[1].id: duplicate id 'hot_loads'"
+	]
+}

@@ -1,0 +1,15 @@
+{
+	"rule": "every name has a string",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "directives.json",
+			"path": "directives[0].id",
+			"set": "hot_loadz"
+		}
+	],
+	"expect": [
+		"strings/variety_en.json: $.directive.hot_loadz.name: missing string (needed by $.directives[0])",
+		"strings/variety_en.json: $.directive.hot_loadz.desc: missing string (needed by $.directives[0])"
+	]
+}

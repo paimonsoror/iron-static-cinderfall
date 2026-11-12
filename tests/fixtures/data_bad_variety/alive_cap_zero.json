@@ -1,0 +1,14 @@
+{
+	"rule": "alive_cap >= 1",
+	"stage": "validator",
+	"patches": [
+		{
+			"file": "enemies.json",
+			"path": "enemies.mote.alive_cap",
+			"set": 0
+		}
+	],
+	"expect": [
+		"enemies.json: $.enemies.mote.alive_cap: must be >= 1 (got 0)"
+	]
+}

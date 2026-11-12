@@ -8,6 +8,8 @@ extends Node
 ## hits, reloads, shield, overdrive, EMP stun, turret deploys, weapon swap, stuck enemies.
 ## Scenarios: `hold10`, `hold28`, `hold50` (50 and wave 5 add a Siege Hulk) and `boss` (the Hulk and a small escort,
 ## low core). The puppet changes sim state only through public sim calls, commands and the few debug writes marked below.
+## Variety scenarios (VARIETY_SPEC 13.8, scripted by PuppetChaos): `hold<N>+<M>` adds M minis to the crowd of N, `chain`
+## is a crowd of CHAIN_HOLD with a burster line, a Deadfall Strike, a chain of blasts, arcs and a pool on a loop.
 
 const TICK_DT: float = 1.0 / 60.0
 const PREROLL_TICKS: int = 180
@@ -22,6 +24,7 @@ const T_SMG: float = 1.5
 const T_STUCK: float = 1.2
 const T_ABILITY: Array[float] = [8.0, 2.0, 3.0]  ## EMP, shield, overdrive (Ids.AB_*)
 const RETRY_TICKS: int = 180
+const CHAIN_HOLD: int = 24
 
 var world: SimWorld
 var events: PuppetEvents
@@ -30,6 +33,7 @@ var hold: int = 50
 var boss_mode: bool = false
 var tick_usec_avg: float = 0.0  ## moving average of one puppet tick (the sim systems), for the perf line
 var tick_sink: Callable = Callable()  ## called with the microseconds of every tick (PerfHud.record_tick_usec)
+var chaos: PuppetChaos = PuppetChaos.new()  ## the variety script (minis, chain, arcs, telegraphs)
 
 var _content: ContentSet
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -44,23 +48,38 @@ var _core_floor: float = 0.25
 var _core_refill: float = 1.0
 
 
-## `scenario_name`: `hold<N>` (N clamped to the enemy cap) or `boss`; anything else is hold50. Returns {hold, boss}.
-static func parse(scenario_name: String, enemy_cap: int) -> Dictionary[String, Variant]:
-	var out: Dictionary[String, Variant] = {"hold": 50, "boss": false}
+## `scenario_name`: `hold<N>` (N clamped to the enemy cap), `hold<N>+<M>` (M minis, clamped to `swarm_cap`), `chain`
+## or `boss`; anything else is hold50. Returns {hold, boss, minis, chain}.
+static func parse(scenario_name: String, enemy_cap: int, swarm_cap: int = 0) -> Dictionary[String, Variant]:
+	var out: Dictionary[String, Variant] = {"hold": 50, "boss": false, "minis": 0, "chain": false}
+	var crowd: String = scenario_name.substr(4) if scenario_name.begins_with("hold") else ""
+	var plus: int = crowd.find("+")
 	if scenario_name == "boss":
 		out["hold"] = BOSS_ESCORT + 1
 		out["boss"] = true
-	elif scenario_name.begins_with("hold") and scenario_name.substr(4).is_valid_int():
-		out["hold"] = clampi(scenario_name.substr(4).to_int(), 1, enemy_cap)
+	elif scenario_name == "chain":
+		out["hold"] = mini(CHAIN_HOLD, enemy_cap)
+		out["chain"] = true
+	elif plus > 0 and crowd.substr(0, plus).is_valid_int() and crowd.substr(plus + 1).is_valid_int():
+		out["hold"] = clampi(crowd.substr(0, plus).to_int(), 1, enemy_cap)
+		out["minis"] = clampi(crowd.substr(plus + 1).to_int(), 0, swarm_cap)
+	elif crowd.is_valid_int():
+		out["hold"] = clampi(crowd.to_int(), 1, enemy_cap)
 	return out
 
 
-func setup(content: ContentSet, scenario_name: String = "hold50", puppet_seed: int = 1) -> void:
+## `variety_bodies`: the view that renders this puppet can draw the variety enemy types (minis, bursters). False
+## (the default) keeps every store row one of the four legacy types; the variety effect events are pushed either way.
+func setup(content: ContentSet, scenario_name: String = "hold50", puppet_seed: int = 1, variety_bodies: bool = false) -> void:
 	_content = content
 	scenario = scenario_name
-	var spec: Dictionary[String, Variant] = parse(scenario_name, content.mission.enemy_cap)
+	var spec: Dictionary[String, Variant] = parse(scenario_name, content.mission.enemy_cap, content.mission.swarm_cap)
 	hold = spec["hold"]
 	boss_mode = spec["boss"]
+	chaos.minis = spec["minis"]
+	chaos.chain = spec["chain"]
+	chaos.boss = boss_mode
+	chaos.real_bodies = variety_bodies and content.is_variety()
 	_rng.seed = puppet_seed
 	var cfg: SimConfig = SimConfig.create(content, puppet_seed)
 	cfg.debug_damage_mult = DAMAGE_MULT
@@ -69,6 +88,7 @@ func setup(content: ContentSet, scenario_name: String = "hold50", puppet_seed: i
 	world.phase = GameState.Id.SPAWNING  # debug write: abilities and purchases are legal in this phase
 	world.wave = 5 if (boss_mode or hold >= 40) else 3  # debug write: unlocks the SMG (min_wave 2)
 	events = PuppetEvents.new(content)
+	chaos.setup(world, content, _rng)
 	if boss_mode:
 		_core_floor = 0.08
 		_core_refill = 0.3
@@ -119,6 +139,8 @@ func _tick() -> void:
 	WeaponSystem.step(world)
 	TurretSystem.step(world)
 	CoreAttackSystem.step(world)
+	if _scripting and chaos.active():
+		chaos.tick(_clock)
 	_guard_boss()
 	_repair_core()
 	_top_up()
@@ -198,7 +220,8 @@ func _repair_core() -> void:
 
 ## Keeps `hold` enemies alive: a replacement walks in from a spawn region every few ticks.
 func _top_up() -> void:
-	if world.alive_count() >= hold or _clock % SPAWN_EVERY_TICKS != 0:
+	var bodied: int = world.alive_count() - (chaos.minis_alive() if chaos.minis > 0 else 0)
+	if bodied >= hold or _clock % SPAWN_EVERY_TICKS != 0:
 		return
 	var kind: int = MIX[_spawned_n % MIX.size()]
 	_spawned_n += 1
