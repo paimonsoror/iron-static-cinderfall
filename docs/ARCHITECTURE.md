@@ -443,7 +443,7 @@ Runtime read: `FileAccess.get_file_as_string("res://data/<file>")` then `JSON.pa
     { "id": "crates",    "shape": "circle", "x": 4.5, "z": 0.5, "radius": 1.3, "visual": "crate_stack" },
     { "id": "drums",     "shape": "circle", "x": -0.5, "z": -9.5, "radius": 1.0, "visual": "drum_cluster" }
   ],
-  "camera": { "pitch_down_deg": 60.0, "yaw_deg": 0.0, "frame_margin_m": 0.5, "decor_yaw_deg": 38.0 }
+  "camera": { "pitch_down_deg": 50.0, "yaw_deg": 0.0, "frame_margin_m": 0.5, "decor_yaw_deg": 38.0 }
 }
 ```
 
@@ -1745,7 +1745,7 @@ func set_reduced_flash(on: bool) -> void           # forwards to VfxLayer and Ar
 func set_high_contrast(on: bool) -> void           # added after Wave 1; forwards to ActorLayer (body is W2-E's)
 
 class_name CameraRig extends Node3D                # task W1-E
-var camera: Camera3D                               # PROJECTION_ORTHOGONAL, KEEP_HEIGHT; pitch from arena.pitch_down_deg
+var camera: Camera3D                               # PROJECTION_PERSPECTIVE (CameraFit.FOV_DEG = 30, vertical), KEEP_HEIGHT; pitch from arena.pitch_down_deg (clamped 40 to 65; shipped 50, owner pick 2026-11-12, the three-quarter view of the concept image)
 func setup(arena: ArenaDef, tokens: VisualTokens) -> void
 func fit(viewport_size: Vector2, top_px: float, bottom_px: float) -> void
 func world_to_screen(world: Vector3) -> Vector2
@@ -1755,6 +1755,7 @@ class_name CameraFit extends RefCounted            # pure math, unit-tested with
 static func solve(arena: ArenaDef, viewport_size: Vector2, top_px: float, bottom_px: float) -> CameraFitResult
 class_name CameraFitResult extends RefCounted
 var ortho_size: float; var position: Vector3; var basis: Basis; var px_per_meter: float
+var fov_deg: float                                 # > 0: perspective camera (CameraPersp.solve); 0: orthographic (CameraFit.solve_with_fov(..., 0))
 
 class_name ArenaView extends Node3D                # task W1-E
 func setup(arena: ArenaDef, tokens: VisualTokens) -> void
@@ -1812,8 +1813,10 @@ View rules:
 - Blob shadows and world health bars are transform-only `MultiMeshInstance3D`s (one draw call each).
 - Motion is procedural: bob, lean, stomp, recoil, Warden upper-body yaw toward `warden.aim_x/aim_z`.
 - No physics bodies, no collision shapes, no `NavigationAgent3D`, no `AnimationTree` in the slice.
-- `WorldEnvironment`: no glow (the one exception is bloom on MID and HIGH when the look is `STYLISED_PLUS`:
-  `LookDevStyle.glow_enabled`, `ArenaView._apply_glow`), no SSAO, no SSR, no fog volumes. One `DirectionalLight3D`; shadows off on LOW
+- `WorldEnvironment`: no glow (the exceptions are bloom on MID and HIGH when the look is `STYLISED_PLUS`:
+  `LookDevStyle.glow_enabled`, `ArenaView._apply_glow`, and bloom on HIGH for the styled yard: `EnvStyle.GLOW`,
+  `EnvDress.apply_glow`; the styled yard also sets a linear tonemap with contrast 1.06, saturation 0.94 and exposure 0.92 on
+  MID and up: `EnvStyle.GRADE_*`), no SSAO, no SSR, no fog volumes. One `DirectionalLight3D`; shadows off on LOW
   and MID, on for static props only on HIGH. At most 4 unshadowed `OmniLight3D` on HIGH, 0 on LOW.
   Everything else is emissive material or additive quads.
 - Every shader or material variant is drawn once during the boot screen (`ShaderWarmup` helper in

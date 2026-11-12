@@ -204,7 +204,10 @@ waves decide what to take and what to face next.
 
 ### 4.1 Camera
 
-- Fixed orthographic 3D camera, **60 degrees down from horizontal** (allowed band 55 to 65), portrait.
+- Fixed perspective 3D camera (30 degrees vertical field of view), **50 degrees down from horizontal** (allowed band 40 to 65),
+  portrait. The owner chose this three-quarter view (2026-11-12) for the balance between battlefield detail and a view into the
+  swarm, as in the concept image. The pitch is data (`arena.json` `camera.pitch_down_deg`); the field of view is the constant
+  `CameraFit.FOV_DEG`.
 - No zoom, pan or rotation in the slice. **[POST-SLICE]** optional zoom-out.
 - The camera is fitted in code so the whole playable arena sits between the top HUD (top 11%) and the bottom
   controls (bottom 26%, up from 23% before the weapon bar; `visual_tokens.json` `bottom_controls_fraction`) on every aspect
