@@ -254,8 +254,10 @@ func _start_loops() -> void:
 		loop_ambience.stream = load(AudioCatalog.LOOP_AMBIENCE) as AudioStream
 	if loop_drone.stream == null:
 		loop_drone.stream = load(AudioCatalog.LOOP_DRONE) as AudioStream
-	_tune_loop(loop_ambience.stream)
-	_tune_loop(loop_drone.stream)
+	for p: AudioStreamPlayer in [loop_ambience, loop_drone]:
+		@warning_ignore("return_value_discarded")
+		AudioLoopPad.pad(p.stream as AudioStreamWAV)  # a wrap must not read past the data (SIGSEGV on a phone)
+		_tune_loop(p.stream)
 	if _paused:
 		return  # resume_all starts them
 	for p: AudioStreamPlayer in [loop_ambience, loop_drone]:

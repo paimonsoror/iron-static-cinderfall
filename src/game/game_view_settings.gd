@@ -14,6 +14,10 @@ const SHIPPED_LOOK: int = LookDevStyle.Look.STYLISED
 ## it before any BattleView exists, because ActorLayer and ArenaView read the look when they are constructed. Returns it.
 static func apply_look(args: DebugArgs) -> int:
 	LookDevStyle.set_current(args.look if args != null and args.look >= 0 else SHIPPED_LOOK)
+	# Cost-measurement overrides (`--msaa=0|2|4`, `--fxaa=0|1`, `--glow=0|1`; -1 = by look and tier): the phone perf sweeps.
+	LookDevStyle.msaa_override = args.msaa if args != null else -1
+	LookDevStyle.fxaa_override = args.fxaa if args != null else -1
+	LookDevStyle.glow_override = args.glow if args != null else -1
 	return LookDevStyle.current()
 
 
