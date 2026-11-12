@@ -10,12 +10,12 @@ enum Stage { WARN, START, TICK, FINISH }
 
 
 ## Starting charges of the player-triggered events. Called once by SimWorld._init.
-static func init_world(_world: SimWorld) -> void:
-	pass
+static func init_world(world: SimWorld) -> void:
+	EventDeadfallStrike.sys_init(world)
 
 
-static func step(_world: SimWorld) -> void:
-	pass
+static func step(world: SimWorld) -> void:
+	EventDeadfallStrike.sys_step(world)
 
 
 ## Resets the per-wave counters and the plan cursor. Called by PhaseSystem when a wave starts.
@@ -24,15 +24,13 @@ static func begin_wave(_world: SimWorld, _wave: int) -> void:
 
 
 ## CALL_EVENT: a HUD button (STRIKE, VENT, FREIGHT). Returns a Reason.Id; pushes EVENT_WARNED or COMMAND_REJECTED.
-static func call_event(world: SimWorld, _command_id: int, event_index: int) -> int:
-	return block_reason(world, event_index)
+static func call_event(world: SimWorld, command_id: int, event_index: int) -> int:
+	return EventDeadfallStrike.sys_call(world, command_id, event_index)
 
 
 ## Reason.Id.OK when the player may call the event right now (NO_CHARGES, LOCKED_BY_EVENT, WRONG_STATE, UNKNOWN_ID).
 static func block_reason(world: SimWorld, event_index: int) -> int:
-	if event_index < 0 or event_index >= world.content.events.size():
-		return Reason.Id.UNKNOWN_ID
-	return Reason.Id.WRONG_STATE
+	return EventDeadfallStrike.sys_block_reason(world, event_index)
 
 
 ## Runs one stage of the event in active slot `slot` (index into EventState.a_*).

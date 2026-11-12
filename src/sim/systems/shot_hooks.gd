@@ -11,8 +11,8 @@ static func on_warden_shot(_world: SimWorld, _slot: int, _target_index: int) -> 
 
 
 ## incendiary_tips: `dealt` damage was applied to a living enemy.
-static func on_warden_hit(_world: SimWorld, _target_index: int, _dealt: float) -> void:
-	pass
+static func on_warden_hit(world: SimWorld, target_index: int, _dealt: float) -> void:
+	StatusSystem.ignite(world, target_index)
 
 
 ## ricochet, kill_chain, unstable_munitions: the Warden killed an enemy at (x, z).

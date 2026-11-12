@@ -101,11 +101,10 @@ static func _dist_sq(store: EnemyStore, index: int, from_x: float, from_z: float
 ## The centre of the densest cluster: the point (an enemy position) with the most living enemies within `radius`,
 ## among enemies between `min_range` and `max_range` of (from_x, from_z); ties by the best-ranked enemy in it.
 ## Returns (x, z), or (from_x, from_z) when no enemy is in range.
-# TODO(V2-C): the stub finds no cluster.
 static func pick_cluster(
-	_world: SimWorld, from_x: float, from_z: float, _min_range: float, _max_range: float, _radius: float
+	world: SimWorld, from_x: float, from_z: float, min_range: float, max_range: float, radius: float
 ) -> Vector2:
-	return Vector2(from_x, from_z)
+	return AreaDamage.densest_cluster(world, from_x, from_z, min_range, max_range, radius)
 
 
 ## The best `n` living enemies within `range_m`, in rank order, as enemy ids written to `out` (cleared first).
