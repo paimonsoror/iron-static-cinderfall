@@ -27,7 +27,7 @@ const MIN_TIER: Dictionary[StringName, int] = {
 	FLOOR: VisualQuality.Tier.LOW,
 	WET: VisualQuality.Tier.MID,
 	PROPS: VisualQuality.Tier.LOW,
-	PROP_SHADER: VisualQuality.Tier.MID,
+	PROP_SHADER: VisualQuality.Tier.HIGH,
 	REACTOR: VisualQuality.Tier.LOW,
 	SPILL: VisualQuality.Tier.LOW,
 	VIGNETTE: VisualQuality.Tier.HIGH,

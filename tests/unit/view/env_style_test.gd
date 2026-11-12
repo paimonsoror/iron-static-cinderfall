@@ -30,10 +30,11 @@ func test_low_keeps_only_the_static_effects() -> void:
 
 
 func test_mid_adds_the_wet_floor_and_the_prop_shading_but_not_bloom() -> void:
-	for fx: StringName in [EnvStyle.WET, EnvStyle.PROP_SHADER, EnvStyle.FLICKER, EnvStyle.GRADE]:
+	for fx: StringName in [EnvStyle.WET, EnvStyle.FLICKER, EnvStyle.GRADE]:
 		assert_bool(EnvStyle.on(fx, STY, MID)).override_failure_message("%s should be on at MID" % fx).is_true()
 	assert_bool(EnvStyle.on(EnvStyle.GLOW, STY, MID)).is_false()
 	assert_bool(EnvStyle.on(EnvStyle.RIPPLES, STY, MID)).is_false()
+	assert_bool(EnvStyle.on(EnvStyle.PROP_SHADER, STY, MID)).is_false()  # measured: the prop shader is the one MID cost worth gating
 	assert_bool(EnvStyle.on(EnvStyle.VIGNETTE, STY, MID)).is_false()  # the screen-edge pass is a full-screen blend: HIGH only
 
 
