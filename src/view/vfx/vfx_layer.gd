@@ -1,7 +1,8 @@
 class_name VfxLayer
 extends Node3D
 ## All combat effects, pooled and capped (ARCH 13, GDD 12.3): tracers, muzzle flashes, impact sparks, death bursts,
-## floating "+Scrap" texts, the EMP ring, the shield dome, the overdrive glow, core-hit sparks and boss footfall dust.
+## floating "+Scrap" texts, the EMP ring, the shield dome, the overdrive glow, core-hit sparks and boss footfall dust. V2-F added the
+## chaos effects of the variety milestone through `FxChaos` (blasts, chain arcs, telegraphs, strike column, ground pools, crate pulses).
 ## Driven by `Events` (so it never touches sim state); it only reads the sim for the persistent shield and overdrive
 ## state. Pool exhaustion drops the oldest visual. Reduced Flash removes the full-screen flash and dims flashes.
 
@@ -40,6 +41,8 @@ var _rings: VfxPool
 var _texts: FloatingTexts
 var _auras: VfxAuras
 var _flash: ScreenFlash
+var _chaos: FxChaos
+var _facing: Basis = Basis.IDENTITY  ## the camera-facing basis of the billboard pools, as of the last render
 var _lit_meshes: Dictionary[StringName, ArrayMesh] = {}  ## full brightness, by pool name
 var _dim_meshes: Dictionary[StringName, ArrayMesh] = {}  ## Reduced Flash copies
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -84,6 +87,9 @@ func setup(content: ContentSet, rig: CameraRig, actors: ActorLayer) -> void:
 	_flash = ScreenFlash.new()
 	_flash.setup()
 	add_child(_flash)
+	_chaos = FxChaos.new()
+	_chaos.setup(self, content, actors, _sparks, bounds, _rng)
+	_pools.append_array(_chaos.pools())
 	if _actors != null:
 		_actors.footfall.connect(_on_footfall)
 	set_quality(_quality)
@@ -97,6 +103,7 @@ func bind(sim: SimWorld) -> void:
 	Events.enemy_died_at.connect(_on_enemy_died_at)
 	Events.core_hit.connect(_on_core_hit)
 	Events.ability_activated.connect(_on_ability_activated)
+	_chaos.bind()
 
 
 func unbind() -> void:
@@ -111,6 +118,8 @@ func unbind() -> void:
 	_sim = null
 	for p: VfxPool in _pools:
 		p.clear()
+	if _chaos != null:
+		_chaos.unbind()
 	if _texts != null:
 		_texts.clear()
 		_auras.clear()
@@ -129,6 +138,7 @@ func render(_alpha: float, delta: float) -> void:
 	_flash_cd = maxf(0.0, _flash_cd - dt)
 	for p: VfxPool in _pools:
 		p.step(dt)
+	_chaos.step(dt, _facing)
 	_texts.step(dt)
 	_flash.step(dt)
 	var absorb: float = maxf(_content.abilities[Ids.AB_SHIELD].absorb, 0.001)
@@ -141,6 +151,7 @@ func set_quality(tier: int) -> void:
 	_quality = VisualQuality.from_setting(tier)
 	_texts.set_cap(TEXT_CAP_BY_TIER[_quality])
 	_auras.set_quality(_quality)
+	_chaos.set_quality(_quality)
 
 
 ## Reduced Flash (GDD 10.3): no full-screen flash, dimmer muzzle, burst and EMP flashes, no shimmer.
@@ -148,6 +159,7 @@ func set_reduced_flash(on: bool) -> void:
 	_reduced = on
 	_flash.set_reduced(on)
 	_auras.set_reduced(on)
+	_chaos.set_reduced(on)
 	var meshes: Dictionary[StringName, ArrayMesh] = _dim_meshes if on else _lit_meshes
 	_muzzles.set_mesh(meshes[&"muzzle"])
 	_bursts.set_mesh(meshes[&"burst"])
@@ -191,6 +203,11 @@ func ring_count() -> int:
 
 func text_count() -> int:
 	return _texts.live_count()
+
+
+## The chaos effects of the variety milestone (blasts, arcs, telegraphs, pools): tests and tooling read their pools through it.
+func chaos() -> FxChaos:
+	return _chaos
 
 
 func floating_texts() -> FloatingTexts:
@@ -248,10 +265,13 @@ func _on_enemy_died_at(_enemy_id: int, kind: StringName, x: float, z: float, scr
 		return
 	var def: EnemyDef = _content.enemies[index]
 	var heavy: bool = def.is_boss
+	var mini: bool = def.is_mini()  # a mini dies small: a pinprick, one stone, no floating Scrap text (40 of them would hide the swarm)
 	var center: Vector3 = Vector3(x, def.visual_height_m * 0.45, z)
 	var burst_n: int = 3 if heavy else 1
-	var burst_life: float = 0.5 if heavy else 0.26
+	var burst_life: float = 0.5 if heavy else (0.16 if mini else 0.26)
 	var burst_size: float = def.radius * (2.6 if heavy else 3.2) + 0.3
+	if mini:
+		burst_size = 0.4
 	for _b: int in burst_n:
 		var off: Vector3 = Vector3.ZERO
 		if heavy:
@@ -260,7 +280,7 @@ func _on_enemy_died_at(_enemy_id: int, kind: StringName, x: float, z: float, scr
 		var _burst: int = _bursts.spawn(
 			center + off, Vector3.ZERO, burst_size, burst_size * 0.25, burst_life, _rng.randf_range(0.0, TAU)
 		)
-	var pieces: int = DEBRIS_PER_DEATH[_quality] * (4 if heavy else 1)
+	var pieces: int = 1 if mini else DEBRIS_PER_DEATH[_quality] * (4 if heavy else 1)
 	var scale_up: float = 2.4 if heavy else 1.0
 	for _k: int in pieces:
 		var ang: float = _rng.randf_range(0.0, TAU)
@@ -268,7 +288,8 @@ func _on_enemy_died_at(_enemy_id: int, kind: StringName, x: float, z: float, scr
 		var vel: Vector3 = Vector3(cos(ang) * out, _rng.randf_range(2.5, 5.0), sin(ang) * out)
 		var s0: float = _rng.randf_range(0.08, 0.16) * scale_up
 		var _piece: int = _debris.spawn(center, vel, s0, 0.0, _rng.randf_range(0.6, 1.0), _rng.randf_range(-9.0, 9.0))
-	_texts.spawn("+%d" % scrap, Vector3(x, def.visual_height_m + 0.35, z), 1.5 if heavy else 1.0, _text_color)
+	if not mini:
+		_texts.spawn("+%d" % scrap, Vector3(x, def.visual_height_m + 0.35, z), 1.5 if heavy else 1.0, _text_color)
 
 
 func _on_core_hit(enemy_id: int, _kind: StringName, hp_damage: float, absorbed: float) -> void:
@@ -358,6 +379,7 @@ func _update_facing() -> void:
 	_muzzles.facing = face
 	_bursts.facing = face
 	_dust.facing = face
+	_facing = face
 
 
 func _make_pool(node_name: String, mesh_res: Mesh, cap: int, pool_mode: int, bounds: AABB) -> VfxPool:

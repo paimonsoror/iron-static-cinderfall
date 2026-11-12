@@ -9,9 +9,13 @@ enum Mode { MOVE, ATTACK, STUN }
 const HULK_STEP_RATE: float = 2.4
 ## Seconds a Siege Hulk takes to collapse after it is killed.
 const HULK_COLLAPSE_S: float = 1.5
+## A Burster that has reached its slot arms for this long before it goes off (CONTENT 4.2 `fuse_s`): its tank swells meanwhile.
+const BURSTER_FUSE_S: float = 1.2
 
 
-static func pose(kind: int, t: float, mode: int) -> Transform3D:
+## `phase`: seconds since the actor entered `mode` (the Burster's fuse); the other archetypes ignore it.
+static func pose(kind: int, t: float, mode: int, phase: float = 0.0) -> Transform3D:
+	var swell: float = 1.0
 	var y: float = 0.0
 	var pitch: float = 0.0
 	var roll: float = 0.0
@@ -77,7 +81,20 @@ static func pose(kind: int, t: float, mode: int) -> Transform3D:
 				_:
 					pitch = 0.2 + sin(t * 2.0) * 0.03
 					roll = sin(t * 5.0) * 0.05
-	return Transform3D(Basis.from_euler(Vector3(pitch, yaw, roll)), Vector3(0.0, y, fwd))
+		Ids.EN_BURSTER:
+			# a heavy waddle under the tank; armed, the tank swells and shudders faster as the fuse runs down
+			match mode:
+				Mode.MOVE:
+					y = absf(sin(t * 5.0)) * 0.04
+					roll = sin(t * 5.0) * 0.07
+					pitch = -0.02
+				Mode.ATTACK:
+					var fuse: float = clampf(phase / BURSTER_FUSE_S, 0.0, 1.0)
+					swell = 1.0 + 0.16 * fuse + 0.03 * fuse * sin(phase * 40.0)
+					roll = sin(phase * 30.0) * 0.04 * fuse
+				_:
+					roll = sin(t * 30.0) * 0.04
+	return Transform3D(Basis.from_euler(Vector3(pitch, yaw, roll)).scaled(Vector3(swell, swell, swell)), Vector3(0.0, y, fwd))
 
 
 ## Collapse pose for u in 0..1 (topple forward, sink, squash). Used by the Siege Hulk after its death.

@@ -63,6 +63,7 @@ func setup() -> void:
 	var specs: Array[Array] = [
 		["Pistol", ActorMeshes.pistol(), HeroMeshes.PISTOL_MUZZLE],
 		["Smg", ActorMeshes.smg(), HeroMeshes.SMG_MUZZLE],
+		["ArcProjector", ActorMeshes.new_weapon(&"arc_projector"), WeaponMeshes.ARC_MUZZLE],
 	]
 	for spec: Array in specs:
 		var weapon_name: String = spec[0]
@@ -104,10 +105,11 @@ func bind(sim: SimWorld) -> void:
 	_reloading = sim.warden.reload_ticks_left > 0
 	_reload_left = float(sim.warden.reload_ticks_left) * SimWorld.DT
 	_reload_total = maxf(_reload_left, 0.5)
-	_show_weapon(clampi(sim.warden.weapon_index, 0, _weapons.size() - 1))
+	_show_weapon(WeaponMeshes.model_index(sim.warden.weapon_index))
 	position = Vector3(sim.warden.x, 0.0, sim.warden.z)
 	Events.shot_fired.connect(_on_shot_fired)
 	Events.weapon_changed.connect(_on_weapon_changed)
+	Events.weapon_swapped.connect(_on_weapon_swapped)
 	Events.reload_started.connect(_on_reload_started)
 	Events.reload_finished.connect(_on_reload_finished)
 	render(0.0, 0.0)
@@ -119,6 +121,8 @@ func unbind() -> void:
 		Events.shot_fired.disconnect(_on_shot_fired)
 	if Events.weapon_changed.is_connected(_on_weapon_changed):
 		Events.weapon_changed.disconnect(_on_weapon_changed)
+	if Events.weapon_swapped.is_connected(_on_weapon_swapped):
+		Events.weapon_swapped.disconnect(_on_weapon_swapped)
 	if Events.reload_started.is_connected(_on_reload_started):
 		Events.reload_started.disconnect(_on_reload_started)
 	if Events.reload_finished.is_connected(_on_reload_finished):
@@ -284,7 +288,12 @@ func _on_shot_fired(source: int, _target_id: int) -> void:
 func _on_weapon_changed(weapon_id: StringName) -> void:
 	var index: int = Ids.weapon_index(weapon_id)
 	if index >= 0:
-		_show_weapon(index)
+		_show_weapon(WeaponMeshes.model_index(index))
+
+
+## The weapon in the other slot comes into the hand (the swap takes `swap_ticks` of no fire in the sim; the view just changes models).
+func _on_weapon_swapped(_slot: int, weapon_id: StringName) -> void:
+	_on_weapon_changed(weapon_id)
 
 
 func _on_reload_started(ticks: int) -> void:

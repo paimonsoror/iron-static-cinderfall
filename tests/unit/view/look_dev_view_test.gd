@@ -35,7 +35,8 @@ func _surface_materials(mi: MeshInstance3D) -> Array[Material]:
 func test_each_body_part_is_exactly_one_mesh_instance_in_every_look() -> void:
 	var layer: ActorLayer = _bound()[1]
 	var warden: WardenView = layer.warden
-	var expected: Array[String] = ["Legs", "Torso", "Pistol", "Smg", "ArmRU", "ArmRF", "ArmLU", "ArmLF", "Pack", "Antenna", "Cable"]
+	# V2-F: the arc projector is the third weapon node (hidden until it is the weapon in hand)
+	var expected: Array[String] = ["Legs", "Torso", "Pistol", "Smg", "ArcProjector", "ArmRU", "ArmRF", "ArmLU", "ArmLF", "Pack", "Antenna", "Cable"]
 	for look: int in 3:
 		layer.set_look(look)
 		var seen: Dictionary[String, int] = {}

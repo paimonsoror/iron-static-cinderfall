@@ -7,6 +7,9 @@ extends RefCounted
 ## raised it from 700 to 2000 because the Warden is a single instance, and to 2500 in v3 for the smooth rounded silhouette),
 ## turret 600 (base plus head; was 300) triangles, each mesh at most 3 surfaces. The CURRENT look of every actor is unchanged
 ## (the hash-pinned baseline of `look_dev_meshes_test.gd`); the styled meshes are cached under separate keys.
+## V2-F (variety milestone): burster 400, mote 40 (a 40 instance MultiMesh), the arc projector 350 and the crate 200. The Warden's
+## 2,500 still holds for the pistol and the SMG; with a 350 triangle weapon in hand the loadout budget is `WARDEN_LOADOUT_BUDGET`
+## (body 2,300 plus a weapon, VARIETY_SPEC 12.2).
 
 const TRI_BUDGET: Dictionary[StringName, int] = {
 	&"skitter": 450,
@@ -15,13 +18,22 @@ const TRI_BUDGET: Dictionary[StringName, int] = {
 	&"siege_hulk": 1500,
 	&"warden": 2500,
 	&"turret": 600,
+	&"burster": 400,
+	&"mote": 40,
+	&"arc_projector": 350,
+	&"crate": 200,
 }
+const WARDEN_LOADOUT_BUDGET: int = 2650
 const MAX_SURFACES: int = 3
 ## The body parts of the Warden (one MeshInstance3D each) and the weapons.
 const WARDEN_BODY_PARTS: Array[StringName] = [
 	&"legs", &"torso", &"arm_ru", &"arm_rf", &"arm_lu", &"arm_lf", &"pack", &"antenna", &"cable"
 ]
 const WARDEN_WEAPONS: Array[StringName] = [&"pistol", &"smg"]
+## The weapons added by the variety milestone (V2-F: the arc projector; V4-R appends the others). They have one model for every
+## look. `WARDEN_WEAPON_NODES` is the order of the Warden's weapon nodes (`WeaponMeshes.model_index`).
+const NEW_WEAPONS: Array[StringName] = [&"arc_projector"]
+const WARDEN_WEAPON_NODES: Array[StringName] = [&"pistol", &"smg", &"arc_projector"]
 
 static var _cache: Dictionary[StringName, ArrayMesh] = {}
 
@@ -35,6 +47,10 @@ static func enemy(enemy_id: StringName) -> ArrayMesh:
 			return _cached(enemy_id, EnemyMeshes.rusher)
 		&"siege_hulk":
 			return _cached(enemy_id, EnemyMeshes.siege_hulk)
+		&"burster":
+			return _cached(enemy_id, EnemyMeshes2.burster)
+		&"mote":
+			return _cached(enemy_id, EnemyMeshes2.mote)
 	return _cached(&"skitter", EnemyMeshes.skitter)
 
 
@@ -50,7 +66,17 @@ static func enemy_look(enemy_id: StringName, look: int) -> ArrayMesh:
 			return _cached(&"styled_rusher", LookActorsRusher.build)
 		&"siege_hulk":
 			return _cached(&"styled_siege_hulk", LookActorsHulk.build)
+		&"burster":
+			return _cached(&"styled_burster", LookActorsBurster.build)
+		&"mote":
+			return _cached(&"styled_mote", LookActorsMote.build)
 	return _cached(&"styled_skitter", LookActorsSkitter.build)
+
+
+## The mesh a MiniSwarm draws for the mini type `enemy_id` in a look: the mote; the shard (V4-R) and any mini that has no model of
+## its own yet use the mote so that a swarm is never 40 copies of a 340 triangle crawler.
+static func mini_look(_enemy_id: StringName, look: int) -> ArrayMesh:
+	return enemy_look(&"mote", look)  # V4-R: `match _enemy_id: &"shard": return enemy_look(&"shard", look)`
 
 
 ## The turret's static `base` or yawing `head` in a look (W3-D); the old meshes for CURRENT.
@@ -82,6 +108,8 @@ static func smg() -> ArrayMesh:
 ## (the old meshes); the hard-surface looks share one geometry for STYLISED and STYLISED_PLUS. Null when the look has
 ## no such part.
 static func warden_part(part: StringName, look: int) -> ArrayMesh:
+	if NEW_WEAPONS.has(part):
+		return new_weapon(part)
 	if look == LookDevStyle.Look.CURRENT:
 		match part:
 			&"legs":
@@ -118,6 +146,24 @@ static func warden_part(part: StringName, look: int) -> ArrayMesh:
 		&"smg":
 			return _cached(key, LookDevGear.smg)
 	return null
+
+
+## One weapon the variety milestone added (`NEW_WEAPONS`), the same model in every look (there is no old look of a new weapon: in
+## CURRENT it simply wears the flat palette). Null for any other id.
+static func new_weapon(part: StringName) -> ArrayMesh:
+	if part == &"arc_projector":
+		return _cached(&"arc_projector", WeaponMeshes.arc_projector)
+	return null
+
+
+## The red ring under an elite (a band and four chevrons, radius 1, in the additive red).
+static func elite_ring() -> ArrayMesh:
+	return _cached(&"elite_ring", VfxMeshes.elite_ring.bind(&"add_red"))
+
+
+## The salvage crate prop (`CrateView`), the same for every look.
+static func crate() -> ArrayMesh:
+	return _cached(&"crate", CrateView.mesh)
 
 
 ## Triangles of the Warden as drawn in a look with the weapon `weapon` (0 pistol, 1 smg): every body part plus the gun.

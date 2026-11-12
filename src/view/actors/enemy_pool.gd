@@ -1,9 +1,11 @@
 class_name EnemyPool
 extends RefCounted
-## Every pooled enemy view, allocated once in `setup` (ARCH 8: skitter 50, hollow warden 24, rusher 32, siege hulk 2).
-## Maps enemy id to its actor. When a kind is exhausted the OLDEST visual of that kind is recycled; the sim is never
-## affected (ARCH 13).
+## Every pooled enemy view, allocated once in `setup` (ARCH 8: skitter 50, hollow warden 24, rusher 32, siege hulk 2). The sizes are
+## data-driven since V2-F (VARIETY_SPEC 13.6): a type that is not a mini gets `EnemyDef.alive_cap` actors (the legacy content has no
+## type cap and keeps `SIZES`); a mini has none, it is drawn by a MiniSwarm. Maps enemy id to its actor. When a kind is exhausted
+## the OLDEST visual of that kind is recycled; the sim is never affected (ARCH 13).
 
+## The pool sizes of the four legacy types, used when the content sets no `alive_cap` (the legacy fixture).
 const SIZES: Array[int] = [50, 24, 32, 2]
 
 var by_id: Dictionary[int, EnemyActor] = {}
@@ -20,11 +22,11 @@ class KindPool:
 
 func setup(parent: Node3D, content: ContentSet, look: int = -1, tier: int = VisualQuality.Tier.HIGH) -> void:
 	var use_look: int = LookDevStyle.current() if look < 0 else look
-	for k: int in SIZES.size():
+	for k: int in content.enemies.size():
 		var kp: KindPool = KindPool.new()
 		var def: EnemyDef = content.enemies[k]
 		var mesh_res: ArrayMesh = ActorMeshes.enemy_look(Ids.ENEMIES[k], use_look)
-		for n: int in SIZES[k]:
+		for n: int in size_for(def, k):
 			var actor: EnemyActor = EnemyActor.new()
 			actor.setup(parent, k, mesh_res, "%s_%02d" % [String(Ids.ENEMIES[k]), n])
 			actor.apply_look(use_look, tier, mesh_res)
@@ -35,8 +37,21 @@ func setup(parent: Node3D, content: ContentSet, look: int = -1, tier: int = Visu
 		_kinds.append(kp)
 
 
-## Takes an actor of `kind` for `enemy_id`; recycles the oldest of that kind when none is free.
+## How many views the type `kind` (its index in `Ids.ENEMIES`) gets: none for a mini, `alive_cap` when the data sets one, else the
+## legacy size.
+static func size_for(def: EnemyDef, kind: int) -> int:
+	if def.is_mini():
+		return 0
+	if def.alive_cap > 0:
+		return def.alive_cap
+	return SIZES[kind] if kind < SIZES.size() else 0
+
+
+## Takes an actor of `kind` for `enemy_id`; recycles the oldest of that kind when none is free. Null for a type that has no views
+## (a mini, or a type the content does not have).
 func acquire(kind: int, enemy_id: int, x: float, z: float, yaw: float) -> EnemyActor:
+	if capacity(kind) == 0:
+		return null
 	var kp: KindPool = _kinds[kind]
 	var actor: EnemyActor
 	if kp.free.is_empty():
@@ -123,18 +138,33 @@ func visible_count() -> int:
 
 
 func has_free(kind: int) -> bool:
+	if kind < 0 or kind >= _kinds.size():
+		return false
 	var kp: KindPool = _kinds[kind]
 	return not kp.free.is_empty()
 
 
 func free_count(kind: int) -> int:
+	if kind < 0 or kind >= _kinds.size():
+		return 0
 	var kp: KindPool = _kinds[kind]
 	return kp.free.size()
 
 
+## Views of `kind` (0 for a mini or an unknown type).
 func capacity(kind: int) -> int:
+	if kind < 0 or kind >= _kinds.size():
+		return 0
 	var kp: KindPool = _kinds[kind]
 	return kp.free.size() + kp.used.size()
+
+
+## Views of every kind together (the pooled nodes).
+func total_capacity() -> int:
+	var n: int = 0
+	for k: int in _kinds.size():
+		n += capacity(k)
+	return n
 
 
 func _give_back(actor: EnemyActor) -> void:

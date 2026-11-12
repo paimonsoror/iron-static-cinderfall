@@ -14,7 +14,8 @@ enum Mode { FLAT, BILLBOARD, SEGMENT, DEBRIS, STREAK }
 const GRAVITY: float = 9.8
 
 var node: MultiMeshInstance3D
-var capacity: int = 0
+var capacity: int = 0  ## slots allocated at setup (never changes)
+var limit: int = 0  ## slots in use: `capacity` unless a tier limits the pool (`set_limit`); 0 draws nothing
 var mode: int = Mode.FLAT
 var facing: Basis = Basis.IDENTITY  ## BILLBOARD orientation (camera basis turned to face it)
 var streak_width: float = 0.08
@@ -35,6 +36,7 @@ var _count: int = 0
 
 func setup(parent: Node3D, node_name: String, mesh_res: Mesh, cap: int, pool_mode: int, bounds: AABB) -> void:
 	capacity = cap
+	limit = cap
 	mode = pool_mode
 	_live.resize(cap)
 	_fresh.resize(cap)
@@ -61,10 +63,12 @@ func setup(parent: Node3D, node_name: String, mesh_res: Mesh, cap: int, pool_mod
 
 
 ## Starts one effect. `vel_or_end` is the velocity (DEBRIS, STREAK), the end point (SEGMENT) or unused.
-## Returns the slot; when every slot is live the oldest one is overwritten.
+## Returns the slot; when every slot is live the oldest one is overwritten. -1 when the pool is limited to nothing (`limit` 0).
 func spawn(pos: Vector3, vel_or_end: Vector3, size_start: float, size_end: float, life: float, spin: float = 0.0) -> int:
+	if limit <= 0:
+		return -1
 	var i: int = _cursor
-	_cursor = (_cursor + 1) % capacity
+	_cursor = (_cursor + 1) % limit
 	if _live[i] == 0:
 		_count += 1
 	_live[i] = 1
@@ -104,6 +108,18 @@ func step(delta: float) -> void:
 
 func live_count() -> int:
 	return _count
+
+
+## Limits the pool to its first `n` slots (a quality tier: VARIETY_SPEC 10.3). Nothing is allocated: the slots beyond the limit are
+## stopped and never used again until the limit is raised. `n` is clamped to 0..capacity.
+func set_limit(n: int) -> void:
+	limit = clampi(n, 0, capacity)
+	for i: int in range(limit, capacity):
+		if _live[i] == 1:
+			_live[i] = 0
+			_count -= 1
+	if _cursor >= maxi(limit, 1):
+		_cursor = 0
 
 
 func clear() -> void:
