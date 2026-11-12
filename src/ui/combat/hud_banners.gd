@@ -4,6 +4,7 @@ extends Control
 ## low-core warning), the wave banner with its whisper line, and the one-line hint above the drawer.
 
 var boss_bar: HudBossBar
+var ticker: HudThreatTicker
 var warn_panel: PanelContainer
 var warn_label: Label
 var banner_box: PanelContainer
@@ -26,6 +27,9 @@ func _init() -> void:
 	add_child(_stack)
 	boss_bar = HudBossBar.new()
 	_stack.add_child(boss_bar)
+	ticker = HudThreatTicker.new()  # the variety run's threat ticker; hidden in the legacy HUD
+	ticker.visible = false
+	_stack.add_child(ticker)
 	_build_warning()
 	_build_banner()
 	_build_hint()

@@ -21,6 +21,7 @@ var drawer: HudUpgradeDrawer
 var strip: HudCombatStrip
 var intermission: HudIntermissionPanel
 var banners: HudBanners
+var variety: HudVarietyLink  ## the generated run's weapon bar, ticker and act line (inactive on the legacy content)
 
 var _api: RunApi
 var _content: ContentSet
@@ -66,6 +67,7 @@ func setup(api: RunApi, content: ContentSet, view: BattleView) -> void:
 	_content = content
 	drawer.setup(api, content)
 	bottom.abilities.setup(api)
+	variety.setup(api, content)
 	_bind_events()
 	refresh()
 	_relayout()
@@ -76,6 +78,7 @@ func setup(api: RunApi, content: ContentSet, view: BattleView) -> void:
 func _process(delta: float) -> void:
 	if _api == null:
 		return
+	variety.process(delta)
 	_poll += delta
 	if _poll >= REFRESH_PERIOD:
 		_poll = 0.0
@@ -94,6 +97,7 @@ func refresh() -> void:
 	_refresh_ammo()
 	banners.set_boss(_boss_kind, _api.boss_hp(), _api.boss_max_hp())
 	_refresh_phase()
+	variety.refresh()
 
 
 func is_drawer_open() -> bool:
@@ -129,7 +133,7 @@ func bottom_band_px() -> float:
 	if _content == null:
 		return 0.0
 	var band: float = HudLayout.bottom_band_px(_view_size(), _margins, _content.tokens)
-	return maxf(band, BOTTOM_MIN + _margins.w)
+	return variety.bottom_band(maxf(band, BOTTOM_MIN + _margins.w), _view_size().y, _margins.w)
 
 
 ## Safe-area insets (left, top, right, bottom) in viewport units; the top bar and bottom band move by them.
@@ -166,6 +170,7 @@ func _ensure_built() -> void:
 	top_bar.pause_pressed.connect(_on_pause)
 	add_child(top_bar)
 	resized.connect(_relayout)
+	variety = HudVarietyLink.new(self)
 
 
 func _view_size() -> Vector2:
@@ -219,8 +224,8 @@ func _apply_os_safe_area() -> void:
 
 
 func _set_drawer(open: bool, auto: bool) -> void:
-	if open == _drawer_open:
-		return
+	if open == _drawer_open or (auto and variety.active):
+		return  # the generated run never opens it by itself (no tab, no intermission drawer); only the API can (VARIETY_SPEC 13.5)
 	_drawer_open = open
 	_auto_opened = open and auto
 	if not auto:
@@ -273,6 +278,8 @@ func _refresh_phase() -> void:
 	var phase: int = _api.phase()
 	var changed: bool = false
 	var inter: bool = phase == GameState.Id.INTERMISSION
+	if variety.active and _api.awaiting() != RunApi.AWAIT_NONE:
+		inter = false  # a choice screen covers the intermission; the panel is the breather's countdown only
 	if inter != intermission.visible:
 		intermission.visible = inter
 		changed = true
@@ -314,6 +321,7 @@ func _bind_events() -> void:
 	_bind(Events.hint_requested, _on_hint_requested)
 	_bind(Events.state_changed, func(_prev: int, _cur: int) -> void: refresh())
 	_bind(Events.run_started, _on_run_started)
+	variety.bind_events(_bind)
 
 
 func _bind(sig: Signal, handler: Callable) -> void:
@@ -356,7 +364,8 @@ func _on_intermission_started(wave_cleared: int, _ticks: int) -> void:
 
 func _on_boss_spawned(_id: int, kind: StringName) -> void:
 	_boss_kind = kind
-	banners.show_boss_banner(kind)
+	if not variety.on_boss_spawned(kind):
+		banners.show_boss_banner(kind)
 	banners.set_boss(kind, _api.boss_hp(), _api.boss_max_hp())
 
 

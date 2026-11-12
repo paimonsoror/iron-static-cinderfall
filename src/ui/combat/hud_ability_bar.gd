@@ -1,7 +1,7 @@
 class_name HudAbilityBar
 extends HBoxContainer
 ## The three ability buttons. A tap on a READY button mints one command id and issues one activate_ability;
-## a tap while cooling, active or on standby issues nothing and shakes the button (GDD 10.1).
+## a tap while cooling, active, offline or on standby issues nothing and shakes the button (GDD 10.1).
 
 var buttons: Dictionary[StringName, HudAbilityButton] = {}
 var _api: RunApi
@@ -32,6 +32,8 @@ func refresh() -> void:
 func state_for(id: StringName) -> int:
 	if _api.ability_active_left(id) > 0:
 		return HudAbilityButton.State.ACTIVE
+	if _api.ability_block_reason(id) == Reason.Id.LOCKED_BY_EVENT:
+		return HudAbilityButton.State.OFFLINE  # a Static Front: cooldowns freeze, nothing can be started
 	if _api.ability_cooldown_left(id) > 0:
 		return HudAbilityButton.State.COOLING
 	var reason: int = _api.ability_block_reason(id)

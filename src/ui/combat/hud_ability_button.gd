@@ -3,11 +3,12 @@ extends Button
 ## One ability button: icon with a radial sweep and the seconds over it, name, state word and a bar.
 ## Ready = cyan rim and a full bar; active = amber face, draining sweep and bar; cooling = dark face,
 ## a sweep of the remaining time and a filling bar; standby = dim (no wave is running). The state is
-## always readable as a word and a shape, never by color alone (GDD 10.1, 10.3).
+## always readable as a word and a shape, never by color alone (GDD 10.1, 10.3). Offline (variety: locked by a Static
+## Front) = dark face under a static pattern and the word OFFLINE.
 
 signal tapped(ability_id: StringName)
 
-enum State { READY, ACTIVE, COOLING, STANDBY }
+enum State { READY, ACTIVE, COOLING, STANDBY, OFFLINE }
 
 const ICON_PX: float = 96.0
 
@@ -19,6 +20,7 @@ var seconds_label: Label
 var icon_rect: TextureRect
 var radial: HudRadial
 var bar: HudBar
+var static_overlay: HudStaticOverlay
 var _body: MarginContainer
 var _styled: int = -1
 var _tween: Tween
@@ -73,6 +75,9 @@ func _build() -> void:
 	bar.custom_minimum_size = Vector2(0.0, 14.0)
 	bar.segments = 5
 	col.add_child(bar)
+	static_overlay = HudStaticOverlay.new()
+	add_child(static_overlay)
+	static_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
 ## Shows one state. `secs` is the number on the icon (active or cooling), `sweep` the covered fraction of the
@@ -101,6 +106,11 @@ func show_state(new_state: int, secs: int, sweep: float, bar_fraction: float) ->
 			state_label.add_theme_color_override(&"font_color", gun_text)
 			radial.set_sweep(0.0, Color.TRANSPARENT)
 			bar.set_fill_color(gun)
+		State.OFFLINE:
+			state_label.text = Strings.t("hud.ability.offline")
+			state_label.add_theme_color_override(&"font_color", HudStyle.color(&"chorus_red").lightened(0.3))
+			radial.set_sweep(0.0, Color.TRANSPARENT)
+			bar.set_fill_color(gun)
 		_:
 			state_label.text = Strings.t("hud.ability.ready")
 			state_label.add_theme_color_override(&"font_color", cyan)
@@ -108,7 +118,9 @@ func show_state(new_state: int, secs: int, sweep: float, bar_fraction: float) ->
 			bar.set_fill_color(cyan)
 	seconds_label.visible = new_state == State.ACTIVE or new_state == State.COOLING
 	bar.set_state(bar_fraction, 0.0)
-	icon_rect.modulate = Color(1.0, 1.0, 1.0, 0.55) if new_state == State.COOLING or new_state == State.STANDBY else Color.WHITE
+	static_overlay.visible = new_state == State.OFFLINE
+	var dim: bool = new_state == State.COOLING or new_state == State.STANDBY or new_state == State.OFFLINE
+	icon_rect.modulate = Color(1.0, 1.0, 1.0, 0.55) if dim else Color.WHITE
 	if _styled != new_state:
 		_styled = new_state
 		_apply_look(new_state)
@@ -122,7 +134,7 @@ func _apply_look(new_state: int) -> void:
 	match new_state:
 		State.ACTIVE:
 			HudStyle.style_button(self, base.lerp(amber, 0.3), amber)
-		State.COOLING, State.STANDBY:
+		State.COOLING, State.STANDBY, State.OFFLINE:
 			HudStyle.style_button(self, base.darkened(0.25), gun)
 		_:
 			HudStyle.style_button(self, base, cyan)

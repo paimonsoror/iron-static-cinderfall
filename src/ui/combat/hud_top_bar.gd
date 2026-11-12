@@ -11,6 +11,8 @@ var core_value_label: Label
 var core_bar: HudBar
 var wave_label: Label
 var scrap_label: Label
+var shield_icon: TextureRect  ## variety: the shield mark that replaces the "SHIELD +n" text
+var variety: bool = false
 var _margin: MarginContainer
 
 
@@ -51,6 +53,10 @@ func _build_core(row: HBoxContainer) -> void:
 	hb.add_theme_constant_override(&"separation", 10)
 	panel.add_child(hb)
 	hb.add_child(HudStyle.icon(&"core", 56.0))
+	shield_icon = HudStyle.icon(&"shield", 44.0)
+	shield_icon.visible = false
+	shield_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hb.add_child(shield_icon)
 	var col: VBoxContainer = VBoxContainer.new()
 	col.add_theme_constant_override(&"separation", 4)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -117,9 +123,26 @@ func place(width: float, band_h: float, margins: Vector4) -> void:
 	queue_redraw()
 
 
+## The variety run's bar: the core line is "CORE 64%" (the shield is the cyan overlay segment plus a shield mark) and the wave
+## label is two lines, "ACT II" over "W7/15" (VARIETY_SPEC 11.4), so the core bar keeps its room.
+func set_variety(on: bool) -> void:
+	variety = on
+	core_value_label.visible = not on
+	if on:
+		wave_label.add_theme_font_size_override(&"font_size", 34)
+	else:
+		wave_label.remove_theme_font_size_override(&"font_size")
+		shield_icon.visible = false
+
+
+func set_act_wave(act: int, index: int, total: int) -> void:
+	wave_label.text = "%s\n%s" % [RunUi.act_label(act), Strings.tf("hud.wave_short", [maxi(index, 1), total])]
+
+
 func set_core(hp: float, max_hp: float, shield: float) -> void:
 	var frac: float = clampf(hp / maxf(max_hp, 1.0), 0.0, 1.0)
 	core_label.text = Strings.tf("hud.core_pct", [HudStyle.pct(hp, max_hp)])
+	shield_icon.visible = variety and shield > 0.0
 	if shield > 0.0:
 		core_value_label.text = Strings.tf("hud.shield_up", [ceili(shield)])
 		core_value_label.add_theme_color_override(&"font_color", HudStyle.color(&"warden_cyan"))

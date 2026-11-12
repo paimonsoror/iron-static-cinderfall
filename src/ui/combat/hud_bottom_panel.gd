@@ -2,6 +2,8 @@ class_name HudBottomPanel
 extends Control
 ## The bottom band: the UPGRADES tab with the affordable count, the magazine and reload readout, and the three
 ## ability buttons below them (GDD 10.1). Rows are at least 132 px tall; the band grows only on near-square windows.
+## In the variety run (`set_variety`) the tab and the readout give way to the weapon bar (VARIETY_SPEC 11.4): a 150 px
+## weapon row over the ability row.
 
 signal tab_pressed
 
@@ -13,6 +15,8 @@ var tab_label: Label
 var chevron: HudChevron
 var ammo: HudAmmoReadout
 var abilities: HudAbilityBar
+var weapon_bar: HudWeaponBar
+var variety: bool = false
 var _tab_look: int = -1
 
 
@@ -39,7 +43,25 @@ func _init() -> void:
 	add_child(ammo)
 	abilities = HudAbilityBar.new()
 	add_child(abilities)
+	weapon_bar = HudWeaponBar.new()
+	weapon_bar.visible = false
+	add_child(weapon_bar)
 	set_tab(0, false)
+
+
+## The variety run: the weapon bar replaces the tab and the readout.
+func set_variety(on: bool, api: RunApi, content: ContentSet) -> void:
+	variety = on
+	tab_button.visible = not on
+	ammo.visible = not on
+	weapon_bar.visible = on
+	if on:
+		weapon_bar.setup(api, content)
+
+
+## The smallest band the two variety rows fit in: the weapon row, the ability row and three gaps.
+static func variety_min_px() -> float:
+	return HudWeaponCard.HEIGHT + HudStyle.TOUCH + 3.0 * HudStyle.GAP
 
 
 ## The band is `band_h` tall and `width` wide; its own position is set by the HUD. `margins` is the safe area.
@@ -49,6 +71,16 @@ func place(width: float, band_h: float, margins: Vector4) -> void:
 	var left: float = HudStyle.EDGE + margins.x
 	var inner_w: float = width - 2.0 * HudStyle.EDGE - margins.x - margins.z
 	var content_h: float = band_h - margins.w
+	if variety:
+		var weapon_h: float = HudWeaponCard.HEIGHT
+		var low_h: float = clampf(content_h - weapon_h - 3.0 * gap, HudStyle.TOUCH, ROW_MAX)
+		var start: float = maxf(0.0, (content_h - (weapon_h + gap + low_h)) * 0.5)
+		weapon_bar.position = Vector2(left, start)
+		weapon_bar.place(inner_w, weapon_h)
+		abilities.position = Vector2(left, start + weapon_h + gap)
+		abilities.size = Vector2(inner_w, low_h)
+		queue_redraw()
+		return
 	var row_h: float = clampf((content_h - 3.0 * gap) / 2.0, HudStyle.TOUCH, ROW_MAX)
 	var top: float = maxf(0.0, (content_h - (2.0 * row_h + gap)) * 0.5)
 	tab_button.position = Vector2(left, top)

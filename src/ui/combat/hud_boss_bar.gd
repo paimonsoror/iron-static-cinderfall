@@ -1,9 +1,12 @@
 class_name HudBossBar
 extends PanelContainer
-## A wide red bar with the boss name under the top HUD, shown only while the boss lives (GDD 10.1).
+## A wide red bar with the boss name under the top HUD, shown only while the boss lives (GDD 10.1). In the variety run
+## `title_text` replaces the name ("NODE 9 // SIEGE HULK") and phase pips show how many phases the boss has gone through.
 
 var name_label: Label
 var pct_label: Label
+var pips: HudBossPips
+var title_text: String = ""
 var bar: HudBar
 
 
@@ -21,6 +24,9 @@ func _init() -> void:
 	HudStyle.bold(name_label)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(name_label)
+	pips = HudBossPips.new()
+	pips.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(pips)
 	pct_label = HudStyle.make_label("-", HudStyle.FONT_BODY, red.lightened(0.25))
 	HudStyle.mono(pct_label)
 	row.add_child(pct_label)
@@ -36,7 +42,7 @@ func show_boss(kind: StringName, hp: float, max_hp: float) -> void:
 	visible = hp >= 0.0
 	if not visible:
 		return
-	name_label.text = Strings.t("enemy.%s.name" % String(kind)).to_upper()
+	name_label.text = title_text if title_text != "" else Strings.t("enemy.%s.name" % String(kind)).to_upper()
 	var frac: float = clampf(hp / maxf(max_hp, 1.0), 0.0, 1.0)
 	pct_label.text = "%d%%" % HudStyle.pct(hp, max_hp)
 	bar.set_state(frac, 0.0)
