@@ -9,6 +9,12 @@ static func core_fraction(world: SimWorld) -> float:
 	return world.core_hp / maxf(world.core_max_hp, 1.0)
 
 
+## Stacks of directive `d` held, never above its maximum: a hook directive keeps its counters in the stack count (HookMemory),
+## so the raw count is not a number of stacks (ModRules.held says the same by id).
+static func stacks_of(world: SimWorld, d: DirectiveDef) -> int:
+	return mini(world.draft.stacks_of(d.index), d.max_stacks)
+
+
 ## Enemies standing in an attack slot (ST_ATTACKING).
 static func attackers(world: SimWorld) -> int:
 	var store: EnemyStore = world.enemies
@@ -91,6 +97,12 @@ static func boss_in_range(world: SimWorld) -> bool:
 	var dz: float = world.enemies.z[i] - world.warden.z
 	var reach: float = world.content.weapons[world.warden.weapon_index].range_m
 	return dx * dx + dz * dz <= reach * reach
+
+
+## The boss is alive and standing in an attack slot (it is striking the core).
+static func boss_attacking(world: SimWorld) -> bool:
+	var i: int = world.boss_store_index()
+	return i >= 0 and world.enemies.state[i] == EnemyStore.ST_ATTACKING
 
 
 ## A boss attack is being telegraphed right now (BossState).

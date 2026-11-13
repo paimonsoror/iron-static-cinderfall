@@ -3,6 +3,9 @@ extends GdUnitTestSuite
 ## patch rules, the hot-route rule. Hand-made states on TestContent.variety(): wave 1 means "the draft after wave 1"
 ## (the wave that starts next is 2, so no gap is open yet).
 
+## Three cards that are worth under 2 points (a Scrap card, a reroll card, a Scrap card): the offer a bot rerolls.
+const WEAK_OFFER: Array[StringName] = [&"black_box", &"requisition_line", &"scavenger_protocol"]
+
 var w: SimWorld
 var bot: PolicyBot
 
@@ -112,11 +115,19 @@ func test_the_best_score_wins_whatever_its_slot() -> void:
 	assert_int(cmd.arg).is_equal(2)
 
 
-func test_equal_scores_go_by_category_then_leftmost() -> void:
-	VarietyHKit.offer(w, [&"reinforced_cage", &"emp_capacitor", &"hot_loads"])  # all 0: core, ability, weapon
-	assert_int(PolicyScoring.best_slot(w)).is_equal(2)  # weapon first
-	VarietyHKit.offer(w, [&"cyclic_tuning", &"hot_loads", &"penetrator_cores"])  # all weapons, all 0
+func test_the_best_worth_wins_and_equal_worth_goes_leftmost() -> void:
+	VarietyHKit.offer(w, [&"reinforced_cage", &"emp_capacitor", &"hot_loads"])  # worth 1.5, 0.45, 2.0
+	assert_int(PolicyScoring.best_slot(w)).is_equal(2)  # the damage level
+	VarietyHKit.offer(w, [&"hot_loads", &"hot_loads", &"cyclic_tuning"])  # the same card twice is a tie
 	assert_int(PolicyScoring.best_slot(w)).is_equal(0)  # leftmost
+	assert_float(PolicyScoring.worth(w, w.content.directive_index(&"hot_loads"))).is_equal_approx(2.0, 0.001)
+
+
+func test_what_a_card_does_decides_between_two_cards_the_spec_scores_alike() -> void:
+	# Spec score 0 for all three; the effects tell a damage level from a Scrap card in a run with no shop.
+	VarietyHKit.offer(w, [&"scavenger_protocol", &"black_box", &"hot_loads"])
+	assert_int(PolicyScoring.best_slot(w)).is_equal(2)
+	assert_float(PolicyScoring.score(w, w.content.directive_index(&"scavenger_protocol"))).is_equal(0.0)
 
 
 func test_a_taken_slot_is_not_a_candidate() -> void:
@@ -132,7 +143,7 @@ func test_a_taken_slot_is_not_a_candidate() -> void:
 
 
 func test_a_weak_offer_is_rerolled_when_a_free_charge_is_left() -> void:
-	VarietyHKit.offer(w, [&"hot_loads", &"cyclic_tuning", &"reinforced_cage"])  # best 0
+	VarietyHKit.offer(w, WEAK_OFFER)  # best worth about 0.9
 	w.draft.free_rerolls = 1
 	bot.act(w)
 	assert_int(_only().kind).is_equal(SimCommand.Kind.REROLL)
@@ -148,7 +159,7 @@ func test_a_strong_offer_is_not_rerolled() -> void:
 
 
 func test_a_paid_reroll_needs_150_scrap_and_the_price() -> void:
-	VarietyHKit.offer(w, [&"hot_loads", &"cyclic_tuning", &"reinforced_cage"])
+	VarietyHKit.offer(w, WEAK_OFFER)
 	w.scrap = 149
 	assert_bool(PolicyBalanced.reroll_pays(w, bot, 60)).is_false()
 	w.scrap = 150
@@ -160,7 +171,7 @@ func test_a_paid_reroll_needs_150_scrap_and_the_price() -> void:
 
 
 func test_rerolls_stop_at_three_per_draft_and_never_after_a_pick_or_when_locked() -> void:
-	VarietyHKit.offer(w, [&"hot_loads", &"cyclic_tuning", &"reinforced_cage"])
+	VarietyHKit.offer(w, WEAK_OFFER)
 	w.scrap = 900
 	bot.draft_rerolls = 2
 	assert_bool(PolicyBalanced.reroll_pays(w, bot, 60)).is_true()

@@ -62,7 +62,7 @@ static func _best_of(world: SimWorld, category: int, corrupted_only: bool) -> in
 		var d: DirectiveDef = world.content.directives[index]
 		if (category >= 0 and d.category != category) or (corrupted_only and not is_corrupted(d)):
 			continue
-		var s: float = PolicyScoring.score(world, index)
+		var s: float = PolicyScoring.worth(world, index)
 		var rank: int = PolicyScoring.CATEGORY_RANK[d.category]
 		if best < 0 or s > top_score or (is_equal_approx(s, top_score) and rank > best_rank):
 			best = slot

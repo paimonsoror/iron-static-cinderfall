@@ -41,7 +41,7 @@ static func primary_weapon(world: SimWorld, tally: WeaponDamageTally = null) -> 
 static func top_tags(world: SimWorld) -> PackedStringArray:
 	var totals: Dictionary[StringName, int] = {}
 	for d: DirectiveDef in world.content.directives:
-		var stacks: int = world.draft.stacks_of(d.index)
+		var stacks: int = PolicySenses.stacks_of(world, d)  # never the raw count: hook directives keep counters in it
 		if stacks <= 0:
 			continue
 		for tag: StringName in d.tags:

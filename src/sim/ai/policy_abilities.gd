@@ -8,6 +8,9 @@ extends RefCounted
 const EMP_ATTACKERS: int = 10
 ## Shield on the hit that takes the core from at least this fraction to below it (or before a lance beam).
 const SHIELD_CORE: float = 0.6
+## A boss that stands at the cage and strikes: the EMP stuns it (a stun is a strike not taken) and a Shield soaks what is left
+## while the core is below BOSS_SHIELD_CORE.
+const BOSS_SHIELD_CORE: float = 0.95
 ## Overdrive on a boss in range, or at this many enemies alive.
 const OVERDRIVE_ALIVE: int = 20
 ## Deadfall Strike on a cluster this big within STRIKE_RADIUS_M, or on an elite pair.
@@ -27,9 +30,11 @@ static func act(world: SimWorld, bot: PolicyBot) -> void:
 	if not GameState.is_combat(world.phase):
 		return
 	var attackers: int = PolicySenses.attackers(world)
-	if _ready(world, Ids.AB_EMP) and (attackers >= EMP_ATTACKERS or PolicySenses.boss_telegraphing(world)):
+	var boss_hitting: bool = PolicySenses.boss_attacking(world)
+	if _ready(world, Ids.AB_EMP) and (attackers >= EMP_ATTACKERS or PolicySenses.boss_telegraphing(world) or boss_hitting):
 		bot.send(world, SimCommand.Kind.ABILITY, Ids.AB_EMP)
-	if _ready(world, Ids.AB_SHIELD) and (_crossed_shield_line(world, bot) or PolicySenses.lance_beam_coming(world)):
+	var shield_wanted: bool = _crossed_shield_line(world, bot) or PolicySenses.lance_beam_coming(world)
+	if _ready(world, Ids.AB_SHIELD) and (shield_wanted or (boss_hitting and PolicySenses.core_fraction(world) < BOSS_SHIELD_CORE)):
 		bot.send(world, SimCommand.Kind.ABILITY, Ids.AB_SHIELD)
 	if _ready(world, Ids.AB_OVERDRIVE) and (PolicySenses.boss_in_range(world) or world.alive_count() >= OVERDRIVE_ALIVE):
 		bot.send(world, SimCommand.Kind.ABILITY, Ids.AB_OVERDRIVE)

@@ -221,7 +221,39 @@ static func act_swap(world: SimWorld, bot: PolicyBot) -> void:
 		return
 	if world.tick % SCAN_PERIOD != 0 or world.tick < bot.swap_not_before:
 		return
+	var boss_slot: int = boss_target(world)
+	if boss_slot != NO_BOSS_RULE:
+		send_swap(world, bot, boss_slot)
+		return
 	send_swap(world, bot, swap_target(world, crowd_count(world)))
+
+
+## Answer of `boss_target` when no boss lives (the crowd rule decides).
+const NO_BOSS_RULE: int = -2
+## The weapon in hand is changed for another one that does at least this many times its damage to the boss.
+const BOSS_SWAP_GAIN: float = 1.15
+
+
+## While a boss lives: the slot of the ready weapon that hurts it most (damage per second after its armor, PolicyDps), or the
+## active slot / -1 to stay. A weapon that ignores armor beats a faster one against plating; the crowd rule is off for the
+## fight (the escorts are not what ends a run).
+static func boss_target(world: SimWorld) -> int:
+	var boss: int = world.boss_store_index()
+	if boss < 0:
+		return NO_BOSS_RULE
+	var active: int = world.arsenal.active
+	var best: int = active
+	var best_dps: float = PolicyDps.vs(world, active, boss) * BOSS_SWAP_GAIN
+	if slot_spent(world, active):
+		best_dps = 0.0
+	for slot: int in slot_total(world):
+		if slot == active or not slot_ready(world, slot):
+			continue
+		var dps: float = PolicyDps.vs(world, slot, boss)
+		if dps > best_dps:
+			best = slot
+			best_dps = dps
+	return best
 
 
 ## One SWAP_WEAPON to `target` (ignored for -1 or the active slot) and the pause before the next one.

@@ -55,11 +55,17 @@ static func score(world: SimWorld, directive_index: int) -> float:
 	return total
 
 
+## The full judgement of a card: the spec score plus what its effects are worth (PolicyValue). The spec score alone
+## cannot tell a damage level from a card that does nothing in a run without a shop.
+static func worth(world: SimWorld, directive_index: int) -> float:
+	return score(world, directive_index) + PolicyValue.of(world, world.content.directives[directive_index])
+
+
 ## Stacks held in directives that share at least one tag with `d` (the directive itself counts).
 static func shared_stacks(world: SimWorld, d: DirectiveDef) -> int:
 	var n: int = 0
 	for held: DirectiveDef in world.content.directives:
-		var stacks: int = world.draft.stacks_of(held.index)
+		var stacks: int = PolicySenses.stacks_of(world, held)
 		if stacks > 0 and shares_tag(held, d):
 			n += stacks
 	return n
@@ -101,7 +107,7 @@ static func has_op(d: DirectiveDef, stat_name: StringName) -> bool:
 ## True when a held directive carries one of `tags`, or has an op on `stat_name` (empty = not asked).
 static func holds(world: SimWorld, tags: Array[StringName], stat_name: StringName) -> bool:
 	for held: DirectiveDef in world.content.directives:
-		if world.draft.stacks_of(held.index) <= 0:
+		if PolicySenses.stacks_of(world, held) <= 0:
 			continue
 		if (not tags.is_empty() and has_any_tag(held, tags)) or (stat_name != &"" and has_op(held, stat_name)):
 			return true
@@ -128,14 +134,14 @@ static func has_turret(world: SimWorld) -> bool:
 	return world.turrets.active_count() > 0 or world.mods.turrets > 0.0 or holds(world, NO_TAGS, &"turrets")
 
 
-## The open slot with the best score; ties by category rank, then leftmost. -1 when the offer is empty.
+## The open slot with the best worth; ties by category rank, then leftmost. -1 when the offer is empty.
 static func best_slot(world: SimWorld) -> int:
 	var best: int = -1
 	var top_score: float = 0.0
 	var best_rank: int = 0
 	for slot: int in PolicyAnswers.open_slots(world):
 		var index: int = world.draft.offer[slot]
-		var s: float = score(world, index)
+		var s: float = worth(world, index)
 		var rank: int = CATEGORY_RANK[world.content.directives[index].category]
 		if best < 0 or s > top_score or (is_equal_approx(s, top_score) and rank > best_rank):
 			best = slot
@@ -147,7 +153,7 @@ static func best_slot(world: SimWorld) -> int:
 ## The score of the best open slot, or -1000 when the offer is empty.
 static func best_score(world: SimWorld) -> float:
 	var slot: int = best_slot(world)
-	return score(world, world.draft.offer[slot]) if slot >= 0 else -1000.0
+	return worth(world, world.draft.offer[slot]) if slot >= 0 else -1000.0
 
 
 ## `balanced`: the route to take. Hot while the core is healthy and the reward is a crate, a double pick or a rare
