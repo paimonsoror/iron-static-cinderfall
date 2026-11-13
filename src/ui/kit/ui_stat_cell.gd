@@ -13,6 +13,8 @@ func _init(caption_text: String = "", value_text: String = "", variant: StringNa
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(col)
 	caption = UiKit.label_text(caption_text, UiTheme.LABEL_CAPTION)
+	caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # "RECOVERED DATA" wraps when three cells share a narrow screen
+	caption.custom_minimum_size.x = 8.0
 	col.add_child(caption)
 	value = UiKit.label_text(value_text, variant)
 	col.add_child(value)

@@ -37,7 +37,7 @@ func _populate() -> void:
 	strip = RouteActStrip.new()
 	strip.setup(_api.wave_count(), next_wave(), _content)
 	header.add_child(strip)
-	title_label = RunUi.label(Strings.t("route.header"), 44, &"body", true)
+	title_label = RunUi.wrap(RunUi.label(Strings.t("route.header"), 44, &"body", true))
 	header.add_child(title_label)
 	var _first: RunHintLine = add_hint("hint.route")
 	quiet_label = null

@@ -172,18 +172,21 @@ func _build_footer() -> void:
 	same_seed_button = UiKit.button("results.same_seed")
 	same_seed_button.custom_minimum_size = Vector2(UiTheme.TOUCH_MIN, UiTheme.BTN_PRIMARY_H)
 	same_seed_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	same_seed_button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # the three footer buttons share a narrow screen
 	same_seed_button.visible = false
 	same_seed_button.pressed.connect(_on_same_seed)
 	row.add_child(same_seed_button)
 	archive_button = UiKit.button("results.archive")
 	archive_button.custom_minimum_size = Vector2(UiTheme.TOUCH_MIN, UiTheme.BTN_PRIMARY_H)
 	archive_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	archive_button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	archive_button.visible = false
 	archive_button.pressed.connect(_on_archive)
 	row.add_child(archive_button)
 	menu_button = UiKit.button_quiet("results.menu")
 	menu_button.custom_minimum_size = Vector2(UiTheme.TOUCH_MIN, UiTheme.BTN_PRIMARY_H)
 	menu_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	menu_button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	menu_button.pressed.connect(func() -> void: menu_pressed.emit())
 	row.add_child(menu_button)
 

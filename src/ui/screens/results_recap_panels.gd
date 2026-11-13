@@ -14,7 +14,7 @@ var build_directives: Array[Label] = []
 var _broke_col: VBoxContainer
 var _build_col: VBoxContainer
 var _flow: HFlowContainer
-var _chip_row: HBoxContainer
+var _chip_row: HFlowContainer
 
 
 func _init() -> void:
@@ -33,8 +33,9 @@ func _init() -> void:
 	build_panel.add_child(_build_col)
 	_build_col.add_child(UiKit.label_text(Strings.t("results.build"), UiTheme.LABEL_ACCENT))
 	_build_col.add_child(UiKit.rule())
-	_chip_row = HBoxContainer.new()
-	_chip_row.add_theme_constant_override("separation", 12)
+	_chip_row = HFlowContainer.new()  # the tag chips wrap on a narrow screen
+	_chip_row.add_theme_constant_override("h_separation", 12)
+	_chip_row.add_theme_constant_override("v_separation", 8)
 	_build_col.add_child(_chip_row)
 	build_weapons = UiKit.label_text("", &"", UiTheme.FONT_SMALL + 4)
 	build_weapons.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

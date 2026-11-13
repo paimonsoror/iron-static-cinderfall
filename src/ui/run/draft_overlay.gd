@@ -33,7 +33,7 @@ func _populate() -> void:
 	selected_slot = -1
 	buyout_slot = -1
 	_add_info_band(Strings.tf("draft.cleared", [_api.wave()]))
-	title_label = RunUi.label(Strings.t("draft.header"), 44, &"body", true)
+	title_label = RunUi.wrap(RunUi.label(Strings.t("draft.header"), 44, &"body", true))
 	header.add_child(title_label)
 	sub_label = RunUi.label(Strings.t("draft.sub"), RunUi.MIN_TEXT, &"dim")
 	header.add_child(sub_label)

@@ -36,6 +36,8 @@ func _init(enemy: EnemyDef = null, rank: int = 1, ranks: int = 4) -> void:
 	text.add_theme_constant_override("separation", 2)
 	row.add_child(text)
 	name_label = UiKit.label_text(name_text, UiTheme.LABEL_HEADING, UiTheme.FONT_BODY + 6)
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # "LANCE PLATFORM" beside five chevrons was wider than a phone
+	name_label.custom_minimum_size.x = 8.0
 	text.add_child(name_label)
 	# the briefing line of the machine; a boss has its ATTACK line (approved text); a type with neither shows none (no "#key#")
 	desc_label = UiKit.label_text(RunUi.opt("lore.threat.%s" % String(id), RunUi.opt("boss.%s.attack" % String(id))), UiTheme.LABEL_CAPTION)
