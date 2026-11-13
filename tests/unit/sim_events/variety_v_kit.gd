@@ -17,9 +17,10 @@ const RECOUNT: int = 9
 const TOUGH_HP: float = 1.0e9
 
 
-## A variety world in a combat phase, in wave `wave` of the plan (its act is taken from the plan).
-static func world(run_seed: int = 1, wave: int = 4) -> SimWorld:
-	var w: SimWorld = TestContent.variety_world(run_seed)
+## A variety world in a combat phase, in wave `wave` of the plan (its act is taken from the plan); `long_run` gives the
+## 15-wave, three-act content of long_content.
+static func world(run_seed: int = 1, wave: int = 4, long_run: bool = false) -> SimWorld:
+	var w: SimWorld = SimWorld.new(SimConfig.create(long_content() if long_run else TestContent.variety(), run_seed))
 	w.phase = GameState.Id.SPAWNING
 	begin_wave(w, wave)
 	return w
