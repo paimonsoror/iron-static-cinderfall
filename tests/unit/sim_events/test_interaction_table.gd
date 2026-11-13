@@ -134,7 +134,8 @@ func test_the_stomp_of_the_tremor_rig_silences_the_turrets_for_exactly_its_ticks
 	assert_int(w.combat.shots_by_source[DamageSource.Id.TURRET_0]).is_equal(shots)
 	VarietyVKit.tick(w)  # tick 240: the counter reaches 0 before the turret step of that tick
 	assert_int(w.events_state.turret_offline_ticks).is_equal(0)
-	assert_int(w.combat.shots_by_source[DamageSource.Id.TURRET_0]).is_equal(shots + 1)
+	VarietyVKit.run(w, 40)  # a pad that was offline starts charging again: its first shot is 20 ticks away
+	assert_int(w.combat.shots_by_source[DamageSource.Id.TURRET_0]).is_greater(shots)
 	BossEffects.turrets_offline(w, 100)
 	BossEffects.turrets_offline(w, 30)  # a second stomp never shortens the first
 	assert_int(w.events_state.turret_offline_ticks).is_equal(100)

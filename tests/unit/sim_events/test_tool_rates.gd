@@ -125,7 +125,7 @@ func test_the_lock_comes_before_the_cooldown_and_after_already_active() -> void:
 # --- turrets ---
 
 
-func test_offline_turrets_do_not_fire_or_charge_and_fire_at_once_when_back() -> void:
+func test_offline_turrets_do_not_fire_or_charge_and_fire_as_before_when_back() -> void:
 	var w: SimWorld = _world()
 	_with_turret(w)
 	var normal: int = _shots(w, 300)
