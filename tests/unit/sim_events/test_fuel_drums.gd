@@ -90,13 +90,13 @@ func test_a_blast_that_touches_a_drum_lights_it_and_the_drum_blasts_six_ticks_la
 	assert_int(launched[0].a).is_equal(HazardState.K_DRUM)
 	assert_int(launched[0].b).is_equal(DRUM_FUSE)
 	VarietyVKit.run(w, DRUM_FUSE - 1)  # tick 6
-	assert_float(VarietyVKit.taken(w, near)).is_equal(1.0)
+	assert_float(VarietyVKit.taken(w, near)).is_equal(0.0)
 	VarietyVKit.tick(w)  # tick 7 = 1 + 6
 	assert_array(_blast_ticks(w, HazardState.K_DRUM)).is_equal([1 + DRUM_FUSE])
-	assert_float(VarietyVKit.taken(w, near)).is_equal(1.0 + 150.0)  # the full 150: no falloff, armor ignored
+	assert_float(VarietyVKit.taken(w, near)).is_equal(150.0)  # the full 150 at 2.9 m: no falloff, armor ignored
 	assert_float(VarietyVKit.taken(w, edge)).is_equal(0.0)
 	assert_int(VarietyVKit.events_of(w, SimEventKind.Id.AREA_BLAST)[1].b).is_equal(300)
-	assert_float(w.combat.damage_by_source[DamageSource.Id.HAZARD]).is_equal(1.0 + 150.0)
+	assert_float(w.combat.damage_by_source[DamageSource.Id.HAZARD]).is_equal(150.0)
 
 
 func test_the_blast_leaves_a_slag_pool_of_five_seconds() -> void:
@@ -116,7 +116,7 @@ func test_the_blast_leaves_a_slag_pool_of_five_seconds() -> void:
 	var ended: Array[int] = VarietyVKit.ticks_of(w, SimEventKind.Id.POOL_ENDED)
 	assert_int(ended.size()).is_equal(1)
 	assert_int(ended[0] - started[0].tick).is_between(298, 301)  # five seconds
-	assert_float(VarietyVKit.taken(w, victim)).is_greater(after_blast + 100.0)  # 15 per second, ten pulses
+	assert_float(VarietyVKit.taken(w, victim)).is_equal_approx(after_blast + 75.0, 8.0)  # 15 a second for five seconds
 
 
 func test_a_strike_a_pool_a_freight_car_and_a_vent_each_light_a_drum() -> void:
