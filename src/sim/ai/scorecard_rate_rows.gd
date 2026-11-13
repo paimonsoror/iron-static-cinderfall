@@ -85,12 +85,15 @@ static func greedy_wins(runs: Array[Dictionary]) -> Dictionary:
 	return Scorecard.row("S7", "Does skill matter?", rate, _rate_text(greedy), target, Scorecard.pass_or_warn(in_band(rate, S7_BAND)))
 
 
-## S8: early waves are survivable. A policy other than `none` defeated before wave 3 is a structural break; before wave 4
-## it may happen in at most 2% of the runs.
+## S8: early waves are survivable: no policy other than `none` is defeated before wave 3, and before wave 4 at most 2% of the
+## runs. The `balanced` player (the reference) defeated before wave 3 is a structural break (FAIL); any other policy that fell
+## early is a number to fix in the waves (WARN, named in the detail lines): `random` is allowed to play badly, but not to meet
+## a wave 2 nobody could survive.
 static func early_deaths(runs: Array[Dictionary]) -> Dictionary:
 	var played: int = 0
 	var before_3: int = 0
 	var before_4: int = 0
+	var reference_before_3: int = 0
 	var by_policy: Dictionary[String, PackedInt32Array] = {}  ## policy -> [runs, before wave 3, before wave 4]
 	for rec: Dictionary in ScorecardRecord.main_runs(runs):
 		var policy: String = ScorecardRecord.text(rec, "policy")
@@ -103,6 +106,7 @@ static func early_deaths(runs: Array[Dictionary]) -> Dictionary:
 			var wave: int = ScorecardRecord.whole(rec, "death_wave")
 			before_3 += 1 if wave < 3 else 0
 			before_4 += 1 if wave < 4 else 0
+			reference_before_3 += 1 if wave < 3 and policy == "balanced" else 0
 			tally[1] += 1 if wave < 3 else 0
 			tally[2] += 1 if wave < 4 else 0
 		by_policy[policy] = tally
@@ -111,8 +115,8 @@ static func early_deaths(runs: Array[Dictionary]) -> Dictionary:
 		return Scorecard.missing("S8", "Are early waves survivable?", target, "no runs")
 	var rate_4: float = ScorecardStats.rate(before_4, played)
 	var measured: String = "%d before wave 3, %d before wave 4 (%s) of %d runs" % [before_3, before_4, ScorecardStats.percent(rate_4), played]
-	var verdict: int = Scorecard.pass_or_warn(rate_4 <= S8_BEFORE_4_MAX_RATE)
-	if before_3 > S8_BEFORE_3_MAX:
+	var verdict: int = Scorecard.pass_or_warn(rate_4 <= S8_BEFORE_4_MAX_RATE and before_3 <= S8_BEFORE_3_MAX)
+	if reference_before_3 > S8_BEFORE_3_MAX:
 		verdict = Scorecard.Verdict.FAIL
 	var detail: PackedStringArray = PackedStringArray()
 	for policy: String in by_policy:

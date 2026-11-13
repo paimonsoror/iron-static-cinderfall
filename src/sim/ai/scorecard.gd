@@ -7,7 +7,7 @@ extends RefCounted
 ## WARN    a measured value is outside its target: the number is printed, nothing is hidden. A row that has too few runs
 ##         to be computed (a specialist that was not played, no wins to take a duration of) warns too.
 ## FAIL    a structural break: a run that did not finish, stalled or broke an invariant; `none` winning; `balanced` winning
-##         none of at least 10 runs; a competent policy defeated before wave 3; a cap of the chaos budget exceeded.
+##         none of at least 10 runs; `balanced` defeated before wave 3; a cap of the chaos budget exceeded.
 ## The tool exits 0 on PASS and WARN and 1 on FAIL.
 ##
 ## `runs`: ScorecardRecord dictionaries. `context`: what the content says (ScorecardPlan.context). The rows come back as

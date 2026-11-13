@@ -115,11 +115,15 @@ func test_s7_greedy_wins_between_10_and_40_percent() -> void:
 # --- S8 to S10 ---
 
 
-func test_s8_a_defeat_before_wave_three_is_a_break_and_before_wave_four_is_counted() -> void:
+func test_s8_the_reference_player_defeated_before_wave_three_is_a_break_and_the_others_are_counted() -> void:
 	var runs: Array[Dictionary] = ScorecardTKit.batch("balanced", 0, 49)
 	runs.append(ScorecardTKit.run("none", false, 1, {"death_wave": 1}))  # `none` is not judged here
 	assert_int(_v(runs, "S8")).is_equal(PASS)
 	runs.append(ScorecardTKit.run("greedy", false, 2, {"death_wave": 2}))
+	assert_int(_v(runs, "S8")).is_equal(WARN)  # a number to fix in the waves, not a structural break
+	var detail: PackedStringArray = ScorecardTKit.row(_rows(runs), "S8")["detail"]
+	assert_str(detail[0]).contains("greedy: 1 before wave 3")
+	runs.append(ScorecardTKit.run("balanced", false, 3, {"death_wave": 2}))
 	assert_int(_v(runs, "S8")).is_equal(FAIL)
 
 
