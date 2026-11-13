@@ -35,6 +35,7 @@ MAX_SFX_SECONDS = 1.5  # stingers (registry.STINGERS) are exempt
 MAX_STINGER_SECONDS = 4.0
 LOOP_RANGE_SECONDS = (12.0, 24.0)
 MAX_SEAM_RATIO = 3.0
+HELD_LOOP_SECONDS = (0.5, 1.5)  # a held weapon loop (registry.HELD_LOOPS): short, and seamless instead of faded
 
 
 def outputs() -> dict[str, str]:
@@ -144,7 +145,12 @@ def format_problems(rel: str, kind: str, path: Path) -> list[str]:
         issues.append(f"too quiet (peak {peak:.3f})")
     if peak > 0.95:
         issues.append(f"peak {peak:.3f} is too hot")
-    if kind == "sfx" and (abs(x[0]) > 0.01 or abs(x[-1]) > 0.01):
+    if kind == "sfx" and sid in registry.HELD_LOOPS:
+        if not HELD_LOOP_SECONDS[0] <= dur <= HELD_LOOP_SECONDS[1]:
+            issues.append(f"held loop length {dur:.2f}s outside {HELD_LOOP_SECONDS}")
+        if seam_ratio(x) > MAX_SEAM_RATIO:
+            issues.append(f"held loop seam ratio {seam_ratio(x):.2f} exceeds {MAX_SEAM_RATIO}")
+    elif kind == "sfx" and (abs(x[0]) > 0.01 or abs(x[-1]) > 0.01):
         issues.append("edges are not at zero")
     return issues
 
@@ -203,7 +209,7 @@ def report(directory: Path) -> int:
         peak = max(abs(s) for s in x)
         rms = math.sqrt(sum(s * s for s in x) / len(x))
         seam = ""
-        if kind == "loop":
+        if kind == "loop" or Path(rel).stem in registry.HELD_LOOPS:
             seam = f"{seam_ratio(x):.2f}"
         cen = centroid_hz(x if kind == "sfx" else x[: 8192], rate)
         print(f"{rel:28} {len(x) / rate:6.3f} {len(x):8d} {rate:6d} {db(peak):6.1f}dB {db(rms):6.1f}dB {cen:8.0f} "

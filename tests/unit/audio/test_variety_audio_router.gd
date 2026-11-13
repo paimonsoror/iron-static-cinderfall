@@ -41,10 +41,10 @@ func test_the_arc_projector_has_its_own_shot_and_a_crackle_per_jump() -> void:
 	assert_that(_last()).is_equal(&"shot_turret")  # a turret keeps its own sound whatever the Warden holds
 
 
-func test_a_weapon_without_a_sound_yet_fires_the_pistol_shot_and_the_swap_follows_the_slot() -> void:
+func test_a_weapon_the_table_does_not_know_fires_the_pistol_shot_and_the_swap_follows_the_slot() -> void:
 	_events.weapon_swapped.emit(1, &"scattergun")
 	_events.shot_fired.emit(DamageSource.Id.WARDEN, 1)
-	assert_that(_last()).is_equal(&"shot_pistol")
+	assert_that(_last()).is_equal(&"shot_scattergun")
 	assert_int(_dir.router.active_slot).is_equal(1)
 	assert_that(_dir.router.weapon_id).is_equal(&"scattergun")
 	_events.weapon_swapped.emit(0, &"smg")
@@ -53,7 +53,10 @@ func test_a_weapon_without_a_sound_yet_fires_the_pistol_shot_and_the_swap_follow
 	_events.shot_fired.emit(DamageSource.Id.WARDEN, 1)
 	assert_that(_last()).is_equal(&"shot_smg")
 	_events.shot_fired.emit(DamageSource.Id.WARDEN_OFFHAND, 1)
-	assert_that(_last()).is_equal(&"shot_pistol")  # the off-hand scattergun has no sound of its own yet
+	assert_that(_last()).is_equal(&"shot_scattergun")  # the off-hand gun sounds like its own weapon
+	_events.weapon_swapped.emit(1, &"no_such_gun")
+	_events.shot_fired.emit(DamageSource.Id.WARDEN, 1)
+	assert_that(_last()).is_equal(&"shot_pistol")  # a weapon without a row falls back to the pistol
 	var before: int = _dir.started_total
 	for source: int in [DamageSource.Id.CORE, DamageSource.Id.STRIKE, DamageSource.Id.HAZARD]:
 		_events.shot_fired.emit(source, 1)  # these are no shots
@@ -74,16 +77,21 @@ func test_a_strike_is_a_call_a_warning_and_an_impact() -> void:
 	assert_array(_dir.recent_ids).is_equal([&"strike_call", &"warn_harm", &"strike_impact"])
 
 
-func test_event_warnings_harmful_events_warn_and_the_others_wait_for_their_own_sound() -> void:
-	for id: StringName in [&"static_front", &"floor_breach", &"recount", &"runaway_freight"]:
+func test_event_warnings_harm_and_help_sound_different_and_unknown_events_are_silent() -> void:
+	for id: StringName in [&"static_front", &"floor_breach"]:
 		_dir.gate.clear()
 		_events.event_warned.emit(id, 240, 0.0, 0.0)
 		assert_that(_last()).override_failure_message(String(id)).is_equal(&"warn_harm")
+	for id: StringName in [&"supply_drop", &"accord_window", &"power_surge"]:
+		_dir.gate.clear()
+		_events.event_warned.emit(id, 240, 0.0, 0.0)
+		assert_that(_last()).override_failure_message(String(id)).is_equal(&"warn_help")
 	var before: int = _dir.started_total
-	for id: StringName in [&"supply_drop", &"accord_window", &"power_surge", &"no_such_event"]:
-		_events.event_warned.emit(id, 240, 0.0, 0.0)  # helpful events get warn_help in V4-A; unknown ones are silent
+	for id: StringName in [&"core_vent", &"no_such_event"]:
+		_events.event_warned.emit(id, 30, 0.0, 0.0)  # the vent's blast comes half a second later and has the sound
 	assert_int(_dir.started_total).is_equal(before)
 	_events.delayed_hit.emit(HazardState.K_SHELL, 0.0, 0.0, 30)  # a mortar shell is the player's own round
+	_events.delayed_hit.emit(HazardState.K_MISSILE, 0.0, 0.0, 30)
 	assert_int(_dir.started_total).is_equal(before)
 
 
@@ -102,15 +110,23 @@ func test_four_blasts_in_a_frame_become_one_big_blast_and_fewer_stay_small() -> 
 	assert_int(_dir.started_total).is_equal(4)
 
 
-func test_drums_and_vents_boom_at_once_and_other_blasts_wait_for_the_frame() -> void:
+func test_drums_vents_shells_and_missiles_have_their_own_sound_and_other_blasts_wait_for_the_frame() -> void:
 	_events.area_blast.emit(HazardState.K_DRUM, 0.0, 0.0, 3.0)
-	assert_that(_last()).is_equal(&"blast_big")
+	assert_that(_last()).is_equal(&"drum_blast")
 	_events.area_blast.emit(HazardState.K_VENT, 0.0, 0.0, 6.0)
-	assert_int(VarietyGKit.count_id(_dir, &"blast_big")).is_equal(2)
-	_events.area_blast.emit(HazardState.K_SHELL, 0.0, 0.0, 2.0)
-	assert_int(_dir.started_total).is_equal(2)
+	assert_that(_last()).is_equal(&"core_vent")
+	_events.area_blast.emit(HazardState.K_SHELL, 0.0, 0.0, 2.6)
+	assert_that(_last()).is_equal(&"mortar_blast")
+	_events.area_blast.emit(HazardState.K_MISSILE, 0.0, 0.0, 1.2)
+	assert_that(_last()).is_equal(&"hornet_pop")
+	assert_int(_dir.started_total).is_equal(4)
+	_events.area_blast.emit(HazardState.K_FREIGHT, 0.0, 0.0, 1.3)  # the freight car has its own sound
+	_events.area_blast.emit(HazardState.K_BOLT, 0.0, 0.0, 1.0)  # a bolt's impact is a core hit
+	_events.area_blast.emit(HazardState.K_MINE, 0.0, 0.0, 2.0)
+	assert_int(_dir.started_total).is_equal(4)
 	_dir.advance(0.0)
-	assert_that(_last()).is_equal(&"blast_small")
+	assert_that(_last()).is_equal(&"blast_small")  # only the mine joined the merge
+	assert_int(_dir.started_total).is_equal(5)
 
 
 func test_blasts_waiting_for_the_frame_are_dropped_by_a_new_run() -> void:
@@ -163,8 +179,9 @@ func test_a_mote_burning_out_on_the_cage_is_the_burn_sound_only() -> void:
 	_dir.gate.clear()
 	_events.core_hit.emit(3, &"burster", 70.0, 0.0)
 	assert_that(_last()).is_equal(&"core_hit_heavy")
-	_events.core_hit.emit(4, &"spitter", 18.0, 0.0)
-	assert_that(_last()).is_equal(&"core_hit_light")
+	_dir.gate.clear()
+	_events.core_hit.emit(4, &"spitter", 18.0, 0.0)  # the bolt strikes the cage: its crack, then the core's light thump
+	assert_array(_dir.recent_ids.slice(-2)).is_equal([&"bolt_impact", &"core_hit_light"])
 
 
 func test_every_new_enemy_dies_with_a_catalog_sound_and_armored_ones_ring_dull() -> void:
@@ -204,8 +221,8 @@ func test_the_drone_follows_the_act_and_the_place_of_the_wave_in_it() -> void:
 	_events.act_started.emit(2)
 	_events.wave_started.emit(6)
 	assert_float(_dir.intensity()).is_equal_approx(0.45, 0.0001)
-	_events.wave_started.emit(8)
-	assert_float(_dir.intensity()).is_equal_approx(0.55, 0.0001)
+	_events.wave_started.emit(8)  # the third normal wave of act II: budget 108 of 78 to 124
+	assert_float(_dir.intensity()).is_equal_approx(0.45 + 0.20 * (30.0 / 46.0), 0.0001)
 	_events.act_started.emit(3)
 	_events.wave_started.emit(15)
 	assert_float(_dir.intensity()).is_equal_approx(0.90, 0.0001)
@@ -241,8 +258,10 @@ func test_a_held_weapon_loop_lives_as_long_as_the_shots_and_a_little_more() -> v
 	_events.shot_fired.emit(DamageSource.Id.WARDEN, 1)
 	_dir.advance(0.1)
 	assert_bool(_dir.is_held(1)).is_true()  # the second shot kept it alive
-	_dir.advance(0.2)
-	assert_bool(_dir.is_held(1)).is_false()  # 0.18 s without a shot: released (and fading)
+	_dir.advance(0.15)
+	assert_bool(_dir.is_held(1)).is_true()  # a little longer than the 0.25 s between two rounds of a slow LMG
+	_dir.advance(0.15)
+	assert_bool(_dir.is_held(1)).is_false()  # 0.3 s without a shot: released (and fading)
 	await VarietyGKit.settle(self, _dir)
 	assert_int(_dir.held.sounding_count()).is_equal(0)
 

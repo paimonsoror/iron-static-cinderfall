@@ -70,3 +70,47 @@ def rand_gate(r: random.Random, n: int, on_ms: tuple[float, float], off_ms: tupl
         g.extend([1.0 if on else 0.0] * max(1, int(r.uniform(lo, hi) * SR / 1000.0)))
         on = not on
     return lp1(g[:n], 700.0)
+
+
+def wrap_add(buf: list[float], start: int, sig: list[float], gain: float = 1.0) -> None:
+    """Adds `sig` into `buf` at sample `start`, wrapping around the end (events of a seamless loop)."""
+    n = len(buf)
+    for i, s in enumerate(sig):
+        buf[(start + i) % n] += gain * s
+
+
+def mix_in(dst: list[float], src: list[float], gain: float) -> list[float]:
+    return [d + gain * s for d, s in zip(dst, src)]
+
+
+def with_rms(x: list[float], target: float) -> list[float]:
+    """Scales `x` to the given RMS, so the parts of a loop are balanced by level and not by filter gain."""
+    rms = math.sqrt(sum(s * s for s in x) / max(len(x), 1))
+    return scale(x, target / rms) if rms > 1e-9 else list(x)
+
+
+def finish_loop(x: list[float], peak: float = 0.89) -> list[float]:
+    """Seamless-loop finish: remove the mean and set the peak. No fades (a loop must not dip at its edges)."""
+    mean = sum(x) / max(len(x), 1)
+    y = [s - mean for s in x]
+    top = max((abs(s) for s in y), default=0.0)
+    g = peak / top if top > 1e-9 else 0.0
+    return [s * g for s in y]
+
+
+def plateau(n: int, attack_s: float, release_s: float) -> list[float]:
+    """A gate envelope: a linear attack, a hold at 1, a linear release (a horn blast)."""
+    na = max(1, int(attack_s * SR))
+    nr = max(1, int(release_s * SR))
+    return [max(0.0, min(1.0, i / na, (n - 1 - i) / nr)) for i in range(n)]
+
+
+def exciter(x: list[float], gain: float = 0.6, lo: float = 260.0, hi: float = 420.0, drive: float = 6.0) -> list[float]:
+    """Bass harmonics for small speakers (a phone plays almost nothing below 300 Hz): saturates the low band of `x` and
+    adds only the new upper harmonics, at `gain` times the level of `x`."""
+    low = lpf(x, lo)
+    top = max((abs(s) for s in low), default=0.0)
+    if top < 1e-9:
+        return list(x)
+    harm = hpf([math.tanh(drive * s / top) for s in low], hi)
+    return mix_in(x, with_rms(harm, gain * math.sqrt(sum(s * s for s in x) / max(len(x), 1))), 1.0)

@@ -20,10 +20,11 @@ func _bar() -> HudWeaponBar:
 	return _hud.bottom.weapon_bar
 
 
-func test_the_band_is_26_percent_and_holds_the_weapon_bar_instead_of_the_tab() -> void:
+func test_the_band_is_as_tall_as_its_rows_need_never_past_26_percent_and_holds_the_weapon_bar_instead_of_the_tab() -> void:
 	await VarietyEKit.settle(get_tree())
 	assert_bool(_hud.variety.active).is_true()
-	assert_float(_hud.bottom_band_px()).is_equal_approx(1920.0 * 0.26, 0.01)
+	assert_float(_hud.bottom_band_px()).is_equal_approx(HudBottomPanel.variety_fit_px(), 0.01)  # V4-U: no empty strip above the bar
+	assert_float(_hud.bottom_band_px()).is_less_equal(1920.0 * 0.26)
 	assert_bool(_hud.bottom.tab_button.visible).is_false()
 	assert_bool(_hud.bottom.ammo.visible).is_false()
 	assert_bool(_bar().visible).is_true()

@@ -40,7 +40,7 @@ func test_the_pause_overlay_text_comes_from_the_string_table_and_buttons_are_big
 	for b: BaseButton in CombatHudTestKit.buttons(overlay):
 		assert_float(b.size.x).is_greater_equal(132.0)
 		assert_float(b.size.y).is_greater_equal(148.0)
-	assert_int(CombatHudTestKit.buttons(overlay).size()).is_equal(4)
+	assert_int(CombatHudTestKit.buttons(overlay).size()).is_equal(5)  # V4-U: BUILD (hidden without a generated run)
 
 
 func test_the_pause_overlay_blocks_taps_to_whatever_is_below_it() -> void:

@@ -120,6 +120,6 @@ func test_each_results_button_emits_its_signal_once_and_is_big() -> void:
 	s.menu_button.pressed.emit()
 	assert_array(hits).is_equal(["retry", "menu"])
 	await ScreensTestKit.settle(get_tree())
-	assert_int(UiKit.buttons(s).size()).is_equal(2)
+	assert_int(UiKit.buttons(s).size()).is_equal(4)  # V4-U: SAME SEED and ARCHIVE exist but stay hidden on the legacy results
 	assert_array(ScreensTestKit.small_buttons(s)).is_empty()
 	assert_float(s.retry_button.size.y).is_greater_equal(148.0)
