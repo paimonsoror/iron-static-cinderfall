@@ -3,8 +3,11 @@ extends RefCounted
 ## The weapon models that the Warden holds beyond the pistol and the SMG (VARIETY_SPEC 3.5, 12.2). Same frames as `LookDevGear`:
 ## the grip is near the origin, the barrel points to -Z, and the grip points below are in weapon space (WardenMotion moves the
 ## wrists to them). At most `ActorMeshes.TRI_BUDGET[weapon]` (350) triangles each, three surfaces at most (gunmetal, ceramic,
-## emit_cyan: "gunmetal with one cyan accent"), vertex colours baked like the Warden's own gear. V2-F builds the arc projector;
-## V4-R adds the other seven next to it and extends `model_index`, `grip_r`, `grip_l`, `mag_point` and `muzzle`.
+## emit_cyan: "gunmetal with one cyan accent"), vertex colours baked like the Warden's own gear. V2-F built the arc projector here;
+## V4-R builds the other seven in `WeaponMeshes2` (scattergun, assault rifle, hornet rack, LMG) and `WeaponMeshes3` (slag mortar,
+## cutting torch, rail lance) and keeps the tables of muzzle, grip and magazine points in this file.
+## The Warden has three weapon mounts (pistol, SMG and a third that shows every other weapon: `model_index`); the tables below are by
+## weapon index (`Ids.WP_*`), because the hands and the muzzle follow the weapon, not the mount.
 
 const G: StringName = &"gunmetal"
 const C: StringName = &"ceramic"
@@ -12,31 +15,50 @@ const L: StringName = &"emit_cyan"
 const ID: Transform3D = Transform3D.IDENTITY
 const SKIP: Array[StringName] = [L]
 
-## Index of the arc projector among the weapon nodes of the Warden (0 pistol, 1 SMG; `ActorMeshes.WARDEN_WEAPON_NODES`).
-const NODE_ARC: int = 2
+## The third mount of the Warden (named for the arc projector) draws every weapon except the pistol and the SMG.
+const THIRD_MOUNT: int = 2
 const ARC_MUZZLE: Vector3 = Vector3(0.0, 0.05, -0.72)
 const ARC_GRIP_R: Vector3 = Vector3(0.0, -0.08, 0.03)
 const ARC_GRIP_L: Vector3 = Vector3(0.0, -0.07, -0.23)
 const ARC_MAG: Vector3 = Vector3(0.0, -0.12, -0.2)
 const ARC_CORE_AT: Vector3 = Vector3(0.0, 0.05, -0.56)
+## Muzzle, weapon hand, support hand and magazine (reload) point per weapon index; the first two (pistol, SMG) are `HeroMeshes`'
+## and `LookDevGear`'s and are never read here.
+const MUZZLES: Array[Vector3] = [
+	Vector3.ZERO, Vector3.ZERO, WeaponMeshes2.SCATTER_MUZZLE, WeaponMeshes2.RIFLE_MUZZLE, WeaponMeshes2.HORNET_MUZZLE,
+	WeaponMeshes2.LMG_MUZZLE, WeaponMeshes3.MORTAR_MUZZLE, WeaponMeshes3.TORCH_MUZZLE, ARC_MUZZLE, WeaponMeshes3.RAIL_MUZZLE,
+]
+const GRIPS_R: Array[Vector3] = [
+	Vector3.ZERO, Vector3.ZERO, WeaponMeshes2.SCATTER_GRIP_R, WeaponMeshes2.RIFLE_GRIP_R, WeaponMeshes2.HORNET_GRIP_R,
+	WeaponMeshes2.LMG_GRIP_R, WeaponMeshes3.MORTAR_GRIP_R, WeaponMeshes3.TORCH_GRIP_R, ARC_GRIP_R, WeaponMeshes3.RAIL_GRIP_R,
+]
+const GRIPS_L: Array[Vector3] = [
+	Vector3.ZERO, Vector3.ZERO, WeaponMeshes2.SCATTER_GRIP_L, WeaponMeshes2.RIFLE_GRIP_L, WeaponMeshes2.HORNET_GRIP_L,
+	WeaponMeshes2.LMG_GRIP_L, WeaponMeshes3.MORTAR_GRIP_L, WeaponMeshes3.TORCH_GRIP_L, ARC_GRIP_L, WeaponMeshes3.RAIL_GRIP_L,
+]
+const MAGS: Array[Vector3] = [
+	Vector3.ZERO, Vector3.ZERO, WeaponMeshes2.SCATTER_MAG, WeaponMeshes2.RIFLE_MAG, WeaponMeshes2.HORNET_MAG,
+	WeaponMeshes2.LMG_MAG, WeaponMeshes3.MORTAR_MAG, WeaponMeshes3.TORCH_MAG, ARC_MAG, WeaponMeshes3.RAIL_MAG,
+]
 
 
-## The weapon node (index into the Warden's weapon nodes) that draws weapon `weapon_index` (`Ids.WP_*`). Weapons that have no
-## model yet are drawn with the SMG so that a weapon in hand is never invisible.
+## The mount (index into the Warden's three weapon mounts) that draws weapon `weapon_index` (`Ids.WP_*`): 0 for the pistol, 1 for the
+## SMG, the third for every other weapon of the ten. A weapon index beyond the ten is drawn with the SMG so that a weapon in hand is
+## never invisible.
 static func model_index(weapon_index: int) -> int:
 	if weapon_index == Ids.WP_PISTOL:
 		return 0
-	if weapon_index == Ids.WP_ARC_PROJECTOR:
-		return NODE_ARC
+	if weapon_index >= 2 and weapon_index < Ids.WEAPONS.size():
+		return THIRD_MOUNT
 	return 1
 
 
-static func muzzle(node_index: int) -> Vector3:
-	match node_index:
-		0:
-			return HeroMeshes.PISTOL_MUZZLE
-		NODE_ARC:
-			return ARC_MUZZLE
+## The muzzle of weapon `weapon_index` in weapon space (where the tracers leave from).
+static func muzzle(weapon_index: int) -> Vector3:
+	if weapon_index == Ids.WP_PISTOL:
+		return HeroMeshes.PISTOL_MUZZLE
+	if weapon_index > 1 and weapon_index < MUZZLES.size():
+		return MUZZLES[weapon_index]
 	return HeroMeshes.SMG_MUZZLE
 
 

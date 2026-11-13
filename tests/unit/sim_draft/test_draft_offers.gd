@@ -4,7 +4,7 @@ extends GdUnitTestSuite
 
 
 func _slice_world(wave_number: int = 3, run_seed: int = 1) -> SimWorld:
-	return VarietyBKit.world_after(TestContent.variety(), wave_number, run_seed)
+	return VarietyBKit.world_after(VarietyBKit.slice_content(), wave_number, run_seed)
 
 
 func _index(w: SimWorld, id: StringName) -> int:
@@ -49,7 +49,7 @@ func test_quartermaster_makes_it_four_slots() -> void:
 
 
 func test_a_pool_smaller_than_the_offer_gives_a_short_offer() -> void:
-	var c: ContentSet = TestContent.variety()
+	var c: ContentSet = VarietyBKit.slice_content()
 	var w: SimWorld = VarietyBKit.world_after(c, 3)
 	for def: DirectiveDef in c.directives:
 		if def.id != &"hot_loads" and def.id != &"cyclic_tuning":
@@ -60,7 +60,7 @@ func test_a_pool_smaller_than_the_offer_gives_a_short_offer() -> void:
 
 
 func test_maxed_directives_never_appear() -> void:
-	var c: ContentSet = TestContent.variety()
+	var c: ContentSet = VarietyBKit.slice_content()
 	var w: SimWorld = VarietyBKit.world_after(c, 3)
 	var maxed: Array[StringName] = [&"hot_loads", &"cyclic_tuning", &"reinforced_cage"]
 	for id: StringName in maxed:
@@ -170,7 +170,7 @@ func test_same_seed_same_offers_other_seed_other_offers() -> void:
 ## Pinned from the first run of DraftOffer (slice pool, act I, after wave 1, stream `draft:0` of seed 1): a change here
 ## means the draw sequence of VARIETY_SPEC 4.3 changed, which changes every recorded run.
 func test_golden_first_offer_of_seed_1() -> void:
-	var c: ContentSet = TestContent.variety()
+	var c: ContentSet = VarietyBKit.slice_content()
 	var w: SimWorld = VarietyBKit.world_after(c, 1, 1)
 	DraftSystem.open(w)
 	assert_array(VarietyBKit.ids(c, w.draft.offer)).is_equal([&"cyclic_tuning", &"hot_loads", &"emp_capacitor"])
@@ -188,7 +188,7 @@ func test_offer_n_depends_on_its_own_stream_only() -> void:
 
 
 func test_open_counts_offers_and_pushes_the_event() -> void:
-	var c: ContentSet = TestContent.variety()
+	var c: ContentSet = VarietyBKit.slice_content()
 	var w: SimWorld = VarietyBKit.draft_world(c, 3)
 	assert_int(w.draft.offer_ordinal).is_equal(1)
 	assert_bool(w.draft.open).is_true()

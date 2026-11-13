@@ -3,7 +3,7 @@ extends GdUnitTestSuite
 
 
 func _kit_content(ops: Array[OpDef]) -> ContentSet:
-	var c: ContentSet = TestContent.variety()
+	var c: ContentSet = VarietyBKit.slice_content()
 	var kit: KitDef = KitDef.new()
 	kit.id = &"k_test"
 	kit.index = c.kits.size()
@@ -14,12 +14,12 @@ func _kit_content(ops: Array[OpDef]) -> ContentSet:
 
 func _kit_world(ops: Array[OpDef], run_seed: int = 1) -> SimWorld:
 	var cfg: SimConfig = SimConfig.create(_kit_content(ops), run_seed)
-	cfg.kit_index = 1
+	cfg.kit_index = cfg.content.kits.size() - 1  # the kit appended by _kit_content is the last one
 	return SimWorld.new(cfg)
 
 
 func _slice_world() -> SimWorld:
-	return VarietyBKit.world_after(TestContent.variety(), 3)
+	return VarietyBKit.world_after(VarietyBKit.slice_content(), 3)
 
 
 func _hash_of_rng(rng: SimRng) -> String:
@@ -29,7 +29,7 @@ func _hash_of_rng(rng: SimRng) -> String:
 
 
 func test_the_standard_kit_changes_nothing_and_draws_nothing() -> void:
-	var w: SimWorld = SimWorld.new(SimConfig.create(TestContent.variety(), 3))
+	var w: SimWorld = SimWorld.new(SimConfig.create(VarietyBKit.slice_content(), 3))
 	assert_int(w.scrap).is_equal(0)
 	assert_float(w.core_max_hp).is_equal(1000.0)
 	assert_int(w.events.peek().size()).is_equal(0)
@@ -101,7 +101,7 @@ func test_the_same_kit_seed_grants_the_same_directive() -> void:
 	var picks: Array[Array] = []
 	for run_seed: int in [4, 4, 5]:
 		var cfg: SimConfig = SimConfig.create(c, run_seed)
-		cfg.kit_index = 1
+		cfg.kit_index = cfg.content.kits.size() - 1
 		var w: SimWorld = SimWorld.new(cfg)
 		picks.append(Array(w.draft.stacks))
 	assert_array(picks[0]).is_equal(picks[1])
@@ -201,7 +201,7 @@ func test_rewards_without_a_sim_effect_here_and_bad_indices_are_harmless() -> vo
 
 
 func test_a_double_pick_reward_reaches_the_next_draft() -> void:
-	var w: SimWorld = VarietyBKit.intermission_world(TestContent.variety())
+	var w: SimWorld = VarietyBKit.intermission_world(VarietyBKit.slice_content())
 	ModSystem.apply_reward(w, w.content.run.reward_index(&"rw_double_pick"))
 	VarietyBKit.open_draft(w)
 	assert_int(w.draft.picks_left).is_equal(2)

@@ -8,7 +8,7 @@ extends RefCounted
 ## on_warden_shot   shock_rounds (every 7 - stacks shots: the shot's target arcs on to 2 enemies for 50%)
 ## on_warden_hit    incendiary_tips (burn)
 ## on_warden_kill   ricochet (a hitscan kill continues to `stacks` more enemies within 3 m for 60%), kill_chain (+4% fire
-##                  rate per kill for 2 s, up to +40%), unstable_munitions (20% of kills blast: 2 m, 50 damage)
+##                  rate per kill for 2 s, up to +40%); the kill blast of unstable_munitions is DeathHooks (every Warden kill)
 ## reload_jam_ticks unstable_munitions (5% of reloads jam for 1.5 s)
 ## on_turret_shot   arc_pylons (every 5 - stacks turret shots chain to 2 enemies for 60%)
 ## on_turret_hit    flak_heads (the hit splashes 1.2 m for 40%, 60% at stack 2)
@@ -37,10 +37,6 @@ const RICOCHET_MAX_STACKS: int = 2
 const KILL_CHAIN_MAX: int = 10
 const KILL_CHAIN_TICKS: int = 120
 const KILL_CHAIN_STEP_MILLI: int = 40  ## +4% of the fire rate per stack
-const UNSTABLE_CHANCE: float = 0.20
-const UNSTABLE_RADIUS_M: float = 2.0
-const UNSTABLE_DAMAGE: float = 50.0
-const UNSTABLE_DELAY_TICKS: int = 6  ## the chain delay of every death blast (DeathHooks.CHAIN_DELAY_TICKS)
 const JAM_CHANCE: float = 0.05
 const JAM_TICKS: int = 90
 const PYLON_PERIOD_BASE: int = 5  ## every 4th turret shot at stack 1, 3rd at 2
@@ -95,7 +91,7 @@ static func on_warden_hit(world: SimWorld, target_index: int, _dealt: float) -> 
 	StatusSystem.ignite(world, target_index)
 
 
-## ricochet, kill_chain, unstable_munitions: the Warden killed an enemy at (x, z) with a direct hit.
+## ricochet, kill_chain: the Warden killed an enemy at (x, z) with a direct hit.
 static func on_warden_kill(world: SimWorld, x: float, z: float) -> void:
 	if world.content.run == null:
 		return
@@ -105,11 +101,6 @@ static func on_warden_kill(world: SimWorld, x: float, z: float) -> void:
 	if stacks(world, D_KILL_CHAIN) > 0:
 		var a: ArsenalState = world.arsenal
 		_set_kill_chain(a, mini(KILL_CHAIN_MAX, kill_chain_stacks(a) + 1), KILL_CHAIN_TICKS)
-	if stacks(world, D_UNSTABLE) > 0 and world.rng.stream(&"proc").randf() < UNSTABLE_CHANCE:
-		var _seq: int = HazardSystem.queue_blast(
-			world, world.tick + UNSTABLE_DELAY_TICKS, HazardState.K_BLAST, x, z, UNSTABLE_RADIUS_M * world.mods.area_mul,
-			UNSTABLE_DAMAGE, 1.0, DamageResolver.F_AREA, DamageSource.Id.WARDEN, 0.0, -1
-		)
 
 
 ## arc_pylons: the turret on `pad` has fired (its tally in CombatState.shots_by_source already counts the shot).

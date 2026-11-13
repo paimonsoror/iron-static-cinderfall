@@ -58,7 +58,7 @@ func test_rename_to_a_free_name() -> void:
 
 
 func test_save_flushes_and_reloads_through_the_disk_twice() -> void:
-	# The real files of the autoload (user://profile_v1.json*), inside the redirected test APPDATA. The second flush
+	# The real files of the autoload (user://profile_v2.json*), inside the redirected test APPDATA. The second flush
 	# renames over an existing main file and over an existing backup.
 	var disk_fs: DiskSaveFs = DiskSaveFs.new()
 	_remove_profile_files(disk_fs)
@@ -74,9 +74,10 @@ func test_save_flushes_and_reloads_through_the_disk_twice() -> void:
 	assert_int(ProfileCodec.decode(disk_fs.read(SaveTestData.BAK)).profile.data).is_equal(22)
 	assert_bool(disk_fs.exists(SaveTestData.TMP)).is_false()
 	_remove_profile_files(disk_fs)
-	SaveTestData.boot(MemorySaveFs.new())
+	SaveTestData.reset()
 
 
 func _remove_profile_files(fs: SaveFs) -> void:
-	for p: String in [SaveTestData.MAIN, SaveTestData.TMP, SaveTestData.BAK, SaveTestData.CORRUPT, SaveTestData.NEWER]:
+	for p: String in [SaveTestData.MAIN, SaveTestData.TMP, SaveTestData.BAK, SaveTestData.CORRUPT, SaveTestData.NEWER,
+			SaveTestData.V1_MAIN, SaveTestData.V1_TMP, SaveTestData.V1_BAK]:
 		fs.remove(p)
