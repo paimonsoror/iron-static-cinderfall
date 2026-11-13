@@ -2,12 +2,15 @@
 # tools/balance_run.gd and judges by its output text. stdout is deterministic ("BALANCE ..." lines, the verdict
 # "BALANCE: PASS|WARN|FAIL ..." last); TIMING and engine noise go to stderr, so two executions diff clean.
 # Exit 0 on PASS or WARN, 1 on FAIL (or no verdict line), 2 on a script error, bad arguments or unreadable content.
-# Usage: .\tools\balance_run.ps1 [-Runs 20] [-Seed 1] [-MaxTicks 60000] [-DamageMult 1.0] [-StartScrap 0] [-Data res://data]
+# On the shipped variety data it also plays `balanced` and reads the redefined targets (GDD 8.4: S4, S6, S7, S16, S17);
+# -Data res://tests/fixtures/data_baseline runs the legacy fixture against the old targets.
+# Usage: .\tools\balance_run.ps1 [-Runs 20] [-Seed 1] [-MaxTicks 0] [-DamageMult 1.0] [-StartScrap 0] [-Data res://data]
+# -MaxTicks 0 = the default of the content: 60000 for the legacy waves, 108000 for a generated run.
 [CmdletBinding(PositionalBinding = $false)]
 param(
     [int]$Runs = 20,
     [int]$Seed = 1,
-    [int]$MaxTicks = 60000,
+    [int]$MaxTicks = 0,
     [double]$DamageMult = 1.0,
     [int]$StartScrap = 0,
     [string]$Data = "res://data",
@@ -30,12 +33,21 @@ if ($impBad.Count -gt 0) {
     exit 2
 }
 
+# Compile probe: a tool script that does not compile leaves Godot idling forever, so find that out in seconds, not hours.
+# A script that loads answers the unknown flag with an error line and quits.
+try { $probe = Invoke-Godot @("--headless", "-s", "res://tools/balance_run.gd", "--", "--probe", "1") -TimeoutSec 300 } catch { $probe = $null }
+if ($null -eq $probe -or ($probe.Output -replace $ansi, "") -cnotmatch 'BALANCE ERROR: .*--probe') {
+    Write-Host "BALANCE FAILED (the tool script does not compile or load)"
+    exit 2
+}
+
 $inv = [System.Globalization.CultureInfo]::InvariantCulture
 $argList = @("--headless", "-s", "res://tools/balance_run.gd", "--",
-    "--runs", "$Runs", "--seed", "$Seed", "--policy", "both", "--max-ticks", "$MaxTicks",
+    "--runs", "$Runs", "--seed", "$Seed", "--policy", "both",
     "--damage-mult", $DamageMult.ToString($inv), "--start-scrap", "$StartScrap", "--data", $Data)
+if ($MaxTicks -gt 0) { $argList += @("--max-ticks", "$MaxTicks") }
 if ($Extra.Count -gt 0) { $argList += $Extra }   # forwarded raw: the script rejects unknown flags itself
-$r = Invoke-Godot $argList -TimeoutSec 1800
+$r = Invoke-Godot $argList -TimeoutSec 7200
 $text = $r.Output -replace $ansi, ""
 $lines = @($text -split "`r?`n" | Where-Object { $_.Trim() })
 foreach ($l in $lines) {

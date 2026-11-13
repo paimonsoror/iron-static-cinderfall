@@ -16,11 +16,14 @@ extends RefCounted
 ##          shield     when the core lost integrity since the last call (it is being hit),
 ##          overdrive  when the boss is alive and inside the Warden's weapon range.
 ##        At the intermission it takes the lowest-rarity card, route A and the emptiest slot (PolicyGreedy).
-## RANDOM, BALANCED: see PolicyRandom and PolicyBalanced. HOARDER, SPAMMER, TURRET_RUSH and RISK are V4-T's files:
-## until they decide something, a choice they leave open is answered like NONE does, so no policy can hang a run.
+## RANDOM, BALANCED, HOARDER, SPAMMER, TURRET_RUSH, RISK: one file each (PolicyRandom, PolicyBalanced, ...). A choice a
+## policy leaves open is answered like NONE does (PolicyAnswers.ensure_answered), so no policy can hang a run.
 
 ## Append only. The variety bots (VARIETY_SPEC 14.1; one file each under src/sim/ai/policy_*.gd).
 enum Policy { NONE, GREEDY, RANDOM, HOARDER, SPAMMER, TURRET_RUSH, BALANCED, RISK }
+
+## Route habit: AUTO is each policy's own; STANDARD and HOT force `balanced` to one kind (scorecard S14).
+enum RouteMode { AUTO, STANDARD, HOT }
 
 ## Names in enum order, as the tools and the scorecard print them.
 const NAMES: PackedStringArray = ["none", "greedy", "random", "hoarder", "spammer", "turret_rush", "balanced", "risk"]
@@ -37,6 +40,8 @@ var commands_submitted: int = 0
 ## draw from ONE counter. Two counters would repeat ids, and the sim answers a repeated id with DUPLICATE_COMMAND:
 ## a human's purchase or ability tap, or the bot's own, would be dropped silently (a repeated skip is dropped for good).
 var id_source: Callable = Callable()
+## Set by the scorecard for its forced-route runs; only `balanced` reads it.
+var route_mode: int = RouteMode.AUTO
 
 # --- notes of the policies (public so the policy files can read and write them) ---
 ## The core at the last call (GREEDY: "it is being hit"; BALANCED: "it crossed 60%"). -1 before the first call.

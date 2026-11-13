@@ -11,7 +11,7 @@ var waves_completed: int = 0
 var wave_reached: int = 0  ## world.wave when the run stopped (the wave a defeat happened in)
 var core_hp: float = 0.0
 var core_max_hp: float = 0.0
-var peak_alive: PackedInt32Array = PackedInt32Array([0, 0, 0, 0, 0])  ## index 0 = wave 1
+var peak_alive: PackedInt32Array = PackedInt32Array([0, 0, 0, 0, 0])  ## index 0 = wave 1; one entry per wave (at least 5)
 var wave_start_ticks: PackedInt32Array = PackedInt32Array([0, 0, 0, 0, 0])
 var wave_clear_ticks: PackedInt32Array = PackedInt32Array([0, 0, 0, 0, 0])  ## 0 = never cleared
 var scrap_earned: int = 0
@@ -27,7 +27,7 @@ var stuck_recoveries: int = 0
 var boss_spawn_tick: int = -1
 var boss_kill_tick: int = -1
 var core_hits: int = 0
-## Per wave 1..5 (index 0 = wave 1): core integrity lost and Scrap earned by kills during it.
+## Per wave (index 0 = wave 1): core integrity lost and Scrap earned by kills during it.
 var core_lost: PackedFloat64Array = PackedFloat64Array([0.0, 0.0, 0.0, 0.0, 0.0])
 var scrap_by_wave: PackedInt32Array = PackedInt32Array([0, 0, 0, 0, 0])
 ## Successful purchases in order (tick, wave, upgrade index).
@@ -45,6 +45,20 @@ var signature: String = ""  ## BuildSignature: primary weapon by damage dealt pl
 var damage_by_weapon: PackedFloat64Array = PackedFloat64Array()  ## enemy hp removed per ContentSet.weapons index
 var stalled: bool = false  ## the run waited for a choice the bot did not (or could not) answer; see SimHarness
 var stalled_on: int = 0  ## the PhaseState.Await it was stuck on
+# --- the scorecard (HarnessCensus and the world at the end) ---
+var wave_total: int = 5  ## waves the run has (PhaseSystem.wave_count)
+var act_total: int = 1  ## acts the run has
+var death_act: int = 0  ## the act of the death wave, 0 for a victory or an unfinished run
+var combat_ticks: int = 0  ## ticks spent in a wave (SPAWNING or CLEARING)
+var act_end_core: PackedFloat64Array = PackedFloat64Array()  ## core fraction when each act's last wave was cleared, -1 = never
+var peak_bodied: PackedInt32Array = PackedInt32Array()  ## per wave number (index 0 = before wave 1)
+var peak_minis: PackedInt32Array = PackedInt32Array()
+var max_blasts: int = 0  ## the most AREA_BLAST events of one tick
+var offered: PackedInt32Array = PackedInt32Array()  ## directive indices the draft ever showed
+var held: PackedInt32Array = PackedInt32Array()  ## stacks per directive index at the end
+var weapons_carried: PackedInt32Array = PackedInt32Array()  ## weapon indices in the order first carried
+var primary_weapon: int = 0  ## ContentSet.weapons index that dealt the most damage
+var data: int = 0  ## Recovered Data the run would bank (HarnessCensus.data_of)
 
 
 func seconds() -> float:
@@ -77,8 +91,8 @@ func boss_seconds() -> float:
 	return float(boss_kill_tick - boss_spawn_tick) / float(SimWorld.TICK_RATE)
 
 
-## Seconds from the start of wave `n` (1..5) to its clear, or -1 when it was never started or cleared.
+## Seconds from the start of wave `n` (1..the last wave) to its clear, or -1 when it was never started or cleared.
 func wave_seconds(n: int) -> float:
-	if n < 1 or n > 5 or wave_start_ticks[n - 1] == 0 or wave_clear_ticks[n - 1] == 0:
+	if n < 1 or n > wave_start_ticks.size() or wave_start_ticks[n - 1] == 0 or wave_clear_ticks[n - 1] == 0:
 		return -1.0
 	return float(wave_clear_ticks[n - 1] - wave_start_ticks[n - 1]) / float(SimWorld.TICK_RATE)

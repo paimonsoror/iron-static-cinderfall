@@ -29,31 +29,49 @@ func _initialize() -> void:
 			print("BALANCE ERROR: content: %s" % p)
 		quit(2)
 		return
-	print("BALANCE config data=%s runs=%d seed=%d max_ticks=%d damage_mult=%s start_scrap=%d" % [args.data_dir, args.runs, args.first_seed, args.max_ticks, str(args.damage_mult), args.start_scrap])
+	var variety: bool = loaded.content.is_variety()
+	var limit: int = args.max_ticks if args.max_ticks_given else SimHarness.default_max_ticks(loaded.content)
+	print("BALANCE config data=%s runs=%d seed=%d max_ticks=%d damage_mult=%s start_scrap=%d" % [args.data_dir, args.runs, args.first_seed, limit, str(args.damage_mult), args.start_scrap])
 	var t0: int = Time.get_ticks_usec()
 	var total_ticks: int = 0
-	var by_policy: Array[Array] = [[], []]
-	for policy: int in [PolicyBot.Policy.NONE, PolicyBot.Policy.GREEDY]:
+	var none_runs: Array[HarnessReport] = []
+	var greedy_runs: Array[HarnessReport] = []
+	var balanced_runs: Array[HarnessReport] = []
+	var played: Array[int] = [PolicyBot.Policy.NONE, PolicyBot.Policy.GREEDY]
+	if variety:
+		played.append(PolicyBot.Policy.BALANCED)  # the reference player of the redefined targets (GDD 8.4)
+	for policy: int in played:
 		for k: int in args.runs:
 			var cfg: SimConfig = SimHarness.config_for(loaded.content, args.first_seed + k, args.damage_mult, args.start_scrap)
-			var r: HarnessReport = SimHarness.run(cfg, policy, args.max_ticks)
+			var r: HarnessReport = SimHarness.run(cfg, policy, limit)
 			total_ticks += r.ticks
-			by_policy[policy].append(r)
+			match policy:
+				PolicyBot.Policy.NONE:
+					none_runs.append(r)
+				PolicyBot.Policy.GREEDY:
+					greedy_runs.append(r)
+				_:
+					balanced_runs.append(r)
 			print(_run_line(r))
 			for v: String in r.violations:
 				print("BALANCE violation seed=%d policy=%s %s" % [r.run_seed, HarnessArgs.policy_name(policy), v])
-	var none_runs: Array[HarnessReport] = []
-	var greedy_runs: Array[HarnessReport] = []
-	for r: HarnessReport in by_policy[PolicyBot.Policy.NONE]:
-		none_runs.append(r)
-	for r: HarnessReport in by_policy[PolicyBot.Policy.GREEDY]:
-		greedy_runs.append(r)
 	_print_policy("none", none_runs)
 	_print_policy("greedy", greedy_runs)
 	_print_waves("none", none_runs)
 	_print_waves("greedy", greedy_runs)
-	_print_buys(greedy_runs[0])
-	var rows: Array[Dictionary] = BalanceTargets.evaluate(none_runs, greedy_runs)
+	if variety:
+		_print_policy("balanced", balanced_runs)
+		_print_waves("balanced", balanced_runs)
+	else:
+		_print_buys(greedy_runs[0])
+	var rows: Array[Dictionary] = []
+	if variety:
+		var records: Array[Dictionary] = []
+		for r: HarnessReport in none_runs + greedy_runs + balanced_runs:
+			records.append(ScorecardRecord.of(r, loaded.content, "base", ""))
+		rows = BalanceTargets.evaluate_variety(records, ScorecardPlan.context(loaded.content, "base"))
+	else:
+		rows = BalanceTargets.evaluate(none_runs, greedy_runs)
 	for row: Dictionary in rows:
 		var status: int = row["status"]
 		print("BALANCE target %s measured=\"%s\" target=\"%s\" %s" % [row["id"], row["measured"], row["target"], BalanceTargets.status_name(status)])
@@ -70,7 +88,7 @@ func _initialize() -> void:
 				BalanceTargets.count(rows, BalanceTargets.Status.PASS),
 				BalanceTargets.count(rows, BalanceTargets.Status.WARN),
 				BalanceTargets.count(rows, BalanceTargets.Status.FAIL),
-				none_runs.size() + greedy_runs.size(),
+				none_runs.size() + greedy_runs.size() + balanced_runs.size(),
 			]
 		)
 	)
@@ -108,7 +126,8 @@ func _print_policy(label: String, runs: Array[HarnessReport]) -> void:
 
 
 func _print_waves(label: String, runs: Array[HarnessReport]) -> void:
-	for w: int in 5:
+	var waves: int = runs[0].wave_total if not runs.is_empty() else 5
+	for w: int in waves:
 		var peaks: PackedFloat64Array = PackedFloat64Array()
 		var clears: PackedFloat64Array = PackedFloat64Array()
 		var lost: PackedFloat64Array = PackedFloat64Array()

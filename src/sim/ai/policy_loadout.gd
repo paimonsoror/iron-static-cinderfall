@@ -12,10 +12,17 @@ const SCRAP_ARG: int = SCRAP_ACTION
 const MAX_LEVEL: int = 3
 ## What a level-up is worth next to a tier point of the loadout score (a held weapon grows 25 % and then 55 %).
 const LEVEL_UP_GAIN: float = 1.0
-## Swap to the area weapon at this many enemies within CROWD_RADIUS_M of the core, back at CALM_COUNT (CONTENT 13).
+## Swap to the area weapon at this many enemies in reach, back at CALM_COUNT (CONTENT 13: 12 and 5). "In reach" is the
+## radius of the area weapon itself around the Warden, never less than CROWD_RADIUS_M (the 10 m of CONTENT 13): a bot
+## that counts only the enemies within 10 m of the core meets 12 of them in about 3 % of the combat ticks of the
+## slice, so its second weapon stayed in the holster (V4-T finding), and an arc projector reaches 18 m.
 const CROWD_COUNT: int = 12
 const CALM_COUNT: int = 5
 const CROWD_RADIUS_M: float = 10.0
+## A weapon that vents or reloads for at least this many more ticks is "spent": the bot bridges with the other slot.
+const BRIDGE_TICKS: int = 60
+## A heat weapon above this fraction of its cap is not "ready" (it would vent after a shot or two).
+const HEAT_READY_FRACTION: float = 0.5
 ## A bot that swapped waits this many ticks before it considers another swap (the swap itself takes about 24).
 const SWAP_PAUSE_TICKS: int = 90
 ## Ticks between two looks at the crowd.
@@ -144,8 +151,39 @@ static func balanced_salvage_arg(world: SimWorld) -> int:
 	return best_arg
 
 
-## `balanced` swap rule: the slot to swap to, or -1. To the best area weapon at CROWD_COUNT enemies near the core
-## while a single-target weapon is active, back to the best single-target weapon at CALM_COUNT.
+## The weapon in `slot` can fire now and keeps firing: not reloading, venting or swapping, and a heat weapon not near its
+## cap (a magazine is refilled by its reload, so "ready" is the state the HUD shows as READY).
+static func slot_ready(world: SimWorld, slot: int) -> bool:
+	if weapon_in(world, slot) < 0 or ArsenalSystem.slot_state(world, slot) != ArsenalSystem.ST_READY:
+		return false
+	var cap: int = ArsenalSystem.heat_cap_of(world, slot)
+	return cap == 0 or float(world.arsenal.slot_heat[slot]) <= HEAT_READY_FRACTION * float(cap)
+
+
+## The weapon in `slot` is out of action for a while: venting or reloading with BRIDGE_TICKS or more to go.
+static func slot_spent(world: SimWorld, slot: int) -> bool:
+	var state: int = ArsenalSystem.slot_state(world, slot)
+	if state != ArsenalSystem.ST_VENTING and state != ArsenalSystem.ST_RELOADING:
+		return false
+	return ArsenalSystem.slot_ticks_left(world, slot) >= BRIDGE_TICKS
+
+
+## The radius the crowd is counted in: the reach of the best area weapon carried (never below CROWD_RADIUS_M).
+static func crowd_radius(world: SimWorld) -> float:
+	var slot: int = best_slot_of_role(world, Role.AREA, -1)
+	if slot < 0:
+		return CROWD_RADIUS_M
+	return maxf(CROWD_RADIUS_M, ArsenalSystem.range_of(world, world.content.weapons[weapon_in(world, slot)]))
+
+
+## Enemies the area weapon could be fired at: living enemies within `crowd_radius` of the Warden.
+static func crowd_count(world: SimWorld) -> int:
+	return PolicySenses.near_warden(world, crowd_radius(world))
+
+
+## `balanced` swap rule: the slot to swap to, or -1. To the best area weapon at CROWD_COUNT enemies in reach while a
+## single-target weapon is active (and the area weapon is ready), back to the best single-target weapon at CALM_COUNT,
+## or at once when the area weapon is spent (it vents or reloads) and a single-target weapon can fire meanwhile.
 static func swap_target(world: SimWorld, crowd: int) -> int:
 	var active: int = world.arsenal.active
 	var active_weapon: int = weapon_in(world, active)
@@ -153,9 +191,12 @@ static func swap_target(world: SimWorld, crowd: int) -> int:
 		return -1
 	var role: int = role_of(world.content.weapons[active_weapon])
 	if crowd >= CROWD_COUNT and role == Role.SINGLE:
-		return best_slot_of_role(world, Role.AREA, active)
-	if crowd <= CALM_COUNT and role == Role.AREA:
-		return best_slot_of_role(world, Role.SINGLE, active)
+		var area: int = best_slot_of_role(world, Role.AREA, active)
+		return area if area >= 0 and slot_ready(world, area) else -1
+	if role == Role.AREA:
+		var single: int = best_slot_of_role(world, Role.SINGLE, active)
+		if single >= 0 and (crowd <= CALM_COUNT or (slot_spent(world, active) and slot_ready(world, single))):
+			return single
 	return -1
 
 
@@ -180,7 +221,43 @@ static func act_swap(world: SimWorld, bot: PolicyBot) -> void:
 		return
 	if world.tick % SCAN_PERIOD != 0 or world.tick < bot.swap_not_before:
 		return
-	var target: int = swap_target(world, PolicySenses.near_core(world, CROWD_RADIUS_M))
+	var boss_slot: int = boss_target(world)
+	if boss_slot != NO_BOSS_RULE:
+		send_swap(world, bot, boss_slot)
+		return
+	send_swap(world, bot, swap_target(world, crowd_count(world)))
+
+
+## Answer of `boss_target` when no boss lives (the crowd rule decides).
+const NO_BOSS_RULE: int = -2
+## The weapon in hand is changed for another one that does at least this many times its damage to the boss.
+const BOSS_SWAP_GAIN: float = 1.15
+
+
+## While a boss lives: the slot of the ready weapon that hurts it most (damage per second after its armor, PolicyDps), or the
+## active slot / -1 to stay. A weapon that ignores armor beats a faster one against plating; the crowd rule is off for the
+## fight (the escorts are not what ends a run).
+static func boss_target(world: SimWorld) -> int:
+	var boss: int = world.boss_store_index()
+	if boss < 0:
+		return NO_BOSS_RULE
+	var active: int = world.arsenal.active
+	var best: int = active
+	var best_dps: float = PolicyDps.vs(world, active, boss) * BOSS_SWAP_GAIN
+	if slot_spent(world, active):
+		best_dps = 0.0
+	for slot: int in slot_total(world):
+		if slot == active or not slot_ready(world, slot):
+			continue
+		var dps: float = PolicyDps.vs(world, slot, boss)
+		if dps > best_dps:
+			best = slot
+			best_dps = dps
+	return best
+
+
+## One SWAP_WEAPON to `target` (ignored for -1 or the active slot) and the pause before the next one.
+static func send_swap(world: SimWorld, bot: PolicyBot, target: int) -> void:
 	if target >= 0 and target != world.arsenal.active:
 		bot.send(world, SimCommand.Kind.SWAP_WEAPON, target)
 		bot.swap_not_before = world.tick + SWAP_PAUSE_TICKS
