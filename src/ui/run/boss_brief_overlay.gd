@@ -87,21 +87,9 @@ func _populate() -> void:
 	confirm_button = continue_button
 
 
-## The first of the variant's, the brief's and the boss's own line that exists, or "".
+## The ATTACK or ANSWER line (BossBriefLines: the approved text; the ANSWER names only weapons this run can have), or "".
 func _line(kind: String) -> String:
-	var keys: Array[String] = []
-	var variant: StringName = brief.get("variant", &"")
-	if variant != &"":
-		keys.append("boss.%s.%s" % [String(variant), kind])
-	var given: String = brief.get("%s_key" % kind, "")
-	if given != "":
-		keys.append(given)
-	var boss_id: StringName = brief.get("id", &"")
-	keys.append("boss.%s.%s" % [String(boss_id), kind])
-	for key: String in keys:
-		if RunUi.has_key(key):
-			return Strings.t(key)
-	return ""
+	return BossBriefLines.line(brief, kind, _content)
 
 
 func _on_continue() -> void:

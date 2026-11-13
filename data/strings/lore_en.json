@@ -1,17 +1,17 @@
 {
-  "lore.tagline": "Hold the line at Relay Core B-4.",
+  "lore.tagline": "Hold the line at Relay Core B-4. Three pushes. One Warden.",
   "lore.boot.status.1": "CYCLE 61 OF THE SILENCE",
   "lore.boot.status.2": "RELAY CORE B-4: LINK OK",
   "lore.boot.status.3": "WARDEN ASH-12: ONLINE",
   "lore.briefing.speaker": "HOLLOW ACCORD // RADIO",
-  "lore.briefing.text": "B-4 is still warm. The perimeter is gone and Cinder cannot turn around. You hold the core or the yards go dark. They come from the east gate and the gantry line. Five pushes, then the big one. Count what you bring back. Accord out.",
+  "lore.briefing.text": "B-4 is still warm. The perimeter is gone and Cinder cannot turn around. They come in three pushes now: the yard, the gantry line, then the node itself. Lantern will patch you between pushes. Take what the yard gives you. Count what you bring back. Accord out.",
   "lore.briefing.assigned": "WARDEN ASH-12, CALLSIGN FLINT. DIRECTIVE: HOLD B-4.",
   "lore.threat.skitter": "Low crawler. Weak alone, endless in numbers.",
   "lore.threat.hollow_warden": "An unrecovered Warden frame, still driven by CHORUS. Not Accord. Armored line-breaker.",
   "lore.threat.rusher": "Fast breach threat. Sprints straight for the core.",
   "lore.threat.siege_hulk": "Node 9. Takes three slots at the core and shoves the rest aside.",
   "lore.results.speaker.victory": "HOLLOW ACCORD // RADIO",
-  "lore.results.victory": "B-4 is still warm. The yards hold. Flint is still standing. Accord out.",
+  "lore.results.victory": "B-4 is still warm. Node 9 is not. The yards hold. Flint is still standing. Accord out.",
   "lore.results.speaker.defeat": "CHORUS // LOG",
   "lore.results.defeat": "relay core b-4: offline. wardens active at b-4: 0. network preserved."
 }

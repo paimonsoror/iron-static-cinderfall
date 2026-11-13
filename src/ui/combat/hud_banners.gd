@@ -5,6 +5,7 @@ extends Control
 
 var boss_bar: HudBossBar
 var ticker: HudThreatTicker
+var edge_arrows: HudEdgeArrows  ## chevrons at the field's edge toward an incoming RECOUNT or breach (the variety run)
 var warn_panel: PanelContainer
 var warn_label: Label
 var banner_box: PanelContainer
@@ -21,6 +22,8 @@ var _warn_tween: Tween
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	edge_arrows = HudEdgeArrows.new()
+	add_child(edge_arrows)
 	_stack = VBoxContainer.new()
 	_stack.add_theme_constant_override(&"separation", 8)
 	_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -93,6 +96,8 @@ func _build_hint() -> void:
 func place(zone: Rect2, margins: Vector4, bottom_reserved: float) -> void:
 	position = zone.position
 	size = zone.size
+	edge_arrows.position = Vector2.ZERO
+	edge_arrows.size = zone.size
 	_bottom_reserved = bottom_reserved
 	var inner_w: float = zone.size.x - 2.0 * HudStyle.EDGE - margins.x - margins.z
 	var left: float = HudStyle.EDGE + margins.x

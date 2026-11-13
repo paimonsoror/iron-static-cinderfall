@@ -78,7 +78,8 @@ func build_slot(slot_index: int, id: StringName, level: int, def: WeaponDef, emp
 	if not empty:
 		level_label = RunUi.label(Strings.tf("salvage.level", [level]), RunUi.MIN_TEXT + 2, &"accent", true)
 		head.add_child(level_label)
-		stats_label = RunUi.wrap(RunUi.label(WeaponStats.line(def, level) if def != null else "", RunUi.MIN_TEXT, &"dim"), 2)
+		stats_label = RunUi.label(WeaponStats.brief(def, level) if def != null else "", RunUi.MIN_TEXT, &"dim")
+		stats_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		col.add_child(stats_label)
 		_secondary.append(stats_label)
 	var plate: PanelContainer = PanelContainer.new()
