@@ -164,9 +164,9 @@ func test_a_kit_may_only_grant_real_things() -> void:
 		{"stat": "no_such_stat", "add": 1},
 	]})
 	var errors: PackedStringArray = _errors()
-	assert_bool(_has(errors, "$.kits[1].ops[0].id: unknown id 'no_such_weapon' for grant 'weapon'")).is_true()
-	assert_bool(_has(errors, "$.kits[1].ops[1].id: unknown id 'no_such_event' for grant 'event_charge'")).is_true()
-	assert_bool(_has(errors, "$.kits[1].ops[2].stat: unknown stat 'no_such_stat'")).is_true()
+	assert_bool(_has(errors, "$.kits[6].ops[0].id: unknown id 'no_such_weapon' for grant 'weapon'")).is_true()
+	assert_bool(_has(errors, "$.kits[6].ops[1].id: unknown id 'no_such_event' for grant 'event_charge'")).is_true()
+	assert_bool(_has(errors, "$.kits[6].ops[2].stat: unknown stat 'no_such_stat'")).is_true()
 
 
 func test_the_shipped_hook_names_are_all_known_and_a_misspelt_one_is_caught() -> void:
