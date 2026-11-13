@@ -5,7 +5,8 @@ extends GdUnitTestSuite
 ## before V2-H (BALANCE_REPORT: `balance_run.ps1 -Runs 5 -Data res://tests/fixtures/data_baseline`).
 
 const PLAYED: Array[int] = [
-	PolicyBot.Policy.NONE, PolicyBot.Policy.GREEDY, PolicyBot.Policy.RANDOM, PolicyBot.Policy.BALANCED,
+	PolicyBot.Policy.NONE, PolicyBot.Policy.GREEDY, PolicyBot.Policy.RANDOM, PolicyBot.Policy.HOARDER,
+	PolicyBot.Policy.SPAMMER, PolicyBot.Policy.TURRET_RUSH, PolicyBot.Policy.BALANCED, PolicyBot.Policy.RISK,
 ]
 
 
@@ -94,7 +95,7 @@ func test_thinking_time_does_not_move_the_tick() -> void:
 
 
 func test_the_run_of_a_bot_replays_from_its_command_log() -> void:
-	for policy: int in [PolicyBot.Policy.GREEDY, PolicyBot.Policy.RANDOM, PolicyBot.Policy.BALANCED]:
+	for policy: int in PLAYED:
 		var played: SimWorld = _play(policy, 8, 4000)
 		var replayed: SimWorld = Replay.run(SimConfig.create(played.content, 8), played.command_log, 4000)
 		assert_str(replayed.state_hash()).is_equal(played.state_hash())

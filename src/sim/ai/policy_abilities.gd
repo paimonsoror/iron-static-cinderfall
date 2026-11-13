@@ -18,6 +18,8 @@ const VENT_ATTACKERS: int = 12
 const VENT_CORE: float = 0.4
 ## Ticks between two scans for a cluster (the scan is quadratic in the enemies alive).
 const SCAN_PERIOD: int = 12
+## Any other player-called event (the data may add some) is called when it is legal and this many enemies are alive.
+const OTHER_CALL_ALIVE: int = 15
 
 
 ## One look at the field: submits whatever the heuristics ask for this tick. Abilities are legal only in combat.
@@ -55,3 +57,8 @@ static func _act_events(world: SimWorld, bot: PolicyBot, attackers: int) -> void
 	if vent >= 0 and attackers >= VENT_ATTACKERS and PolicySenses.core_fraction(world) > VENT_CORE:
 		if EventSystem.block_reason(world, vent) == Reason.Id.OK:
 			bot.send(world, SimCommand.Kind.CALL_EVENT, vent)
+	for def: EventDef in world.content.events:
+		if def.who != EventDef.Who.PLAYER or def.index == strike or def.index == vent:
+			continue
+		if world.alive_count() >= OTHER_CALL_ALIVE and EventSystem.block_reason(world, def.index) == Reason.Id.OK:
+			bot.send(world, SimCommand.Kind.CALL_EVENT, def.index)

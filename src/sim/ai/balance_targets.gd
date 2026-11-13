@@ -186,3 +186,47 @@ static func _peak_row(runs: Array[HarnessReport], wave_index: int) -> Dictionary
 	var text: String = "median %.1f" % med
 	var band: String = "%d (%.1f to %.1f)" % [target, low, high]
 	return _row("peak_wave_%d" % (wave_index + 1), text, band, status)
+
+
+# --- the variety content (GDD 8.4 redefined, VARIETY_SPEC 14.3) ---
+
+## Mean core integrity of a `balanced` win (GDD 8.4): 25% to 65%.
+const BALANCED_CORE_MIN: float = 0.25
+const BALANCED_CORE_MAX: float = 0.65
+
+
+## The rows for runs on variety content: `none`, `greedy` and `balanced` played on the same seeds, as ScorecardRecords
+## (`context` from ScorecardPlan.context). The old duration, peak and win-rate targets are replaced by their redefinitions:
+## S6 `none` is defeated in act I, S7 `greedy` wins 10% to 40%, S4 `balanced` wins 40% to 70% with 25% to 65% of the core
+## left on average, S16 a win takes 780 to 1,020 s of combat, S17 the chaos budget (caps and the peak table of the data).
+## Each row is {id, measured, target, status} like the legacy ones; the maths is the scorecard's.
+static func evaluate_variety(records: Array[Dictionary], context: Dictionary) -> Array[Dictionary]:
+	var rows: Array[Dictionary] = []
+	rows.append(_scored("integrity", Scorecard.integrity_row(records)))
+	rows.append(_scored("none_loses", ScorecardRateRows.none_loses(records)))
+	rows.append(_scored("greedy_wins", ScorecardRateRows.greedy_wins(records)))
+	rows.append(_scored("balanced_wins", ScorecardRateRows.balanced_wins(records)))
+	rows.append(_balanced_core_row(records))
+	rows.append(_scored("duration", ScorecardRunRows.length(records)))
+	rows.append(_scored("chaos_budget", ScorecardRunRows.chaos(records, context)))
+	return rows
+
+
+## A scorecard row in the shape of this class (the verdicts PASS, WARN, FAIL are the statuses in the same order).
+static func _scored(id: String, scored: Dictionary) -> Dictionary:
+	var verdict: int = scored["verdict"]
+	var measured: String = scored["measured"]
+	var target: String = scored["target"]
+	return _row(id, measured, target, verdict)
+
+
+static func _balanced_core_row(records: Array[Dictionary]) -> Dictionary:
+	var target: String = "%.0f%% to %.0f%% core left" % [100.0 * BALANCED_CORE_MIN, 100.0 * BALANCED_CORE_MAX]
+	var left: PackedFloat64Array = PackedFloat64Array()
+	for rec: Dictionary in ScorecardRecord.wins_of(ScorecardRecord.select(records, "balanced")):
+		left.append(ScorecardRecord.num(rec, "core"))
+	if left.is_empty():
+		return _row("balanced_core", "no victories", target, Status.WARN)
+	var avg: float = ScorecardStats.mean(left)
+	var text: String = "mean %.0f%% (min %.0f%%, max %.0f%%)" % [100.0 * avg, 100.0 * ScorecardStats.min_of(left), 100.0 * ScorecardStats.max_of(left)]
+	return _row("balanced_core", text, target, Status.PASS if (avg >= BALANCED_CORE_MIN and avg <= BALANCED_CORE_MAX) else Status.WARN)

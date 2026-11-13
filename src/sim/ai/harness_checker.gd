@@ -31,7 +31,8 @@ var boss_kill_tick: int = -1
 var finished_events: int = 0
 var reward_sum: int = 0
 var spent_expected: int = 0
-## Per wave (index 0 = before wave 1, then 1..5): core integrity lost and Scrap earned by kills.
+## Per wave (index 0 = before wave 1, then 1..the last wave of the run): core integrity lost and Scrap earned by kills.
+## Sized from the wave count of the run (at least the 5 waves of the legacy content).
 var core_lost_by_wave: PackedFloat64Array = PackedFloat64Array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 var scrap_by_wave: PackedInt32Array = PackedInt32Array([0, 0, 0, 0, 0, 0])
 ## Successful purchases in order: tick, wave (world.wave then), upgrade index.
@@ -56,6 +57,9 @@ var _scripted: bool = true
 func _init(world: SimWorld) -> void:
 	_last_core = world.core_hp
 	_start_scrap = world.scrap
+	var slots: int = maxi(core_lost_by_wave.size(), PhaseSystem.wave_count(world) + 1)
+	core_lost_by_wave.resize(slots)
+	scrap_by_wave.resize(slots)
 	_scripted = world.plan == null or world.plan.boss_ids.is_empty()
 
 
@@ -147,7 +151,7 @@ func _event(world: SimWorld, e: SimEvent) -> void:
 				reward_sum += reward
 				if world.content.enemies[_type_of[e.a]].is_boss:
 					boss_kill_tick = world.tick
-				scrap_by_wave[clampi(world.wave, 0, 5)] += reward
+				scrap_by_wave[clampi(world.wave, 0, scrap_by_wave.size() - 1)] += reward
 		SimEventKind.Id.WAVE_CLEARED:
 			_wave_cleared(world, e.a)
 		SimEventKind.Id.PURCHASE_RESOLVED:
@@ -223,7 +227,7 @@ func _state(world: SimWorld) -> void:
 		if _scripted:
 			_bad(world, "core healed %.1f -> %.1f" % [_last_core, world.core_hp])
 	else:
-		core_lost_by_wave[clampi(world.wave, 0, 5)] += _last_core - world.core_hp
+		core_lost_by_wave[clampi(world.wave, 0, core_lost_by_wave.size() - 1)] += _last_core - world.core_hp
 	_last_core = world.core_hp
 	if world.shield_hp < 0.0:
 		_bad(world, "negative shield %.1f" % world.shield_hp)

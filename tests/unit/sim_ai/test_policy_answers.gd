@@ -113,15 +113,15 @@ func test_greedy_takes_route_a() -> void:
 # --- the net and the guards ---
 
 
-func test_a_policy_with_no_rules_yet_still_answers_every_choice() -> void:
-	for policy: int in [PolicyBot.Policy.HOARDER, PolicyBot.Policy.SPAMMER, PolicyBot.Policy.TURRET_RUSH, PolicyBot.Policy.RISK]:
-		var w: SimWorld = VarietyHKit.awaiting(PhaseState.Await.DRAFT)
-		_open_draft(w)
-		_bot(policy).act(w)
-		assert_int(_only(w).kind).is_equal(SimCommand.Kind.SKIP_DRAFT)
-		var r: SimWorld = VarietyHKit.awaiting(PhaseState.Await.ROUTE)
-		_bot(policy).act(r)
-		assert_int(_only(r).kind).is_equal(SimCommand.Kind.PICK_ROUTE)
+func test_a_policy_that_decides_nothing_still_answers_every_choice() -> void:
+	var unknown_policy: int = 99  # PolicyBot.act finds no rule for it: the net answers like `none`
+	var w: SimWorld = VarietyHKit.awaiting(PhaseState.Await.DRAFT)
+	_open_draft(w)
+	_bot(unknown_policy).act(w)
+	assert_int(_only(w).kind).is_equal(SimCommand.Kind.SKIP_DRAFT)
+	var r: SimWorld = VarietyHKit.awaiting(PhaseState.Await.ROUTE)
+	_bot(unknown_policy).act(r)
+	assert_int(_only(r).kind).is_equal(SimCommand.Kind.PICK_ROUTE)
 
 
 func test_an_answer_already_queued_is_not_answered_twice() -> void:

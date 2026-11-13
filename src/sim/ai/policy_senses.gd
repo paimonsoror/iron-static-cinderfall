@@ -21,9 +21,17 @@ static func attackers(world: SimWorld) -> int:
 
 ## Living enemies within `radius_m` of the core.
 static func near_core(world: SimWorld, radius_m: float) -> int:
+	return near_point(world, world.content.arena.core_x, world.content.arena.core_z, radius_m)
+
+
+## Living enemies within `radius_m` of the Warden: the ones a weapon of that range can be fired at.
+static func near_warden(world: SimWorld, radius_m: float) -> int:
+	return near_point(world, world.warden.x, world.warden.z, radius_m)
+
+
+## Living enemies within `radius_m` of the point (cx, cz).
+static func near_point(world: SimWorld, cx: float, cz: float, radius_m: float) -> int:
 	var store: EnemyStore = world.enemies
-	var cx: float = world.content.arena.core_x
-	var cz: float = world.content.arena.core_z
 	var limit: float = radius_m * radius_m
 	var n: int = 0
 	for i: int in store.high_water:

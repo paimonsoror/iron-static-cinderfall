@@ -28,6 +28,7 @@ static func run(config: SimConfig, policy: int, max_ticks: int = DEFAULT_MAX_TIC
 	var world: SimWorld = SimWorld.new(config)
 	var bot: PolicyBot = bot_override if bot_override != null else PolicyBot.new(policy)
 	var checker: HarnessChecker = HarnessChecker.new(world)
+	var census: HarnessCensus = HarnessCensus.new(world)
 	var tally: WeaponDamageTally = WeaponDamageTally.new()
 	var await_calls: int = 0
 	var stalled_on: int = PhaseState.Await.NONE
@@ -43,16 +44,20 @@ static func run(config: SimConfig, policy: int, max_ticks: int = DEFAULT_MAX_TIC
 		world.step()
 		var events: Array[SimEvent] = world.events.drain()
 		checker.after_step(world, events)
+		census.after_step(world, events)
 		tally.feed(world, events)
 	checker.finish(world, bot.commands_submitted)
-	var report: HarnessReport = report_of(world, policy, checker, tally)
+	var report: HarnessReport = report_of(world, policy, checker, tally, census)
 	report.stalled = stalled_on != PhaseState.Await.NONE
 	report.stalled_on = stalled_on
 	return report
 
 
-## The numbers of a finished (or stopped) world. `tally` (optional) names the weapon that dealt the most damage.
-static func report_of(world: SimWorld, policy: int, checker: HarnessChecker, tally: WeaponDamageTally = null) -> HarnessReport:
+## The numbers of a finished (or stopped) world. `tally` (optional) names the weapon that dealt the most damage;
+## `census` (optional) adds the scorecard's peaks, offers and act ends.
+static func report_of(
+	world: SimWorld, policy: int, checker: HarnessChecker, tally: WeaponDamageTally = null, census: HarnessCensus = null
+) -> HarnessReport:
 	var r: HarnessReport = HarnessReport.new()
 	r.run_seed = world.config.run_seed
 	r.policy = policy
@@ -63,12 +68,19 @@ static func report_of(world: SimWorld, policy: int, checker: HarnessChecker, tal
 	r.wave_reached = world.wave
 	r.core_hp = world.core_hp
 	r.core_max_hp = world.core_max_hp
-	for w: int in 5:
-		r.peak_alive[w] = world.stats.peak_alive_by_wave[w + 1]
-		r.wave_start_ticks[w] = world.stats.wave_start_tick[w + 1]
-		r.wave_clear_ticks[w] = world.stats.wave_clear_tick[w + 1]
-		r.core_lost[w] = checker.core_lost_by_wave[w + 1]
-		r.scrap_by_wave[w] = checker.scrap_by_wave[w + 1]
+	r.wave_total = PhaseSystem.wave_count(world)
+	var slots: int = maxi(5, r.wave_total)
+	r.peak_alive.resize(slots)
+	r.wave_start_ticks.resize(slots)
+	r.wave_clear_ticks.resize(slots)
+	r.scrap_by_wave.resize(slots)
+	r.core_lost.resize(slots)
+	for w: int in slots:
+		r.peak_alive[w] = _at(world.stats.peak_alive_by_wave, w + 1)
+		r.wave_start_ticks[w] = _at(world.stats.wave_start_tick, w + 1)
+		r.wave_clear_ticks[w] = _at(world.stats.wave_clear_tick, w + 1)
+		r.core_lost[w] = checker.core_lost_by_wave[w + 1] if w + 1 < checker.core_lost_by_wave.size() else 0.0
+		r.scrap_by_wave[w] = _at(checker.scrap_by_wave, w + 1)
 	r.buy_ticks = checker.buy_ticks.duplicate()
 	r.buy_waves = checker.buy_waves.duplicate()
 	r.buy_upgrades = checker.buy_upgrades.duplicate()
@@ -94,7 +106,34 @@ static func report_of(world: SimWorld, policy: int, checker: HarnessChecker, tal
 	r.signature = BuildSignature.of(world, tally)
 	if tally != null:
 		r.damage_by_weapon = tally.damage.duplicate()
+	_fill_scorecard(r, world, tally, census)
 	return r
+
+
+static func _at(values: PackedInt32Array, index: int) -> int:
+	return values[index] if index >= 0 and index < values.size() else 0
+
+
+## The fields the scorecard reads (HarnessReport "the scorecard" block).
+static func _fill_scorecard(r: HarnessReport, world: SimWorld, tally: WeaponDamageTally, census: HarnessCensus) -> void:
+	r.combat_ticks = world.stats.combat_ticks
+	r.held = world.draft.stacks.duplicate()
+	r.weapons_carried = world.stats.weapons.duplicate()
+	r.primary_weapon = BuildSignature.primary_weapon(world, tally)
+	r.data = HarnessCensus.data_of(world)
+	r.act_total = 1
+	if world.plan != null:
+		for planned: PlannedWave in world.plan.waves:
+			r.act_total = maxi(r.act_total, planned.act)
+		var death_plan: PlannedWave = world.plan.wave(world.wave)
+		if world.phase == GameState.Id.DEFEAT and death_plan != null:
+			r.death_act = death_plan.act
+	if census != null:
+		r.act_end_core = census.act_end_core.duplicate()
+		r.peak_bodied = census.peak_bodied.duplicate()
+		r.peak_minis = census.peak_minis.duplicate()
+		r.max_blasts = census.max_blasts_per_tick
+		r.offered = census.offered_indices()
 
 
 ## A config on `content_set` for a seed, with the named debug levers (all off by default).
