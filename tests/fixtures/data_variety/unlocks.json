@@ -1,15 +1,25 @@
 {
   "schema_version": 1,
-  "note": "The shipped Archive (V4-M). The unlock rows are still the five armory rows of the slice and kit 0: the rest of the Archive (u_w_arc, the six field options, the seven directive packs u_p_*, the five kits) is in tests/fixtures/saves/unlocks_full.json (VARIETY_CONTENT 11 and 12) and replaces this file when the pieces it depends on have merged: the 52 directives of V4-C (the packs grant them), the kit name strings of V4-U, and the salvage and bot tests that assume the guaranteed crate holds arc_projector (u_w_arc takes it out of a new profile's pool). The milestone table is complete: Save pays it (RewardLedger). A weapon, directive or kit that no unlock grants is base content. The index of a kit is its position in `kits` (SimConfig.kit_index); kit 0 is the standard kit.",
+  "note": "The shipped Archive (V4-M): the five armory rows of the slice, the five kits and their unlocks, and the complete milestone table (Save pays it, RewardLedger). Still in tests/fixtures/saves/unlocks_full.json (VARIETY_CONTENT 11 and 12), to join this file when the pieces they need have merged: the seven directive packs u_p_* (they grant the 52 directives of V4-C), u_w_arc (it takes arc_projector out of a new profile's crate pool, which the salvage, slice and bot tests assume), and the six field options u_f_* (nothing reads them yet: the sim and the UI ask SimConfig.has_unlock(<unlock id>)). A weapon, directive or kit that no unlock grants is base content. The index of a kit is its position in `kits` (SimConfig.kit_index); kit 0 is the standard kit.",
   "unlocks": [
     { "id": "u_w_hornet", "branch": "armory", "tier": 1, "cost": 80, "grants": ["hornet_rack"] },
     { "id": "u_w_lmg", "branch": "armory", "tier": 1, "cost": 120, "grants": ["lmg"] },
     { "id": "u_w_mortar", "branch": "armory", "tier": 2, "cost": 160, "grants": ["slag_mortar"] },
     { "id": "u_w_torch", "branch": "armory", "tier": 2, "cost": 220, "grants": ["cutting_torch"] },
-    { "id": "u_w_rail", "branch": "armory", "tier": 3, "cost": 300, "grants": ["rail_lance"] }
+    { "id": "u_w_rail", "branch": "armory", "tier": 3, "cost": 300, "grants": ["rail_lance"] },
+    { "id": "k_breacher", "branch": "kits", "tier": 1, "cost": 150, "grants": ["k_breacher"] },
+    { "id": "k_signal", "branch": "kits", "tier": 1, "cost": 150, "grants": ["k_signal"] },
+    { "id": "k_gunline", "branch": "kits", "tier": 2, "cost": 250, "grants": ["k_gunline"] },
+    { "id": "k_ledger", "branch": "kits", "tier": 2, "cost": 250, "grants": ["k_ledger"] },
+    { "id": "k_gambler", "branch": "kits", "tier": 3, "cost": 350, "grants": ["k_gambler"] }
   ],
   "kits": [
-    { "id": "k_standard", "name_key": "kit.standard.name", "cost": 0, "ops": [] }
+    { "id": "k_standard", "name_key": "kit.standard.name", "cost": 0, "ops": [] },
+    { "id": "k_breacher", "name_key": "kit.breacher.name", "cost": 150, "ops": [ { "grant": "weapon", "id": "scattergun", "n": 1 }, { "grant": "turret", "n": 1 }, { "stat": "core_max_mul", "add": -0.15 } ] },
+    { "id": "k_signal", "name_key": "kit.signal.name", "cost": 150, "ops": [ { "grant": "event_charge", "id": "deadfall_strike", "n": 1 }, { "stat": "emp_cd_mul", "add": -0.2 }, { "flag": "no_turret_pity" } ] },
+    { "id": "k_gunline", "name_key": "kit.gunline.name", "cost": 250, "ops": [ { "grant": "turret", "n": 2 }, { "stat": "w_dmg_mul", "add": -0.25 } ] },
+    { "id": "k_ledger", "name_key": "kit.ledger.name", "cost": 250, "ops": [ { "grant": "scrap", "n": 400 }, { "grant": "free_reroll", "n": 2 }, { "stat": "core_max_mul", "add": -0.1 } ] },
+    { "id": "k_gambler", "name_key": "kit.gambler.name", "cost": 350, "ops": [ { "grant": "directive_random", "id": "corrupted", "n": 1 }, { "grant": "directive_random", "id": "prototype", "n": 1 } ] }
   ],
   "tier_gates": [3, 8],
   "milestones": [

@@ -121,16 +121,24 @@ func test_the_shipped_file_and_its_fixture_copy_are_byte_identical() -> void:
 
 func test_every_shipped_row_is_a_row_of_the_complete_tree() -> void:
 	var shipped: ContentSet = TestContent.variety()
-	assert_int(shipped.unlocks.size()).is_equal(5)  # the slice rows: the rest waits for the pieces named in the file note
+	assert_int(shipped.unlocks.size()).is_equal(10)  # five armory rows and the five kits; the rest waits for the pieces named in the file note
 	for u: UnlockDef in shipped.unlocks:
 		assert_str(_row(shipped, u.id)).is_equal(_row(cs, u.id))
 	assert_array(Array(shipped.run.tier_gates)).is_equal(Array(cs.run.tier_gates))
 	assert_dict(shipped.run.milestones).is_equal(cs.run.milestones)
-	assert_str(String(shipped.kits[0].id)).is_equal("k_standard")
+	assert_int(shipped.kits.size()).is_equal(cs.kits.size())
+	for k: KitDef in shipped.kits:
+		var want: KitDef = cs.kit(k.id)
+		assert_int(k.index).is_equal(want.index)
+		assert_int(k.cost).is_equal(want.cost)
+		assert_str(k.name_key).is_equal(want.name_key)
+		assert_array(k.ops.map(func(o: OpDef) -> Dictionary: return o.to_dict())).is_equal(want.ops.map(func(o: OpDef) -> Dictionary: return o.to_dict()))
 
 
 func test_the_shipped_unlocks_validate_on_their_own() -> void:
 	var shipped: ContentSet = TestContent.variety()
 	for u: UnlockDef in shipped.unlocks:
-		assert_int(u.branch).is_equal(UnlockDef.Branch.ARMORY)
+		assert_bool(u.branch == UnlockDef.Branch.ARMORY or u.branch == UnlockDef.Branch.KITS).is_true()
 	assert_str("\n".join(ContentValidator.validate(shipped))).is_empty()
+	for k: KitDef in shipped.kits:
+		assert_bool(shipped.strings.has(k.name_key)).is_true()  # the kit names V4-U wrote

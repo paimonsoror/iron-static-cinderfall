@@ -200,12 +200,13 @@ func purchase_unlock(id: StringName) -> int:
 	return Reason.Id.OK
 
 
-## Picks the kit of the next run. A kit the content does not know, or one the profile has not unlocked, is refused
-## (no change).
+## Picks the kit of the next run. A kit the content does not know is refused (no change). Owning the kit is the
+## Archive's rule (a locked kit cannot be tapped there, ArchiveRules.kit_ready says which): here a kit that is not
+## owned is accepted and the next load puts the standard kit back, so a profile never keeps a kit it cannot start.
 func set_kit(id: StringName) -> void:
 	var cs: ContentSet = content_set()
-	if cs == null or not ArchiveRules.kit_ready(profile, cs, id):
-		Log.warn("Save", "kit '%s' refused" % String(id))
+	if cs == null or cs.kit(id) == null:
+		Log.warn("Save", "kit '%s' refused (unknown)" % String(id))
 		return
 	if profile.kit == id:
 		return

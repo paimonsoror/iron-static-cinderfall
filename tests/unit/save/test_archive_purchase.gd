@@ -198,18 +198,24 @@ func test_no_content_means_no_purchase() -> void:
 # --- kits ---
 
 
-func test_a_kit_is_picked_only_when_free_or_owned() -> void:
-	Save.set_kit(&"k_breacher")
-	assert_str(String(Save.profile.kit)).is_equal("k_standard")  # not owned: refused
+func test_a_kit_the_content_does_not_know_is_refused() -> void:
+	Save.set_kit(&"k_nothing")
+	assert_str(String(Save.profile.kit)).is_equal("k_standard")
 	Save.profile.data = 150
 	assert_int(Save.purchase_unlock(&"k_breacher")).is_equal(Reason.Id.OK)
 	Save.set_kit(&"k_breacher")
 	assert_str(String(Save.profile.kit)).is_equal("k_breacher")
-	assert_str(String(_reloaded().kit)).is_equal("k_breacher")
+	assert_str(String(_reloaded().kit)).is_equal("k_breacher")  # saved at once
 	Save.set_kit(&"k_standard")  # the free kit is always there
 	assert_str(String(Save.profile.kit)).is_equal("k_standard")
-	Save.set_kit(&"k_nothing")
-	assert_str(String(Save.profile.kit)).is_equal("k_standard")
+
+
+func test_the_archive_rule_says_a_locked_kit_is_not_ready() -> void:
+	assert_bool(ArchiveRules.kit_ready(Save.profile, cs, &"k_standard")).is_true()
+	assert_bool(ArchiveRules.kit_ready(Save.profile, cs, &"k_breacher")).is_false()
+	assert_bool(ArchiveRules.kit_ready(Save.profile, cs, &"k_nothing")).is_false()
+	Save.profile.unlocks.append("k_breacher")
+	assert_bool(ArchiveRules.kit_ready(Save.profile, cs, &"k_breacher")).is_true()
 
 
 func test_a_kit_the_profile_cannot_start_is_the_standard_kit_after_loading() -> void:
