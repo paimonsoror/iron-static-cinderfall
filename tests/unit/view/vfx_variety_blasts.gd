@@ -175,7 +175,7 @@ func test_a_flash_is_short_and_small_enough_never_to_wash_out_an_optic() -> void
 	assert_int(_blasts(vfx).flashes_cyan.live_count()).is_equal(0)  # gone before 0.25 s
 	var arena: ArenaDef = TestContent.variety().arena
 	var yard_m2: float = (arena.max_x - arena.min_x) * (arena.max_z - arena.min_z)
-	var biggest: float = PI * 2.6 * 2.6  # the largest flash star, in square meters of ground
+	var biggest: float = PI * FxBlasts.FLASH_MAX_M * FxBlasts.FLASH_MAX_M  # the largest flash star, in square meters of ground
 	assert_float(biggest / yard_m2).is_less(0.05)  # a flash over 5 percent of the screen would have to be removed by Reduced Flash
 	var ring: ArrayMesh = VfxMeshes.ring(0.72, 40, &"add_amber", &"add_white")
 	assert_int(VfxMeshes.triangles(ring)).is_less(200)  # a ring is a band: the inside of a blast (where the optics are) stays clear

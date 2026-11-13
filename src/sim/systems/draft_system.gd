@@ -18,12 +18,16 @@ static func open(world: SimWorld) -> void:
 	if world.content.run == null:
 		return
 	var d: DraftState = world.draft
+	# Interim call point of CoreHooks.on_wave_cleared: the wave-clear effects of directives (field_weld, compound_interest,
+	# borrowed_time) run once per intermission, here, because PhaseAwaits.begin_intermission is not this task's file.
+	# TODO(needs owner): call it from PhaseAwaits.begin_intermission and delete this line.
+	CoreHooks.on_wave_cleared(world)
 	var ordinal: int = d.offer_ordinal
 	d.open = true
 	d.bought_out = false
 	d.picks_left = 2 if d.next_double else 1
 	d.next_double = false
-	d.reroll_locked = _breather_denied(world)
+	d.reroll_locked = breather_denied(world)
 	d.offer_ordinal = ordinal + 1
 	d.offer = generate_offer(world)
 	d.next_rare = false
@@ -152,7 +156,7 @@ static func patch_cost(world: SimWorld) -> int:
 static func build_tags(world: SimWorld) -> Dictionary[StringName, int]:
 	var out: Dictionary[StringName, int] = {}
 	for def: DirectiveDef in world.content.directives:
-		var held: int = world.draft.stacks_of(def.index)
+		var held: int = mini(world.draft.stacks_of(def.index), def.max_stacks)  # HookMemory counts are not stacks
 		if held <= 0:
 			continue
 		for tag: StringName in def.tags:
@@ -207,8 +211,7 @@ static func _add_stack(world: SimWorld, directive_index: int) -> void:
 	var def: DirectiveDef = world.content.directives[directive_index]
 	d.stacks[directive_index] += 1
 	world.events.push(SimEventKind.Id.DIRECTIVE_PICKED, directive_index, d.stacks[directive_index])
-	ModSystem.recompute(world)
-	ModSystem.grant(world, def.ops)
+	ModSystem.on_directive_added(world, def)
 	if def.hook == ModSystem.HOOK_PLAN_PATCH:
 		RunPlanSystem.patch(world, directive_index)
 
@@ -245,7 +248,7 @@ static func _note_offer(world: SimWorld, offer: PackedInt32Array) -> void:
 
 
 ## mod_no_breather: the wave that was just cleared carried it (the flag of the build, or the modifier of its route).
-static func _breather_denied(world: SimWorld) -> bool:
+static func breather_denied(world: SimWorld) -> bool:
 	if world.mods.has_flag(NO_BREATHER_FLAG):
 		return true
 	var run: RunDef = world.content.run

@@ -41,7 +41,7 @@ func test_run_json_acts_and_waves() -> void:
 
 func test_run_json_packs_modifiers_and_rewards() -> void:
 	var run: RunDef = c.run
-	assert_int(run.packs.size()).is_equal(3)
+	assert_int(run.packs.size()).is_equal(12)  # the 3 slice packs and the 9 of V4-C
 	var powder: PackDef = run.packs[run.pack_index(&"pack_powder")]
 	assert_int(powder.group_count()).is_equal(3)
 	assert_int(powder.group_enemy[0]).is_equal(Ids.EN_BURSTER)
@@ -50,7 +50,7 @@ func test_run_json_packs_modifiers_and_rewards() -> void:
 	assert_str(str(powder.group_region[2])).is_equal("upper_right")
 	assert_float(powder.group_tempo[1]).is_equal_approx(0.8, 0.0001)
 	assert_int(run.pack_index(&"pack_nope")).is_equal(-1)
-	assert_int(run.modifiers.size()).is_equal(1)
+	assert_int(run.modifiers.size()).is_equal(10)  # mod_volatile first, then the 9 of V4-C
 	var volatile: ModifierDef = run.modifiers[run.modifier_index(&"mod_volatile")]
 	assert_int(volatile.list).is_equal(ModifierDef.List.HOT)
 	assert_int(volatile.ops[0].kind).is_equal(OpDef.Kind.FLAG)
@@ -211,12 +211,12 @@ func test_enemies_json_elites_affixes_and_bosses() -> void:
 
 
 func test_directives_json() -> void:
-	assert_int(c.directives.size()).is_equal(8)
+	assert_int(c.directives.size()).is_equal(60)  # the 8 of the slice, then the 52 of V4-C
 	var ids: Array[String] = []
 	for d: DirectiveDef in c.directives:
 		ids.append(String(d.id))
 		assert_int(d.index).is_equal(ids.size() - 1)
-	assert_array(ids).is_equal([
+	assert_array(ids.slice(0, 8)).is_equal([
 		"hot_loads", "cyclic_tuning", "penetrator_cores", "turret_deploy", "reinforced_cage", "emp_capacitor",
 		"incendiary_tips", "glass_cannon",
 	])
@@ -256,7 +256,7 @@ func test_events_json() -> void:
 
 
 func test_unlocks_json() -> void:
-	assert_int(c.unlocks.size()).is_equal(5)
+	assert_int(c.unlocks.size()).is_equal(12)  # the 5 armory unlocks and the 7 directive packs
 	var lmg: UnlockDef = c.unlock(&"u_w_lmg")
 	assert_int(lmg.branch).is_equal(UnlockDef.Branch.ARMORY)
 	assert_int(lmg.cost).is_equal(120)

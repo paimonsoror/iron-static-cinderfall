@@ -12,7 +12,9 @@ func test_elites_start_at_wave_3_and_boss_waves_have_none() -> void:
 		var plan: RunPlan = RunPlanSystem.build_for(c, s)
 		for n: int in [1, 2, 5, 10, 15]:
 			for o: RouteOption in plan.wave(n).options:
-				assert_int(_count_elites(o)).override_failure_message("seed %d wave %d" % [s, n]).is_equal(0)
+				# the act's own range is empty before wave 3 and in boss waves; a pack or modifier may still add its elites
+				var added: int = RunPlanSystem._extra_elites(c, o) if n == 2 else 0
+				assert_int(_count_elites(o)).override_failure_message("seed %d wave %d" % [s, n]).is_equal(added)
 
 
 func test_elites_per_option_follow_the_act_range_and_the_hot_bonus() -> void:
@@ -26,7 +28,7 @@ func test_elites_per_option_follow_the_act_range_and_the_hot_bonus() -> void:
 			if pw.is_boss or pw.index < 3:
 				continue
 			for o: RouteOption in pw.options:
-				var bonus: int = 1 if o.hot and pw.act >= 2 else 0
+				var bonus: int = (1 if o.hot and pw.act >= 2 else 0) + RunPlanSystem._extra_elites(c, o)  # pack_hunt, mod_elite_pair
 				var lo: int = act_lo[pw.act - 1] + bonus
 				var hi: int = act_hi[pw.act - 1] + bonus
 				assert_int(_count_elites(o)).is_between(lo, hi)
