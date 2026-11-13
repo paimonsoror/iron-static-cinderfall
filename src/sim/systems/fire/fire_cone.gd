@@ -8,7 +8,8 @@ extends RefCounted
 ## `damage` (armor applies per pellet). One SHOT_FIRED per shot.
 ## Knockback (`knockback_m`): every enemy the shot hit and left alive is shoved that far along the line from the Warden
 ## to it, if its mass is below KNOCKBACK_MAX_MASS and it is neither attacking the core (MovementSystem holds attackers on
-## their slot) nor ANCHORED. The shove stops 0.1 m before a prop, the core cage or the edge of the yard.
+## their slot) nor ANCHORED. The shove advances in steps of 0.1 m and stops before a step that would end inside a prop,
+## the core cage or outside the yard.
 ## Deviation from ARCH 6.6 (one writer of enemy positions is MovementSystem): the shove writes enemies.x and z itself,
 ## because MovementSystem has no knockback call point yet (see the V4-W report, "needs owner").
 
