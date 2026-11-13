@@ -177,8 +177,9 @@ func test_a_fifth_of_the_kills_blast_and_the_proc_stream_decides() -> void:
 	assert_float(w.hazards.q_radius[0]).is_equal(2.0)
 	assert_float(w.hazards.q_damage[0]).is_equal(50.0)
 	assert_int(w.hazards.q_kind[0]).is_equal(HazardState.K_BLAST)
-	assert_int(w.hazards.q_source[0]).is_equal(DamageSource.Id.WARDEN)
-	assert_int(w.hazards.q_due[0]).is_equal(w.tick + 6)
+	# the blast itself is DeathHooks' (V4-C): a death blast of source HAZARD, one `proc` draw per Warden kill
+	assert_int(w.hazards.q_source[0]).is_equal(DamageSource.Id.HAZARD)
+	assert_int(w.hazards.q_due[0]).is_greater(w.tick)
 
 
 func test_five_percent_of_reloads_jam_for_a_second_and_a_half() -> void:

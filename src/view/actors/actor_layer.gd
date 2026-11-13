@@ -83,7 +83,7 @@ func bind(sim: SimWorld) -> void:
 	for i: int in st.high_water:
 		if st.alive[i] == 1:
 			_adopt(i)
-			if st.type[i] == Ids.EN_HULK:
+			if _content.enemies[st.type[i]].is_boss:
 				_boss_id = st.id[i]
 	warden.bind(sim)
 	for t: TurretView in turrets:
@@ -141,6 +141,10 @@ func render(alpha: float, delta: float) -> void:
 			_adopt(i)
 		var actor: EnemyActor = _pool.by_id[eid]
 		seen += 1
+		var emerging: bool = (_sim.ext.flags[i] & EnemyExtState.F_EMERGING) != 0  # a borer still under the ground
+		actor.root.visible = not emerging
+		if emerging:
+			continue
 		var a_i: float = a
 		var jump_x: float = st.x[i] - st.prev_x[i]
 		var jump_z: float = st.z[i] - st.prev_z[i]
@@ -340,7 +344,7 @@ func _on_enemy_killed(enemy_id: int, _source: int) -> void:
 	var actor: EnemyActor = _pool.by_id[enemy_id]
 	if enemy_id == _boss_id:
 		_boss_id = 0
-	if actor.kind == Ids.EN_HULK:
+	if _content.enemies[actor.kind].is_boss:
 		var _started: bool = _pool.begin_dying(enemy_id)
 	else:
 		var _released: bool = _pool.release_id(enemy_id)
