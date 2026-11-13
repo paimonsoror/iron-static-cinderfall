@@ -2,7 +2,8 @@ class_name VfxLayer
 extends Node3D
 ## All combat effects, pooled and capped (ARCH 13, GDD 12.3): tracers, muzzle flashes, impact sparks, death bursts,
 ## floating "+Scrap" texts, the EMP ring, the shield dome, the overdrive glow, core-hit sparks and boss footfall dust. V2-F added the
-## chaos effects of the variety milestone through `FxChaos` (blasts, chain arcs, telegraphs, strike column, ground pools, crate pulses).
+## chaos effects of the variety milestone through `FxChaos` (blasts, chain arcs, telegraphs, strike column, ground pools, crate pulses); V4-X
+## added the rest of them behind the same door (beams, lobs, zones, boss telegraphs, the strike's beacon, the static overlay, cosmetic chaos).
 ## Driven by `Events` (so it never touches sim state); it only reads the sim for the persistent shield and overdrive
 ## state. Pool exhaustion drops the oldest visual. Reduced Flash removes the full-screen flash and dims flashes.
 
@@ -88,7 +89,7 @@ func setup(content: ContentSet, rig: CameraRig, actors: ActorLayer) -> void:
 	_flash.setup()
 	add_child(_flash)
 	_chaos = FxChaos.new()
-	_chaos.setup(self, content, actors, _sparks, bounds, _rng)
+	_chaos.setup(self, content, rig, actors, _sparks, bounds, _rng)
 	_pools.append_array(_chaos.pools())
 	if _actors != null:
 		_actors.footfall.connect(_on_footfall)
@@ -103,7 +104,7 @@ func bind(sim: SimWorld) -> void:
 	Events.enemy_died_at.connect(_on_enemy_died_at)
 	Events.core_hit.connect(_on_core_hit)
 	Events.ability_activated.connect(_on_ability_activated)
-	_chaos.bind()
+	_chaos.bind(sim)
 
 
 func unbind() -> void:
@@ -248,6 +249,11 @@ func _on_shot_fired(source: int, target_id: int) -> void:
 	var has_target: bool = hit.is_finite()
 	if not has_target:
 		hit = _aim_point(source)
+	if _chaos.owns_shot(source):  # the torch and the lance are beams (V4-X): the ribbon follows, the line fires; no tracer, no muzzle star
+		_chaos.beams.shot(source, from, hit)
+		if has_target:
+			_impact_sparks(hit, from - hit, SPARKS_PER_HIT[_quality], 1.0)
+		return
 	var overdrive: bool = source == DamageSource.Id.WARDEN and _sim.abilities.is_active(Ids.AB_OVERDRIVE)
 	var life: float = TRACER_LIFE_OVERDRIVE_S if overdrive else TRACER_LIFE_S
 	var _tracer: int = _tracers.spawn(from, hit, 0.17, 0.06, life)
@@ -324,6 +330,8 @@ func _on_ability_activated(ability_id: StringName) -> void:
 
 ## Boss footfall dust: pale puffs and a few stones kicked up. Not on LOW.
 func _on_footfall(world_pos: Vector3, weight: float) -> void:
+	if _sim != null:
+		_chaos.footfall(weight)
 	if _sim == null or _quality == VisualQuality.Tier.LOW:
 		return
 	for _p: int in 2 + _quality:

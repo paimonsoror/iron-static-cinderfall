@@ -7,20 +7,29 @@ extends RefCounted
 ## Rule of the frame (a test): a blast never draws on a slot that was already recycled in the same frame, so when more blasts arrive
 ## between two draws than a pool has slots, the surplus is dropped instead of overwriting a blast that has not been seen yet.
 ## Reduced Flash removes the flash billboards and dims the rings (nothing that covers more than 5 percent of the screen is bright for
-## longer than 0.25 s: the flash lives 0.16 s). The same cyan ring pool draws the arc hit rings and the crate pulses.
+## longer than 0.25 s: the flash lives 0.2 s). The same cyan ring pool draws the arc hit rings and the crate pulses.
+## V4-X (readability, found on the slice captures: the 1.2 m blast of a volatile skitter at the far edge was a speck): every blast is drawn
+## at least MIN_RING_M wide whatever its radius (the zone that hurts is told by the telegraph, a blast is an event), a thick band, and the
+## flash is a soft glow under the spikes; both are multiplied by `scale` (FxScale) so an effect keeps its size on the screen at the far edge.
 
 const RING_Y: float = 0.07
 const FLASH_Y: float = 0.8
 const RING_LIFE_S: float = 0.45
 const RING_LIFE_BIG_S: float = 0.6
-const FLASH_LIFE_S: float = 0.16
+const FLASH_LIFE_S: float = 0.2
 const BIG_RADIUS_M: float = 3.0
 const RING_DIM: float = 0.5
+const MIN_RING_M: float = 1.6  ## the smallest a blast ring is drawn, in meters (a volatile skitter's 1.2 m blast is drawn 1.6 m)
+const RING_BAND: float = 0.6  ## inner radius of the ring band (the inside of a blast stays clear)
+const FLASH_MIN_M: float = 1.2
+const FLASH_MAX_M: float = 3.0  ## the biggest flash star, in meters of radius
 
 var rings_amber: VfxPool
 var rings_cyan: VfxPool
 var flashes: VfxPool
 var flashes_cyan: VfxPool
+
+var scale: FxScale = FxScale.new()  ## set by FxChaos; without a camera it is 1.0 everywhere
 
 var _sparks: VfxPool
 var _rng: RandomNumberGenerator
@@ -38,15 +47,15 @@ var dropped: int = 0  ## blasts not drawn because the pool had no slot that was 
 func setup(parent: Node3D, bounds: AABB, sparks: VfxPool, rng: RandomNumberGenerator) -> void:
 	_sparks = sparks
 	_rng = rng
-	_lit[&"amber"] = VfxMeshes.ring(0.72, 40, &"add_amber", &"add_white")
-	_dim[&"amber"] = VfxMeshes.ring(0.72, 40, &"add_amber", &"add_white", RING_DIM)
-	_lit[&"cyan"] = VfxMeshes.ring(0.72, 40, &"add_cyan", &"add_white")
-	_dim[&"cyan"] = VfxMeshes.ring(0.72, 40, &"add_cyan", &"add_white", RING_DIM)
+	_lit[&"amber"] = VfxMeshes.ring(RING_BAND, 40, &"add_amber", &"add_white")
+	_dim[&"amber"] = VfxMeshes.ring(RING_BAND, 40, &"add_amber", &"add_white", RING_DIM)
+	_lit[&"cyan"] = VfxMeshes.ring(RING_BAND, 40, &"add_cyan", &"add_white")
+	_dim[&"cyan"] = VfxMeshes.ring(RING_BAND, 40, &"add_cyan", &"add_white", RING_DIM)
 	rings_amber = _pool(parent, "BlastRings", _lit[&"amber"], VisualQuality.BLAST_RING_CAP[VisualQuality.Tier.HIGH], VfxPool.Mode.FLAT, bounds)
 	rings_cyan = _pool(parent, "CyanRings", _lit[&"cyan"], VisualQuality.BLAST_RING_CAP[VisualQuality.Tier.HIGH], VfxPool.Mode.FLAT, bounds)
 	var flash_cap: int = VisualQuality.BLAST_FLASH_CAP[VisualQuality.Tier.HIGH]
-	flashes = _pool(parent, "BlastFlashes", VfxMeshes.star(&"add_amber", &"add_white"), flash_cap, VfxPool.Mode.BILLBOARD, bounds)
-	flashes_cyan = _pool(parent, "CyanFlashes", VfxMeshes.star(&"add_cyan", &"add_white"), flash_cap, VfxPool.Mode.BILLBOARD, bounds)
+	flashes = _pool(parent, "BlastFlashes", VfxMeshes.blast_flash(&"add_amber", &"add_white"), flash_cap, VfxPool.Mode.BILLBOARD, bounds)
+	flashes_cyan = _pool(parent, "CyanFlashes", VfxMeshes.blast_flash(&"add_cyan", &"add_white"), flash_cap, VfxPool.Mode.BILLBOARD, bounds)
 	set_quality(_tier)
 
 
@@ -80,6 +89,8 @@ func frame_done() -> void:
 ## `area_blast(kind, x, z, radius)`: the ring, the flash (MID, HIGH, not under Reduced Flash) and the streaks (HIGH).
 func blast(kind: int, x: float, z: float, radius: float) -> void:
 	var r: float = clampf(radius, 0.4, 12.0)
+	if r < BIG_RADIUS_M:  # a big blast is a real zone (the strike, a vent) and is drawn at its true radius; a small one is boosted to stay readable
+		r = minf(maxf(r, MIN_RING_M) * scale.at(Vector3(x, 0.0, z)), BIG_RADIUS_M)
 	var ours: bool = kind == HazardState.K_STRIKE or kind == HazardState.K_VENT
 	var life: float = RING_LIFE_BIG_S if r >= BIG_RADIUS_M else RING_LIFE_S
 	var slot: int = ring(ours, Vector3(x, RING_Y, z), r * 0.2, r, life)
@@ -93,7 +104,7 @@ func blast(kind: int, x: float, z: float, radius: float) -> void:
 			_frame_flash_cyan += 1
 		else:
 			_frame_flash += 1
-		var size: float = clampf(r * 0.7, 0.7, 2.6)
+		var size: float = clampf(r * 0.8 + 0.3, FLASH_MIN_M, FLASH_MAX_M)
 		var _flash: int = flash_pool.spawn(at, Vector3.ZERO, size, size * 0.3, FLASH_LIFE_S, _rng.randf_range(0.0, TAU))
 	for _k: int in VisualQuality.blast_streaks(_tier):
 		var ang: float = _rng.randf_range(0.0, TAU)

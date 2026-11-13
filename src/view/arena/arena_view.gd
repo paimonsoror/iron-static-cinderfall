@@ -7,7 +7,6 @@ extends Node3D
 ## Quality tiers (VisualQuality) switch shadows for static props, omni lights, rain and the cheaper ground shader.
 
 const STENCIL_TEXT: String = "B-4"
-const RAIN_STREAKS: int = 90
 const RAIN_PERIOD: float = 7.0
 const RAIN_SPEED: float = 17.0
 const GROUND_SIZE: Vector2 = Vector2(96.0, 108.0)
@@ -50,6 +49,7 @@ func setup(arena: ArenaDef, tokens: VisualTokens) -> void:
 	_rng.seed = 2026
 	_build_ground()
 	_build_props_and_decor()
+	_build_rails()
 	_build_pads_and_ring()
 	_build_core()
 	_build_spawn_glow()
@@ -253,6 +253,13 @@ func _build_props_and_decor() -> void:
 	pools_node.material_override = _lamp_pool_mat
 
 
+## The two faint rail lines of Runaway Freight (variety content only; the legacy arena has none), kept low-contrast (GDD 12.3).
+func _build_rails() -> void:
+	var rails: ArrayMesh = RailLines.build(_arena)
+	if rails != null:
+		var _node_rails: MeshInstance3D = _node("Rails", rails)
+
+
 func _build_pads_and_ring() -> void:
 	var cyan: Color = _tokens.color(&"warden_cyan")
 	var obs: Color = _tokens.color(&"obsidian")
@@ -312,21 +319,9 @@ func _build_spawn_glow() -> void:
 	_node("SpawnGlow", mb.build())
 
 
-## Rain streaks (HIGH only): two copies of one period of streaks, scrolled down and wrapped.
+## Rain streaks (HIGH only): two copies of one period of streaks, scrolled down and wrapped (`RainStreaks`).
 func _build_rain() -> void:
-	var mb: MeshBuilder = MeshKit.begin()
-	var lean: Basis = Basis(Vector3.BACK, deg_to_rad(7.0)) * Basis(Vector3.RIGHT, PI * 0.5)
-	var lo: Vector2 = Vector2(_arena.min_x - 12.0, _arena.min_z - 10.0)
-	var hi: Vector2 = Vector2(_arena.max_x + 12.0, _arena.max_z + 8.0)
-	for i: int in RAIN_STREAKS:
-		var x: float = _rng.randf_range(lo.x, hi.x)
-		var z: float = _rng.randf_range(lo.y, hi.y)
-		var y: float = _rng.randf_range(0.0, RAIN_PERIOD)
-		var streak_len: float = _rng.randf_range(0.9, 1.6)
-		for copy: int in 2:
-			var at: Vector3 = Vector3(x, y + RAIN_PERIOD * float(copy), z)
-			mb.quad(Vector2(0.022, streak_len), Transform3D(lean, at), &"rain")
-	_rain = _node("Rain", mb.build())
+	_rain = _node("Rain", RainStreaks.build(_arena, _rng, RAIN_PERIOD))
 	_rain.visible = false
 
 

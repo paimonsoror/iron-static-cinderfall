@@ -100,3 +100,76 @@ static func telegraph_decals(tier: int) -> int:
 
 static func mini_bodies(tier: int) -> int:
 	return MINI_CAP[clampi(tier, Tier.LOW, Tier.HIGH)]
+
+
+# --- V4-X: the rest of the tier tables of ARCH 13.2 and SPEC 10.3 / 10.4. Every pool is allocated once at its HIGH size. What can hurt
+# the player's side is never limited by a tier: the enemy bolts and the danger decals have the same size on every tier. ---
+
+## Lobbed projectiles that are ours (mortar shells, hornets); the spitter's bolts are an enemy projectile and are never tier-gated.
+const LOB_CAP: Array[int] = [12, 18, 24]
+const BOLT_CAP: Array[int] = [12, 12, 12]
+const BEAM_CAP: Array[int] = [2, 2, 3]
+const POOL_CAP: Array[int] = [6, 8, 10]
+const WARD_RING_CAP: Array[int] = [8, 10, 12]
+const ELITE_RING_CAP: Array[int] = [4, 4, 4]
+const TETHER_CAP: Array[int] = [6, 9, 12]
+const SCORCH_CAP: Array[int] = [0, 8, 16]
+const GHOST_CAP: Array[int] = [0, 40, 80]
+## Cosmetic chaos (none / light / full). Embers are drifting sparks after a blast, rain bursts are a short downpour when an event
+## starts, shake is the camera shaking by this share of its full strength (Reduced Flash switches it off at any tier).
+const EMBER_CAP: Array[int] = [0, 24, 48]
+const EMBERS_PER_BLAST: Array[int] = [0, 2, 4]
+const RAIN_BURST_CAP: Array[int] = [0, 24, 48]
+const SHAKE_GAIN: Array[float] = [0.0, 0.5, 1.0]
+
+
+static func lob_cap(tier: int) -> int:
+	return LOB_CAP[clampi(tier, Tier.LOW, Tier.HIGH)]
+
+
+static func bolt_cap(tier: int) -> int:
+	return BOLT_CAP[clampi(tier, Tier.LOW, Tier.HIGH)]
+
+
+static func beam_cap(tier: int) -> int:
+	return BEAM_CAP[clampi(tier, Tier.LOW, Tier.HIGH)]
+
+
+static func pool_cap(tier: int) -> int:
+	return POOL_CAP[clampi(tier, Tier.LOW, Tier.HIGH)]
+
+
+static func ward_rings(tier: int) -> int:
+	return WARD_RING_CAP[clampi(tier, Tier.LOW, Tier.HIGH)]
+
+
+static func elite_rings(tier: int) -> int:
+	return ELITE_RING_CAP[clampi(tier, Tier.LOW, Tier.HIGH)]
+
+
+static func tethers(tier: int) -> int:
+	return TETHER_CAP[clampi(tier, Tier.LOW, Tier.HIGH)]
+
+
+static func scorch_marks(tier: int) -> int:
+	return SCORCH_CAP[clampi(tier, Tier.LOW, Tier.HIGH)]
+
+
+static func ghost_swarm(tier: int) -> int:
+	return GHOST_CAP[clampi(tier, Tier.LOW, Tier.HIGH)]
+
+
+static func embers(tier: int) -> int:
+	return EMBER_CAP[clampi(tier, Tier.LOW, Tier.HIGH)]
+
+
+static func embers_per_blast(tier: int) -> int:
+	return EMBERS_PER_BLAST[clampi(tier, Tier.LOW, Tier.HIGH)]
+
+
+static func rain_burst(tier: int) -> int:
+	return RAIN_BURST_CAP[clampi(tier, Tier.LOW, Tier.HIGH)]
+
+
+static func shake_gain(tier: int) -> float:
+	return SHAKE_GAIN[clampi(tier, Tier.LOW, Tier.HIGH)]

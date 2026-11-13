@@ -112,6 +112,98 @@ static func hatch_disc(mat_id: StringName, sides: int = 32) -> ArrayMesh:
 	return MeshKit.begin().disc(1.0, sides, Transform3D.IDENTITY, mat_id).build()
 
 
+## The flash of a blast (V4-X): a soft glow of two stacked discs under four long spikes, one additive colour, and a white-hot core. Radius 1.
+## Bigger and softer than `star`, so a small blast at the far edge of the yard still reads at phone size.
+static func blast_flash(glow_mat: StringName, core_mat: StringName, scale: float = 1.0) -> ArrayMesh:
+	var b: Builder = Builder.new()
+	b.add_disc_to(0.78, 16, 0)
+	b.add_disc_to(0.5, 12, 0)
+	b.add_star(1.0, 0.2, 4, 0, 0.0)
+	b.add_disc_to(0.3, 10, 1)
+	return b.build([glow_mat, core_mat], scale)
+
+
+## Two long edge bars of a lane (half-length 1, half-width 1; each bar is `thick` of the half-width): a pool scales x by the half-length
+## and z by the half-width (`VfxPool.Mode.STRIP`), so the bars stay a constant share of the width. The ends are open.
+static func lane_frame(mat_id: StringName, thick: float = 0.14) -> ArrayMesh:
+	var b: Builder = Builder.new()
+	for side: float in [-1.0, 1.0]:
+		var z0: float = side * (1.0 - thick)
+		var z1: float = side
+		b.tri(0, Vector3(-1.0, 0.0, z0), Vector3(-1.0, 0.0, z1), Vector3(1.0, 0.0, z1))
+		b.tri(0, Vector3(-1.0, 0.0, z0), Vector3(1.0, 0.0, z1), Vector3(1.0, 0.0, z0))
+	return b.build([mat_id], 1.0)
+
+
+## A rectangle (half-extents 1) whose UVs run 0..aspect along X and 0..1 along Z, so the hatch texture (3 repeats per unit through the
+## material) keeps square stripes on a band that is `aspect` times as long as it is wide.
+static func hatch_strip(mat_id: StringName, aspect: float) -> ArrayMesh:
+	var mesh: ArrayMesh = ArrayMesh.new()
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array([Vector3(-1.0, 0.0, -1.0), Vector3(1.0, 0.0, -1.0), Vector3(1.0, 0.0, 1.0), Vector3(-1.0, 0.0, 1.0)])
+	arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array([Vector3.UP, Vector3.UP, Vector3.UP, Vector3.UP])
+	arrays[Mesh.ARRAY_TEX_UV] = PackedVector2Array([Vector2(0.0, 0.0), Vector2(aspect, 0.0), Vector2(aspect, 1.0), Vector2(0.0, 1.0)])
+	arrays[Mesh.ARRAY_INDEX] = PackedInt32Array([0, 2, 1, 0, 3, 2])
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	mesh.surface_set_material(0, VfxMeshes.material(mat_id))
+	return mesh
+
+
+## The cracks of a floor breach: `arms` jagged cracks from the centre to radius 1, each a ribbon of three segments that thins out.
+static func cracks(mat_id: StringName, arms: int = 6, width: float = 0.07) -> ArrayMesh:
+	var b: Builder = Builder.new()
+	for k: int in arms:
+		var base: float = TAU * float(k) / float(arms) + 0.3
+		var prev: Vector3 = Vector3.ZERO
+		for j: int in 3:
+			var r: float = float(j + 1) / 3.0
+			var wobble: float = (0.18 if (j + k) % 2 == 0 else -0.18) * (1.0 if j < 2 else 0.0)
+			var dir: Vector3 = Vector3(cos(base + wobble), 0.0, sin(base + wobble))
+			var next: Vector3 = dir * r
+			var side: Vector3 = Vector3(-dir.z, 0.0, dir.x) * width * (1.0 - 0.28 * float(j))
+			b.tri(0, prev - side, prev + side, next)
+			prev = next
+	return b.build([mat_id], 1.0)
+
+
+## A scorch mark (V4-X): three overlapping dark blots (the black shadow material, so the middle where they overlap is darker) with a faint
+## warm rim band. Radius about 1. Calm by design: it is the aftermath of a blast, not a signal.
+static func scorch_mark(rim_scale: float = 0.3) -> ArrayMesh:
+	var b: Builder = Builder.new()
+	b.add_disc_at(Vector3.ZERO, 1.0, 20, 0)
+	b.add_disc_at(Vector3(0.32, 0.0, 0.18), 0.7, 14, 0)
+	b.add_disc_at(Vector3(-0.28, 0.0, -0.3), 0.62, 14, 0)
+	b.add_band(0.9, 1.0, 20, 1)
+	var mesh: ArrayMesh = b.build([&"shadow_blob", &"add_amber"], 1.0)
+	mesh.surface_set_material(1, VfxMeshes.material(&"add_amber", rim_scale))
+	return mesh
+
+
+## A ring of `dashes` arcs with gaps between them (radius 1, the band starts at `inner`): the ring of a ward or an aura. Dashed on purpose:
+## the shrinking outline of a danger decal is solid, so the two never read alike (shape, not only colour). `duty` is the share of each
+## period that is drawn.
+static func dashed_ring(inner: float, dashes: int, duty: float, mat_id: StringName, scale: float = 1.0) -> ArrayMesh:
+	var b: Builder = Builder.new()
+	var step: float = TAU / float(dashes)
+	for k: int in dashes:
+		var a0: float = step * float(k)
+		var a1: float = a0 + step * duty
+		var d0: Vector3 = Vector3(cos(a0), 0.0, sin(a0))
+		var d1: Vector3 = Vector3(cos(a1), 0.0, sin(a1))
+		b.tri(0, d0 * inner, d0, d1)
+		b.tri(0, d0 * inner, d1, d1 * inner)
+	return b.build([mat_id], scale)
+
+
+## A glowing ball (radius 1) of `glow_mat` with a smaller `core_mat` heart: a lobbed shell, a hornet, a spitter's bolt. A billboard in the pool.
+static func orb(glow_mat: StringName, core_mat: StringName, scale: float = 1.0) -> ArrayMesh:
+	var b: Builder = Builder.new()
+	b.add_disc_to(1.0, 14, 0)
+	b.add_disc_to(0.55, 10, 1)
+	return b.build([glow_mat, core_mat], scale)
+
+
 ## Unit cube (debris).
 static func cube(mat_id: StringName) -> ArrayMesh:
 	return MeshKit.begin().box(Vector3.ONE, Transform3D.IDENTITY, mat_id).build()
@@ -160,10 +252,13 @@ class Builder:
 		add_disc_to(radius, sides, 0)
 
 	func add_disc_to(radius: float, sides: int, s: int) -> void:
+		add_disc_at(Vector3.ZERO, radius, sides, s)
+
+	func add_disc_at(center: Vector3, radius: float, sides: int, s: int) -> void:
 		for i: int in sides:
 			var a0: float = TAU * float(i) / float(sides)
 			var a1: float = TAU * float(i + 1) / float(sides)
-			tri(s, Vector3.ZERO, Vector3(cos(a0), 0.0, sin(a0)) * radius, Vector3(cos(a1), 0.0, sin(a1)) * radius)
+			tri(s, center, center + Vector3(cos(a0), 0.0, sin(a0)) * radius, center + Vector3(cos(a1), 0.0, sin(a1)) * radius)
 
 	func add_band(r_in: float, r_out: float, sides: int, s: int) -> void:
 		for i: int in sides:
