@@ -125,3 +125,52 @@ func test_a_warning_that_the_wave_end_interrupts_is_cancelled_not_started() -> v
 	assert_int(VarietyVKit.count(w, SimEventKind.Id.EVENT_STARTED)).is_equal(0)
 	assert_int(VarietyVKit.count(w, SimEventKind.Id.EVENT_CANCELLED)).is_equal(1)
 	assert_int(w.events_state.ability_lock_ticks).is_equal(0)
+
+
+func test_the_events_the_player_calls_also_push_started_and_ended() -> void:
+	var w: SimWorld = VarietyVKit.world(1, 4)
+	EventSystem.grant_charges(w, VarietyVKit.FREIGHT, 1)
+	VarietyVKit.tough(w, VarietyVKit.place(w, Ids.EN_SKITTER, 3.0, -7.0))
+	for event_index: int in [VarietyVKit.STRIKE, VarietyVKit.VENT, VarietyVKit.FREIGHT]:
+		assert_int(VarietyVKit.call_on_next_tick(w, event_index)).is_equal(Reason.Id.OK)
+	VarietyVKit.run(w, 400)
+	for event_index: int in [VarietyVKit.STRIKE, VarietyVKit.VENT, VarietyVKit.FREIGHT]:
+		var label: String = String(w.content.events[event_index].id)
+		assert_int(VarietyVKit.ticks_for(w, SimEventKind.Id.EVENT_STARTED, event_index).size()).override_failure_message(label).is_equal(1)
+		assert_int(VarietyVKit.ticks_for(w, SimEventKind.Id.EVENT_ENDED, event_index).size()).override_failure_message(label).is_equal(1)
+	assert_int(w.events_state.active_count()).is_equal(0)
+
+
+## The x, z the HUD reads for the first active event (RunApi.active_events()).
+func _spot(w: SimWorld) -> Vector2:
+	var row: Dictionary = SimRunQueries.active_events(w)[0]
+	var x: float = row["x"]
+	var z: float = row["z"]
+	return Vector2(x, z)
+
+
+## What the x, z of an active event mean (the HUD's edge arrows and the ground decals read them through active_events()).
+func test_the_position_of_an_event_is_the_place_to_look_at() -> void:
+	var w: SimWorld = _planned(VarietyVKit.RECOUNT)
+	w.plan.wave(4).act = 2
+	VarietyVKit.run(w, AT)
+	var recount: Vector2 = _spot(w)
+	assert_float(recount.x).is_equal_approx(4.5, 0.001)  # the middle of the spawn edge the spawns will come in from
+	assert_float(recount.y).is_equal_approx(-16.8, 0.001)
+	var breach: SimWorld = _planned(VarietyVKit.BREACH)
+	breach.plan.wave(4).act = 2
+	breach.phase_state.act = 2
+	VarietyVKit.run(breach, AT)
+	assert_bool(breach.content.arena.breach_points.has(_spot(breach))).is_true()  # one of the opening points
+	var freight: SimWorld = _planned(VarietyVKit.RUNAWAY)
+	VarietyVKit.run(freight, AT)
+	var lane: Vector2 = _spot(freight)
+	assert_float(lane.x).is_equal(freight.content.arena.max_x)  # where the car comes in, on the lane it will take
+	assert_bool(freight.content.arena.rail_z.has(lane.y)).is_true()
+	VarietyVKit.run(freight, 240 + 36)  # half way through the pass
+	var car: Vector2 = _spot(freight)
+	assert_float(car.x).is_equal_approx(0.0, 0.5)  # the car itself
+	assert_float(car.y).is_equal(lane.y)
+	var drop: SimWorld = _planned(VarietyVKit.DROP)
+	VarietyVKit.run(drop, AT)
+	assert_bool(drop.content.arena.drop_points.has(_spot(drop))).is_true()
