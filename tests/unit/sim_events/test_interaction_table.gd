@@ -119,3 +119,22 @@ func test_a_lance_platform_beam_can_always_be_answered_by_a_deadfall_strike_and_
 	assert_int(EventSystem.block_reason(w, VarietyVKit.VENT)).is_equal(Reason.Id.OK)
 	w.events_state.ability_lock_ticks = 720  # even under a Static Front the calls are not abilities
 	assert_int(EventSystem.block_reason(w, VarietyVKit.STRIKE)).is_equal(Reason.Id.OK)
+
+
+## Tremor Rig stomp | turrets: offline 4 s. The boss writes EventState.turret_offline_ticks through BossEffects.turrets_offline;
+## EventSystem counts it down once per tick and TurretSystem does not fire while it is above 0.
+func test_the_stomp_of_the_tremor_rig_silences_the_turrets_for_exactly_its_ticks() -> void:
+	var w: SimWorld = _world()
+	w.turrets.active[0] = 1
+	VarietyVKit.tough(w, VarietyVKit.place(w, Ids.EN_HOLLOW, -1.0, -1.5))
+	BossEffects.turrets_offline(w, 240)
+	var shots: int = w.combat.shots_by_source[DamageSource.Id.TURRET_0]
+	VarietyVKit.run(w, 239)
+	assert_int(w.events_state.turret_offline_ticks).is_equal(1)
+	assert_int(w.combat.shots_by_source[DamageSource.Id.TURRET_0]).is_equal(shots)
+	VarietyVKit.tick(w)  # tick 240: the counter reaches 0 before the turret step of that tick
+	assert_int(w.events_state.turret_offline_ticks).is_equal(0)
+	assert_int(w.combat.shots_by_source[DamageSource.Id.TURRET_0]).is_equal(shots + 1)
+	BossEffects.turrets_offline(w, 100)
+	BossEffects.turrets_offline(w, 30)  # a second stomp never shortens the first
+	assert_int(w.events_state.turret_offline_ticks).is_equal(100)
