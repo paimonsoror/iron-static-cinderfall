@@ -121,7 +121,7 @@ func test_the_shipped_file_and_its_fixture_copy_are_byte_identical() -> void:
 
 func test_every_shipped_row_is_a_row_of_the_complete_tree() -> void:
 	var shipped: ContentSet = TestContent.variety()
-	assert_int(shipped.unlocks.size()).is_equal(10)  # five armory rows and the five kits; the rest waits for the pieces named in the file note
+	assert_int(shipped.unlocks.size()).is_equal(17)  # all but u_w_arc and the six field options (see the note of the file)
 	for u: UnlockDef in shipped.unlocks:
 		assert_str(_row(shipped, u.id)).is_equal(_row(cs, u.id))
 	assert_array(Array(shipped.run.tier_gates)).is_equal(Array(cs.run.tier_gates))
@@ -138,7 +138,8 @@ func test_every_shipped_row_is_a_row_of_the_complete_tree() -> void:
 func test_the_shipped_unlocks_validate_on_their_own() -> void:
 	var shipped: ContentSet = TestContent.variety()
 	for u: UnlockDef in shipped.unlocks:
-		assert_bool(u.branch == UnlockDef.Branch.ARMORY or u.branch == UnlockDef.Branch.KITS).is_true()
+		assert_bool(u.branch != UnlockDef.Branch.FIELD).is_true()  # nothing reads the field options yet
+	assert_bool(shipped.unlock(&"u_w_arc") == null).is_true()  # it would take arc_projector out of a new profile's crates
 	assert_str("\n".join(ContentValidator.validate(shipped))).is_empty()
 	for k: KitDef in shipped.kits:
 		assert_bool(shipped.strings.has(k.name_key)).is_true()  # the kit names V4-U wrote
