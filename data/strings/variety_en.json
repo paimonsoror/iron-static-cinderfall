@@ -309,7 +309,7 @@
   "archive.tier_gate": "TIER %d  (%d UNLOCKS NEEDED: %d / %d)",
   "archive.owned": "OWNED",
   "archive.cost": "%s DATA",
-  "archive.cost_short": "%s DATA  (NEED %s MORE)",
+  "archive.cost_short": "%s DATA  (NEED %s MORE)",
   "archive.locked_cost": "LOCKED  %s DATA",
   "archive.unlocking": "UNLOCKING",
   "archive.unlock_for": "UNLOCK FOR %s DATA",

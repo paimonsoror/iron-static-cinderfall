@@ -30,7 +30,7 @@ func _populate() -> void:
 	choice = -1 if boss else 0
 	action = NO_ACTION
 	_add_info_band(Strings.tf("draft.cleared", [_api.wave()]))
-	title_label = RunUi.label(Strings.t("salvage.header"), UiTheme.FONT_LARGE, &"body", true)
+	title_label = RunUi.wrap(RunUi.label(Strings.t("salvage.header"), UiTheme.FONT_LARGE, &"body", true))
 	header.add_child(title_label)
 	if boss:
 		header.add_child(RunUi.label(Strings.t("salvage.pick_one"), RunUi.MIN_TEXT + 4, &"friendly", true))

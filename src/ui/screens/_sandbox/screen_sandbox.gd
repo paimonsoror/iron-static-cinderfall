@@ -30,7 +30,7 @@ func _ready() -> void:
 			_results(false)
 		"settings":
 			_settings()
-		"archive", "archive_directives", "archive_kits", "archive_pending":
+		"archive", "archive_directives", "archive_kits", "archive_pending", "archive_poor":
 			_archive(which)
 		"briefing_kits":
 			_briefing_kits()
@@ -105,6 +105,9 @@ func _archive(which: String) -> void:
 	profile.unlocks.append("u_w_hornet")
 	profile.unlocks.append("u_p_blast")
 	profile.unlocks.append("u_f_reroll")
+	if which == "archive_poor":  # the profile of a first-time player: every row says how much Data it still needs
+		profile.data = 40
+		profile.unlocks = PackedStringArray()
 	var s: ArchiveScreen = _scene("archive_screen.tscn") as ArchiveScreen
 	s.setup(Content.db, ArchiveBank.new(profile, Content.db))
 	match which:

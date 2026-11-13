@@ -187,6 +187,7 @@ func _row_button(text_key: String, row: HBoxContainer, quiet: bool) -> Button:
 	var b: Button = UiKit.button_quiet(text_key) if quiet else UiKit.button(text_key)
 	b.custom_minimum_size = Vector2(UiTheme.TOUCH_MIN, UiTheme.BTN_PRIMARY_H)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	row.add_child(b)
 	return b
 

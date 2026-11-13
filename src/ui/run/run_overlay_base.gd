@@ -143,9 +143,8 @@ func _unbind_all() -> void:
 func _add_info_band(left: String) -> void:
 	var row: HBoxContainer = HBoxContainer.new()
 	row.add_theme_constant_override(&"separation", 18)
-	info_label = RunUi.label(left, UiTheme.FONT_BODY, &"accent", true)
+	info_label = RunUi.wrap(RunUi.label(left, UiTheme.FONT_BODY, &"accent", true))
 	info_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	info_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	row.add_child(info_label)
 	core_label = RunUi.label("-", UiTheme.FONT_BODY, &"body", true)
 	row.add_child(core_label)
@@ -159,18 +158,16 @@ func _add_info_band(left: String) -> void:
 ## tier with CORE and Scrap. Information only.
 func _add_act_band(act: int, wave_number: int) -> void:
 	var line: HBoxContainer = HBoxContainer.new()
-	act_label_node = RunUi.label("%s  %s" % [RunUi.act_label(act), RunUi.act_name(_content, act)], UiTheme.FONT_BODY, &"accent", true)
+	act_label_node = RunUi.wrap(RunUi.label("%s  %s" % [RunUi.act_label(act), RunUi.act_name(_content, act)], UiTheme.FONT_BODY, &"accent", true))
 	act_label_node.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	act_label_node.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	line.add_child(act_label_node)
 	wave_label = RunUi.label(Strings.tf("route.wave_of", [wave_number, _api.wave_count()]), UiTheme.FONT_BODY, &"body", true)
 	line.add_child(wave_label)
 	header.add_child(line)
 	var second: HBoxContainer = HBoxContainer.new()
 	second.add_theme_constant_override(&"separation", 18)
-	info_label = RunUi.label(RunUi.plating_line(_content, act), RunUi.MIN_TEXT, &"dim")
+	info_label = RunUi.wrap(RunUi.label(RunUi.plating_line(_content, act), RunUi.MIN_TEXT, &"dim"))
 	info_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	info_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	second.add_child(info_label)
 	core_label = RunUi.label("-", UiTheme.FONT_BODY - 4, &"body", true)
 	second.add_child(core_label)

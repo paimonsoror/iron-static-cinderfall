@@ -10,7 +10,8 @@ extends Control
 signal closed
 
 const UNDO_SECONDS: float = 5.0
-const COLUMNS: int = 2
+const COLUMNS: int = 2  ## columns of rows and of tabs on a wide enough screen
+const WIDE_MIN: float = 850.0  ## below this viewport width the rows go one per line and the tabs two per line
 
 var model: ArchiveModel
 var branch: int = UnlockDef.Branch.ARMORY
@@ -18,6 +19,8 @@ var selected: UnlockDef
 var tab_buttons: Array[Button] = []
 var rows: Array[ArchiveRow] = []
 var tier_labels: Array[Label] = []
+var tab_grid: GridContainer
+var row_grids: Array[GridContainer] = []
 var title_label: Label
 var sub_label: Label
 var data_label: Label
@@ -40,6 +43,7 @@ func setup(content: ContentSet, bank: ArchiveBank = null) -> void:
 	_content = content
 	model = ArchiveModel.new(content, bank if bank != null else SaveArchiveBank.new(content))
 	set_process(false)
+	_apply_columns()  # the screen got its size before it was built: `resized` will not come again
 	select_branch(UnlockDef.Branch.ARMORY)
 
 
@@ -110,7 +114,9 @@ func _ensure_built() -> void:
 	sub_label = UiKit.label_text(Strings.t("archive.sub"), UiTheme.LABEL_DIM, RunUi.MIN_TEXT)
 	sub_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_frame.header.add_child(sub_label)
-	_frame.header.add_child(_tabs())
+	tab_grid = _tabs()
+	_frame.header.add_child(tab_grid)
+	resized.connect(_apply_columns)
 	_frame.content.add_theme_constant_override(&"separation", 14)
 	detail = ArchiveDetail.new()
 	_frame.footer.add_child(detail)
@@ -119,6 +125,7 @@ func _ensure_built() -> void:
 	_frame.footer.add_child(notice_label)
 	unlock_button = UiKit.button_primary("archive.unlock_none")
 	unlock_button.custom_minimum_size = Vector2(0.0, UiTheme.BTN_PRIMARY_H)
+	unlock_button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # "OPENS AFTER 5 MORE UNLOCKS" is wider than a narrow screen
 	unlock_button.pressed.connect(_on_unlock)
 	_frame.footer.add_child(unlock_button)
 	close_button = UiKit.button_quiet("ui.close")
@@ -126,9 +133,12 @@ func _ensure_built() -> void:
 	_frame.footer.add_child(close_button)
 
 
-func _tabs() -> HBoxContainer:
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override(&"separation", 10)
+## The four tabs in a grid: four across on a wide screen, two by two on a narrow one (their words need about 250 px each).
+func _tabs() -> GridContainer:
+	var row: GridContainer = GridContainer.new()
+	row.columns = 4
+	row.add_theme_constant_override(&"h_separation", 10)
+	row.add_theme_constant_override(&"v_separation", 10)
 	var group: ButtonGroup = ButtonGroup.new()
 	for i: int in ArchiveModel.BRANCHES.size():
 		var b: Button = UiKit.button("archive.tab.%s" % UnlockDef.BRANCH_NAMES[ArchiveModel.BRANCHES[i]])
@@ -151,6 +161,7 @@ func _fill_rows() -> void:
 		child.queue_free()
 	rows.clear()
 	tier_labels.clear()
+	row_grids.clear()
 	for tier: int in model.tiers(branch):
 		var open: bool = model.tier_open(tier)
 		var text: String = Strings.tf("archive.tier", [tier])
@@ -161,7 +172,8 @@ func _fill_rows() -> void:
 		_frame.content.add_child(heading)
 		tier_labels.append(heading)
 		var grid: GridContainer = GridContainer.new()
-		grid.columns = COLUMNS
+		grid.columns = _columns()
+		row_grids.append(grid)
 		grid.add_theme_constant_override(&"h_separation", 14)
 		grid.add_theme_constant_override(&"v_separation", 14)
 		grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -174,6 +186,19 @@ func _fill_rows() -> void:
 			row.tapped.connect(_on_row.bind(def))
 			grid.add_child(row)
 			rows.append(row)
+
+
+## Columns that fit the viewport: the rows share the width (two on a phone of 1080, one on a narrower one) and the tabs likewise.
+func _columns() -> int:
+	return COLUMNS if size.x >= WIDE_MIN else 1
+
+
+func _apply_columns() -> void:
+	var wide: bool = size.x >= WIDE_MIN
+	if tab_grid != null:
+		tab_grid.columns = 4 if wide else 2
+	for grid: GridContainer in row_grids:
+		grid.columns = COLUMNS if wide else 1
 
 
 func _first_buyable() -> UnlockDef:

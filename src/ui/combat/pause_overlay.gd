@@ -20,6 +20,7 @@ var resume_button: Button
 var restart_button: Button
 var settings_button: Button
 var quit_button: Button
+var _panel: PanelContainer
 var _built: bool = false
 
 
@@ -29,6 +30,7 @@ func _ready() -> void:
 
 func setup() -> void:
 	_ensure_built()
+	_fit_panel()
 	var variety: bool = RunSession.has_variety_run()
 	seed_label.visible = variety
 	build_button.visible = variety
@@ -72,6 +74,8 @@ func _ensure_built() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var panel: PanelContainer = PanelContainer.new()
 	panel.custom_minimum_size = Vector2(PANEL_W, 0.0)
+	_panel = panel
+	resized.connect(_fit_panel)
 	panel.add_theme_stylebox_override(&"panel", HudStyle.panel(HudStyle.fill(), HudStyle.color(&"warden_cyan"), 22, 4))
 	center.add_child(panel)
 	var margin: MarginContainer = MarginContainer.new()
@@ -126,3 +130,9 @@ func _button(col: VBoxContainer, key: String, primary: bool) -> Button:
 func _on_build_pressed() -> void:
 	Sfx.play(&"ui_tap")
 	var _opened: bool = open_build()
+
+
+## The panel is 780 px wide on a phone and never wider than the screen minus a margin (a narrower window).
+func _fit_panel() -> void:
+	if _panel != null and size.x > 1.0:
+		_panel.custom_minimum_size.x = minf(PANEL_W, maxf(size.x - 48.0, 240.0))

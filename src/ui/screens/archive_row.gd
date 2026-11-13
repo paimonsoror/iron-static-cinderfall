@@ -5,7 +5,7 @@ extends RunSelectable
 ## closed, UNLOCKING while its UNDO window runs. State is word plus rim, never colour alone. A tap selects the row; the screen's
 ## UNLOCK button buys it.
 
-const MIN_W: float = 500.0
+const MIN_W: float = 500.0  ## the width on a 1080 screen (two columns); it is not a minimum: the row shrinks with its column
 const MIN_H: float = 200.0
 
 var def: UnlockDef
@@ -17,7 +17,7 @@ var desc_label: Label
 
 func build(unlock: UnlockDef, content: ContentSet) -> void:
 	def = unlock
-	custom_minimum_size = Vector2(MIN_W, MIN_H)
+	custom_minimum_size = Vector2(0.0, MIN_H)  # a minimum width here made two columns wider than a phone (the state line is long)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var row: HBoxContainer = HBoxContainer.new()
 	row.add_theme_constant_override(&"separation", 14)
@@ -32,7 +32,7 @@ func build(unlock: UnlockDef, content: ContentSet) -> void:
 	row.add_child(col)
 	name_label = RunUi.wrap(RunUi.label(ArchiveModel.display_name(unlock), UiTheme.FONT_BODY, &"body", true), 2)
 	col.add_child(name_label)
-	state_label = RunUi.label("", RunUi.MIN_TEXT + 2, &"accent", true)
+	state_label = RunUi.wrap(RunUi.label("", RunUi.MIN_TEXT + 2, &"accent", true), 2)  # "80 DATA  (NEED 40 MORE)" wraps in a narrow column
 	col.add_child(state_label)
 	desc_label = RunUi.wrap(RunUi.label(ArchiveModel.description(unlock), RunUi.MIN_TEXT, &"dim"), 2)
 	col.add_child(desc_label)
