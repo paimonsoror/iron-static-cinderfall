@@ -64,6 +64,12 @@ static func variety_min_px() -> float:
 	return HudWeaponCard.HEIGHT + HudStyle.TOUCH + 3.0 * HudStyle.GAP
 
 
+## The band that holds the two variety rows at their full size with a gap above, between and below them: more than this is
+## an empty strip.
+static func variety_fit_px() -> float:
+	return HudWeaponCard.HEIGHT + ROW_MAX + 3.0 * HudStyle.GAP
+
+
 ## The band is `band_h` tall and `width` wide; its own position is set by the HUD. `margins` is the safe area.
 func place(width: float, band_h: float, margins: Vector4) -> void:
 	size = Vector2(width, band_h)

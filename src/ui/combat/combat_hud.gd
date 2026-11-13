@@ -59,7 +59,6 @@ func _exit_tree() -> void:
 		root.size_changed.disconnect(_apply_os_safe_area)
 
 
-@warning_ignore("unused_parameter")
 func setup(api: RunApi, content: ContentSet, view: BattleView) -> void:
 	_ensure_built()
 	_unbind_all()
@@ -67,7 +66,7 @@ func setup(api: RunApi, content: ContentSet, view: BattleView) -> void:
 	_content = content
 	drawer.setup(api, content)
 	bottom.abilities.setup(api)
-	variety.setup(api, content)
+	variety.setup(api, content, view)
 	_bind_events()
 	refresh()
 	_relayout()

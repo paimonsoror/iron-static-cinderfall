@@ -40,3 +40,9 @@ static func parts(def: WeaponDef, level: int) -> PackedStringArray:
 
 static func line(def: WeaponDef, level: int) -> String:
 	return "  ".join(parts(def, level))
+
+
+## The two words a carried slot shows ("DMG 30  2.0/s", VARIETY_SPEC 11.3): damage and rate fit one line of a half-width panel
+## at 30 px for every weapon (the pistol's magazine and reload do not, and wrapped).
+static func brief(def: WeaponDef, level: int) -> String:
+	return "  ".join(parts(def, level).slice(0, 2))

@@ -6,8 +6,9 @@ extends RefCounted
 ## Enemy kind per id comes from `enemy_spawned` / `boss_spawned` (the kill and damage signals carry only the id).
 ## `enemy_died_at` is not used: `enemy_killed` already marks each death, and both fire for one death.
 ## `ability_rejected` is not used: the HUD plays `ui_deny` itself for a rejected tap.
-## The signals of the variety milestone are AudioVarietyRoutes' (`variety`); the router keeps the weapon state, so it
-## also takes `weapon_swapped` and the shots (a sound per weapon, or a held loop for the weapons that have one).
+## The signals of the variety milestone are AudioVarietyRoutes' (`variety`, and its `threat` for events, bosses, elites and
+## wards); the router keeps the weapon state, so it also takes `weapon_swapped` and the shots (a sound per weapon, a held
+## loop for the weapons that have one), and the enemy and core signals the threat routes need (spawn, kill, core hit).
 
 const TICKS_PER_SECOND: float = 60.0  ## the fixed sim rate (ARCH 6.1), used to turn intermission ticks into seconds
 const LOW_CORE_RATIO: float = 0.25  ## GDD 10.1: below 25 % the core is in danger (warning line and heartbeat)
@@ -28,8 +29,14 @@ const HEAVY_CORE_KINDS: Array[StringName] = [
 const LIGHT_CORE_KINDS: Array[StringName] = [&"skitter", &"spitter", &"reclaimer"]
 ## Minis are consumed by their one hit on the cage: that hit is the burn-out, not a core strike.
 const MINI_KINDS: Array[StringName] = [&"mote", &"shard"]
+## A core hit that has a sound of its own on top of the core's: the spitter's bolt strikes the cage, the Lance Platform's
+## beam fires (an EMP that cancels the charge cancels this hit, so the beam is not heard).
+const CORE_HIT_EXTRA_SOUNDS: Dictionary = {&"spitter": &"bolt_impact", &"lance_platform": &"lance_fire"}
+## Bosses whose blow on the core is the Hulk's stomp (the Tremor Rig has its own stomp as a telegraphed blow).
+const STOMP_KINDS: Array[StringName] = [&"siege_hulk", &"brood_carrier", &"aegis_array", &"tremor_rig"]
 const UNKNOWN_KIND_HEAVY_DAMAGE: float = 20.0
-## One entry per enemy of Ids.ENEMIES. The 14 variety kinds use the existing death sounds until V4-A adds their own.
+## One entry per enemy of Ids.ENEMIES. A splitter breaks apart and a jammer's field collapses with a sound of their own;
+## the others use the three death sounds (the bosses and the heavy kinds the heavy one).
 const DEATH_SOUNDS: Dictionary = {
 	&"skitter": &"death_small",
 	&"rusher": &"death_small",
@@ -39,10 +46,10 @@ const DEATH_SOUNDS: Dictionary = {
 	&"shard": &"death_small",
 	&"burster": &"death_small",
 	&"spitter": &"death_small",
-	&"splitter": &"death_heavy",
+	&"splitter": &"splitter_split",
 	&"shieldbearer": &"death_heavy",
 	&"reclaimer": &"death_heavy",
-	&"jammer": &"death_small",
+	&"jammer": &"jammer_pop",
 	&"borer": &"death_small",
 	&"ward_pylon": &"death_heavy",
 	&"brood_carrier": &"death_boss",
@@ -50,11 +57,20 @@ const DEATH_SOUNDS: Dictionary = {
 	&"aegis_array": &"death_boss",
 	&"tremor_rig": &"death_boss",
 }
-## The shot sound of a weapon of the Warden; a weapon not listed (yet) uses the pistol's.
-const SHOT_SOUNDS: Dictionary = {&"pistol": &"shot_pistol", &"smg": &"shot_smg", &"arc_projector": &"shot_arc"}
-## Weapons whose sound is a held loop (`Sfx.hold`) while they fire, by weapon id: V4-A adds lmg and cutting_torch.
-const HELD_BY_WEAPON: Dictionary = {}
-const HELD_TAIL_SECONDS: float = 0.18  ## a held weapon loop is released this long after its last shot
+## The shot sound of a weapon of the Warden; a weapon not listed uses the pistol's (the torch is its held loop alone).
+const SHOT_SOUNDS: Dictionary = {
+	&"pistol": &"shot_pistol", &"smg": &"shot_smg", &"scattergun": &"shot_scattergun", &"assault_rifle": &"shot_rifle",
+	&"hornet_rack": &"shot_hornet", &"lmg": &"shot_lmg", &"slag_mortar": &"shot_mortar", &"arc_projector": &"shot_arc",
+	&"rail_lance": &"shot_rail",
+}
+## Weapons with a sound that is a held loop (`Sfx.hold`) while they fire, by weapon id: the LMG's motor runs under its shots,
+## the cutting torch is nothing but its flame.
+const HELD_BY_WEAPON: Dictionary = {&"lmg": &"lmg_spin", &"cutting_torch": &"torch_loop"}
+## Weapons whose rounds are heard over the held loop (the LMG's motor runs under its shots); the others are the loop alone.
+const SHOTS_UNDER_LOOP: Array[StringName] = [&"lmg"]
+## A held weapon loop is released this long after its last shot: a little longer than the gap between two shots of the
+## slowest held weapon (the LMG before it has spun up, 4 a second, every 0.25 s), so the loop does not flutter.
+const HELD_TAIL_SECONDS: float = 0.30
 const ABILITY_START_SOUNDS: Dictionary = {&"emp": &"emp", &"shield": &"shield_up", &"overdrive": &"overdrive_on"}
 const ABILITY_END_SOUNDS: Dictionary = {&"shield": &"shield_break", &"overdrive": &"overdrive_off"}
 const BOSS_KIND: StringName = &"siege_hulk"
@@ -228,6 +244,7 @@ func on_intermission_started(_wave_cleared_count: int, ticks: int) -> void:
 
 func on_boss_spawned(id: int, kind: StringName) -> void:
 	_kinds[id] = kind
+	variety.threat.on_boss_spawned(kind)
 	_play(&"boss_stinger")
 	if _dir != null:
 		_dir.set_intensity(1.0)
@@ -237,6 +254,7 @@ func on_boss_spawned(id: int, kind: StringName) -> void:
 
 func on_enemy_spawned(id: int, kind: StringName) -> void:
 	_kinds[id] = kind
+	variety.threat.on_enemy_spawned(id, kind)
 
 
 ## Armored kinds (armor > 0) ring duller than the bare ceramic of a Skitter.
@@ -251,6 +269,7 @@ func on_enemy_killed(id: int, _source: int) -> void:
 	var kind: StringName = _kinds.get(id, &"")
 	@warning_ignore("return_value_discarded")
 	_kinds.erase(id)
+	variety.threat.on_enemy_killed(id, kind)
 	var sound: StringName = DEATH_SOUNDS.get(kind, &"death_small")
 	_play(sound)
 
@@ -293,13 +312,16 @@ func on_reload_finished() -> void:
 
 # --- core and abilities -----------------------------------------------------------------------------------------
 
-## The Hulk's strike adds the stomp under the heavy hit.
+## A boss's strike adds the stomp under the heavy hit; the spitter's bolt and the Lance Platform's beam add their own sound.
 func on_core_hit(_enemy_id: int, kind: StringName, hp_damage: float, absorbed: float) -> void:
 	if MINI_KINDS.has(kind):
 		_play(&"mote_burn")
 		return
-	if kind == BOSS_KIND:
+	if STOMP_KINDS.has(kind):
 		_play(&"boss_stomp")
+	var extra: StringName = CORE_HIT_EXTRA_SOUNDS.get(kind, &"")
+	if extra != &"":
+		_play(extra)
 	var heavy: bool = HEAVY_CORE_KINDS.has(kind)
 	if not heavy and not LIGHT_CORE_KINDS.has(kind):
 		heavy = hp_damage + absorbed >= UNKNOWN_KIND_HEAVY_DAMAGE  # a kind this table does not know: judge by size
@@ -351,7 +373,8 @@ func _fire(weapon: StringName, slot: int) -> void:
 	if loop_id != &"" and _dir != null:
 		_dir.hold(loop_id, slot)
 		_hold_left[slot] = HELD_TAIL_SECONDS
-		return
+		if not SHOTS_UNDER_LOOP.has(weapon):
+			return
 	var shot: StringName = SHOT_SOUNDS.get(weapon, &"shot_pistol")
 	_play(shot)
 

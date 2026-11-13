@@ -29,11 +29,22 @@ signal draft_offered(ids: Array[StringName])
 signal directive_picked(id: StringName, stacks: int)
 signal route_offered
 signal route_picked(option: int)
+signal crate_dropped(x: float, z: float)
 signal crate_secured
+signal crate_lost
+signal salvage_offered
 signal weapon_swapped(slot: int, id: StringName)
+signal weapon_vented(slot: int)
 signal area_blast(kind: int, x: float, z: float, radius: float)
 signal chain_arc(from_id: int, to_id: int)
 signal delayed_hit(kind: int, x: float, z: float, ticks: int)
+signal elite_spawned(id: int, kind: StringName, affixes: int)
+signal ward_changed(id: int, fraction: float)
 signal event_warned(id: StringName, ticks: int, x: float, z: float)
+signal event_started(id: StringName)
+signal event_ended(id: StringName)
+signal boss_telegraph(attack: int, ticks: int)
+signal boss_phase(phase: int)
+signal unlock_purchased(id: StringName)
 signal burster_armed(id: int)
 @warning_ignore_restore("unused_signal")

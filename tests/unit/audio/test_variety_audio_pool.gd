@@ -124,3 +124,69 @@ func test_class_counts_are_zero_once_the_pool_is_stopped() -> void:
 	for cls: int in [AudioCatalog.CLASS_OTHER, AudioCatalog.CLASS_WEAPON, AudioCatalog.CLASS_BLAST, AudioCatalog.CLASS_ALERT, AudioCatalog.CLASS_UI]:
 		assert_int(_dir.pool.count_of_class(cls)).is_equal(0)
 	await VarietyGKit.settle(self, _dir)
+
+
+func _pooled_weapon_ids() -> Array[StringName]:
+	var ids: Array[StringName] = []
+	for id: StringName in VarietyGKit.WEAPON_IDS:
+		if not VarietyGKit.LOOP_IDS.has(id):  # a held loop is no voice of the pool
+			ids.append(id)
+	return ids
+
+
+func _weapons_and_blasts() -> Array[StringName]:
+	var ids: Array[StringName] = _pooled_weapon_ids()
+	ids.append_array(VarietyGKit.BLAST_IDS)
+	return ids
+
+
+func test_a_flood_of_every_weapon_sound_of_the_catalog_holds_at_most_8_voices() -> void:
+	var weapons: Array[StringName] = _pooled_weapon_ids()
+	assert_int(weapons.size()).is_equal(12)
+	var started: int = VarietyGKit.flood(_dir, weapons, 10)
+	assert_int(started).is_greater(8)
+	assert_int(_dir.pool.count_of_class(AudioCatalog.CLASS_WEAPON)).is_equal(8)
+	assert_int(_dir.pool.active_count()).is_equal(8)
+	await VarietyGKit.settle(self, _dir)
+
+
+func test_every_alert_of_the_catalog_starts_after_a_flood_of_weapons_blasts_and_held_loops() -> void:
+	@warning_ignore("return_value_discarded")
+	_dir.try_hold(&"lmg_spin", 0)
+	@warning_ignore("return_value_discarded")
+	_dir.try_hold(&"torch_loop", 1)
+	@warning_ignore("return_value_discarded")
+	VarietyGKit.flood(_dir, _pooled_weapon_ids(), 10)
+	@warning_ignore("return_value_discarded")
+	VarietyGKit.flood(_dir, VarietyGKit.BLAST_IDS, 10)
+	@warning_ignore("return_value_discarded")
+	VarietyGKit.flood(_dir, [&"shot_pistol", &"shot_smg", &"shot_turret", &"hit_armor", &"death_heavy", &"spitter_shot", &"bolt_impact"], 6)
+	assert_int(_dir.pool.active_count()).is_equal(AudioDirector.VOICES)  # the legacy sounds fill what the classes leave
+	assert_int(_dir.held.sounding_count()).is_equal(2)
+	for id: StringName in VarietyGKit.ALERT_IDS:
+		_dir.gate.clear()
+		assert_bool(_dir.try_play(id)).override_failure_message("%s was starved" % String(id)).is_true()
+		assert_int(_dir.pool.count_of(id)).override_failure_message(String(id)).is_equal(1)
+	assert_int(_dir.pool.active_count()).is_equal(AudioDirector.VOICES)
+	assert_int(_dir.pool.count_of_class(AudioCatalog.CLASS_ALERT)).is_equal(AudioVoicePool.ALERT_RESERVED)
+	await VarietyGKit.settle(self, _dir)
+
+
+func test_the_last_three_voices_are_free_for_any_alert_while_weapons_and_blasts_flood() -> void:
+	@warning_ignore("return_value_discarded")
+	VarietyGKit.flood(_dir, _weapons_and_blasts(), 12)
+	assert_int(_dir.pool.active_count()).is_less_equal(AudioDirector.VOICES - AudioVoicePool.ALERT_RESERVED)
+	for id: StringName in VarietyGKit.ALERT_IDS.slice(0, 3):
+		_dir.gate.clear()
+		assert_bool(_dir.try_play(id)).override_failure_message(String(id)).is_true()
+	assert_int(_dir.pool.count_of_class(AudioCatalog.CLASS_ALERT)).is_equal(3)
+	await VarietyGKit.settle(self, _dir)
+
+
+func test_all_the_alerts_together_never_hold_more_than_three_voices() -> void:
+	for id: StringName in VarietyGKit.ALERT_IDS:
+		_dir.gate.clear()
+		assert_bool(_dir.try_play(id)).override_failure_message(String(id)).is_true()
+		assert_int(_dir.pool.count_of_class(AudioCatalog.CLASS_ALERT)).is_less_equal(AudioVoicePool.ALERT_RESERVED)
+	assert_int(_dir.pool.count_of_class(AudioCatalog.CLASS_ALERT)).is_equal(3)  # the newest three, the older ones were taken
+	await VarietyGKit.settle(self, _dir)
