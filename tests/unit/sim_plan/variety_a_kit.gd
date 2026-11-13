@@ -8,6 +8,15 @@ static func content() -> ContentSet:
 	return TestContent.variety()
 
 
+## The vertical slice of the variety fixture: its first 3 packs and its first modifier (the content the goldens of
+## V2-A were recorded on). The full fixture holds all 12 packs and 10 modifiers.
+static func slice_content() -> ContentSet:
+	var c: ContentSet = TestContent.variety()
+	c.run.packs.resize(3)
+	c.run.modifiers.resize(1)
+	return c
+
+
 static func world(run_seed: int = 1, c: ContentSet = null) -> SimWorld:
 	return SimWorld.new(SimConfig.create(c if c != null else content(), run_seed))
 

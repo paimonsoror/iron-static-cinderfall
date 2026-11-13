@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "note": "First-pass numbers from VARIETY_CONTENT 2 and 8. The base numbers of pistol and smg stay in vertical_slice_balance.json (the legacy fixture reads them there); here they only get their tier, kind and level data. Only arc_projector is implemented in the slice (V2-C); the other six firing kinds come with V4-W.",
+  "note": "First-pass numbers from VARIETY_CONTENT 2 and 8; all ten weapons and all seven firing kinds are implemented (V4-W). The base numbers of pistol and smg stay in vertical_slice_balance.json (the legacy fixture reads them there); here they only get their tier, kind and level data. A level3 key names the field that the level-3 perk replaces (magazine, pellets, pierce, salvo, chains, ramp_cap, spin_up_s, pool_seconds); the pistol's crit_every and crit_mult have no field and are read by key. Spread of the scattergun is the full cone angle; the spread of the lmg is a tracer jitter only.",
   "swap_seconds": 0.4,
   "holster_reload_mult": 0.5,
   "weapons": {

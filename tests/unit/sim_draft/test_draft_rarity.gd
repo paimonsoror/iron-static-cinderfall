@@ -73,7 +73,7 @@ func test_an_empty_rarity_falls_to_the_next_lower_then_the_higher() -> void:
 
 ## Offers of a slice world with only commons rolled (rarity weights 100/0/0), at wave 1 (no turret pity).
 func _commons_only_world() -> SimWorld:
-	var c: ContentSet = TestContent.variety()
+	var c: ContentSet = VarietyBKit.slice_content()
 	c.run.acts[0].rarity_weights = PackedFloat32Array([100.0, 0.0, 0.0])
 	return VarietyBKit.world_after(c, 1)
 
@@ -179,7 +179,7 @@ func test_prototype_weight_triples_after_a_boss_wave() -> void:
 
 
 func test_the_first_turret_is_offered_in_slot_one_after_wave_two() -> void:
-	var c: ContentSet = TestContent.variety()
+	var c: ContentSet = VarietyBKit.slice_content()
 	var turret: int = c.directive_index(&"turret_deploy")
 	for run_seed: int in range(1, 31):
 		var w: SimWorld = VarietyBKit.world_after(c, 2, run_seed)
@@ -195,7 +195,7 @@ func _distinct(offer: PackedInt32Array) -> int:
 
 
 func test_there_is_no_turret_pity_after_wave_one() -> void:
-	var c: ContentSet = TestContent.variety()
+	var c: ContentSet = VarietyBKit.slice_content()
 	var turret: int = c.directive_index(&"turret_deploy")
 	var first: int = 0
 	for run_seed: int in range(1, 31):
@@ -205,7 +205,7 @@ func test_there_is_no_turret_pity_after_wave_one() -> void:
 
 
 func test_the_turret_pity_stops_once_it_was_offered_or_a_turret_stands() -> void:
-	var c: ContentSet = TestContent.variety()
+	var c: ContentSet = VarietyBKit.slice_content()
 	var turret: int = c.directive_index(&"turret_deploy")
 	var offered: int = 0
 	var standing: int = 0
@@ -229,7 +229,7 @@ func test_the_turret_pity_stops_once_it_was_offered_or_a_turret_stands() -> void
 
 
 func test_open_remembers_that_the_turret_was_offered() -> void:
-	var c: ContentSet = TestContent.variety()
+	var c: ContentSet = VarietyBKit.slice_content()
 	var w: SimWorld = VarietyBKit.world_after(c, 2)
 	assert_bool(w.draft.turret_offered).is_false()
 	DraftSystem.open(w)
@@ -238,7 +238,7 @@ func test_open_remembers_that_the_turret_was_offered() -> void:
 
 
 func test_the_turret_pity_takes_slot_one_and_the_rare_pity_slot_two() -> void:
-	var c: ContentSet = TestContent.variety()
+	var c: ContentSet = VarietyBKit.slice_content()
 	c.run.acts[0].rarity_weights = PackedFloat32Array([100.0, 0.0, 0.0])
 	var w: SimWorld = VarietyBKit.world_after(c, 2)
 	w.draft.offers_without_rare = 3
