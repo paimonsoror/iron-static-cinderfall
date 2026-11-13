@@ -3,13 +3,20 @@ extends RefCounted
 ## What a death causes (VARIETY_SPEC 13.2): burster and volatile blasts (queued with the chain delay, never
 ## recursion), splits, crate credit, kill hooks of directives. SimWorld.kill_enemy calls both functions before the
 ## store slot is freed, so position, type and ext state of the dying enemy can still be read.
-# TODO(V4-C): the HOOK directives of CONTENT 3. TODO(V4-N): split, jammer, the VOLATILE affix.
+## The directives that hook a death (V4-C): aftershock, unstable_munitions, chorus_handshake (CONTENT 3).
+# TODO(V4-N): split, jammer, the VOLATILE affix.
 
 ## The `source` of a death nobody on the player's side caused: a mini that burns out on the cage, a burster whose
 ## fuse ends. It pays no Scrap and is not tallied by DamageSource.
 const SOURCE_SELF: int = -1
 ## Ticks between a death and its blast when the type does not say (`chain_delay_ticks`).
 const CHAIN_DELAY_TICKS: int = 6
+const AFTERSHOCK_RADIUS_M: float = 1.5  ## aftershock: an enemy killed while stunned blasts
+const AFTERSHOCK_DAMAGE: float = 30.0
+const MUNITIONS_CHANCE: float = 0.20  ## unstable_munitions: this share of Warden kills blast
+const MUNITIONS_RADIUS_M: float = 2.0
+const MUNITIONS_DAMAGE: float = 50.0
+const CHORUS_ELITES_PER_CRATE: int = 3  ## chorus_handshake: every third elite killed drops a crate
 
 
 ## The Scrap this kill pays: the type's value x ModState.scrap_mul x the elite multiplier x the relay-window
@@ -46,6 +53,29 @@ static func on_killed(world: SimWorld, enemy_index: int, source: int) -> void:
 	elif type_index == Ids.EN_SKITTER and world.mods.has_flag(&"volatile_skitters") and world.mods.volatile_radius > 0.0:
 		_queue(world, def, x, z, world.mods.volatile_radius, world.mods.volatile_damage, 1.0, 0.0)
 	SalvageSystem.on_enemy_killed(world, enemy_index, source)
+	_directive_blasts(world, enemy_index, def, source)
+	if source != SOURCE_SELF and world.ext.is_elite(enemy_index) and ModRules.held(world, &"chorus_handshake") > 0:
+		if world.salvage.elite_kills % CHORUS_ELITES_PER_CRATE == 0:
+			SalvageSystem.grant_crate(world, false)
+
+
+## the_tally (+1% per 10 Warden kills), aftershock (an enemy killed while stunned blasts) and unstable_munitions (20% of Warden kills blast, one draw of the
+## `proc` stream per Warden kill). Both queue a chain blast of the dying enemy's position, source HAZARD; the radius is
+## multiplied by area_mul (overpressure). The Warden's kills are those of WARDEN and WARDEN_OFFHAND.
+static func _directive_blasts(world: SimWorld, enemy_index: int, def: EnemyDef, source: int) -> void:
+	if source == SOURCE_SELF:
+		return
+	var x: float = world.enemies.x[enemy_index]
+	var z: float = world.enemies.z[enemy_index]
+	var area: float = world.mods.area_mul
+	if ModRules.held(world, &"aftershock") > 0 and world.enemies.stun_ticks[enemy_index] > 0:
+		_queue(world, def, x, z, AFTERSHOCK_RADIUS_M * area, AFTERSHOCK_DAMAGE, 1.0, 0.0)
+	var by_warden: bool = source == DamageSource.Id.WARDEN or source == DamageSource.Id.WARDEN_OFFHAND
+	if by_warden:
+		ModRules.tally_gain(world)
+	if by_warden and ModRules.held(world, &"unstable_munitions") > 0:
+		if world.rng.stream(&"proc").randf() < MUNITIONS_CHANCE:
+			_queue(world, def, x, z, MUNITIONS_RADIUS_M * area, MUNITIONS_DAMAGE, 1.0, 0.0)
 
 
 ## A death blast: it lands `chain_delay_ticks` after the death, hurts enemies only (armor applies), and its kills
