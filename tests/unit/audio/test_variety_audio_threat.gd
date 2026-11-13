@@ -182,13 +182,14 @@ func test_pylons_that_die_with_their_boss_or_without_one_open_nothing() -> void:
 	assert_int(VarietyGKit.count_id(_dir, &"aegis_exposed")).is_equal(0)
 
 
-func test_a_ward_hums_when_it_comes_up_and_breaks_once_when_it_goes_down() -> void:
-	_events.ward_changed.emit(5, 1.0)
-	assert_that(_last()).is_equal(&"ward_hum")
-	var after_hum: int = _dir.started_total
+func test_a_ward_is_silent_at_its_spawn_hums_when_it_comes_back_and_breaks_once_when_it_goes_down() -> void:
+	var start: int = _dir.started_total
+	_events.enemy_spawned.emit(5, &"shieldbearer")
+	_events.ward_changed.emit(5, 1.0)  # the full pool a new shieldbearer pushes on its first tick: no hum at every spawn
+	assert_int(_dir.started_total).is_equal(start)
 	_events.ward_changed.emit(5, 0.6)  # draining is silent
 	_events.ward_changed.emit(5, 0.2)
-	assert_int(_dir.started_total).is_equal(after_hum)
+	assert_int(_dir.started_total).is_equal(start)
 	_events.ward_changed.emit(5, 0.0)
 	assert_that(_last()).is_equal(&"ward_break")
 	var after_break: int = _dir.started_total
@@ -197,11 +198,21 @@ func test_a_ward_hums_when_it_comes_up_and_breaks_once_when_it_goes_down() -> vo
 	_dir.gate.clear()
 	_events.ward_changed.emit(5, 1.0)  # it regenerates
 	assert_that(_last()).is_equal(&"ward_hum")
-	_events.enemy_spawned.emit(5, &"shieldbearer")
 	_events.enemy_killed.emit(5, 0)  # the store reuses ids: a new enemy 5 starts without a ward
+	_events.enemy_spawned.emit(5, &"shieldbearer")
 	_dir.gate.clear()
+	var before_second: int = _dir.started_total
 	_events.ward_changed.emit(5, 0.7)
-	assert_int(VarietyGKit.count_id(_dir, &"ward_hum")).is_equal(3)
+	assert_int(_dir.started_total).is_equal(before_second)  # its first report is silent again
+	assert_int(VarietyGKit.count_id(_dir, &"ward_hum")).is_equal(1)
+	assert_int(VarietyGKit.count_id(_dir, &"ward_break")).is_equal(1)
+
+
+func test_twenty_shieldbearers_spawning_in_a_wave_make_no_hum() -> void:
+	for id: int in range(10, 30):
+		_events.enemy_spawned.emit(id, &"shieldbearer")
+		_events.ward_changed.emit(id, 1.0)
+	assert_int(VarietyGKit.count_id(_dir, &"ward_hum")).is_equal(0)
 
 
 func test_an_elite_a_borer_a_split_and_a_jammer_each_announce_themselves() -> void:
