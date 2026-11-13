@@ -6,9 +6,12 @@ extends Node3D
 ## swap the meshes and materials of the same nodes, add the arms, pack, antenna and cable parts, and drive them with
 ## WardenMotion (springs, breathing, reload pose). In STYLISED_PLUS on HIGH a pooled omni light flashes at each shot.
 ##
-## Node tree: WardenView (ground) / Legs, Upper (waist pivot, yaw) / Body (recoil, sway) / Torso, Hand / Pistol, Smg
-## (each with a Muzzle marker); Body also holds ArmR, ArmL, Pack, Antenna, Cable (hidden in CURRENT); Hand holds the
-## MuzzleLight.
+## Node tree: WardenView (ground) / Legs, Upper (waist pivot, yaw) / Body (recoil, sway) / Torso, Hand / Pistol, Smg, ArcProjector
+## (the three weapon MOUNTS, each with a Muzzle marker; the third shows every weapon but the pistol and the SMG: `WeaponMeshes.model_index`);
+## Body also holds the arms, Pack, Antenna, Cable (hidden in CURRENT); Hand holds the MuzzleLight.
+## V4-R: the weapon in the other slot rides on the pack (MID and HIGH, hard-surface looks): a MeshInstance3D that is a SIBLING of this
+## node under the ActorLayer (the exact set of mesh instances under the Warden is pinned by `look_dev_view_test`), placed on the pack
+## part every frame.
 
 const AIM_RATE: float = 16.0
 const RECOIL_KICK: float = 0.7
@@ -24,7 +27,9 @@ var _body: Node3D
 var _hand: Node3D
 var _weapons: Array[MeshInstance3D] = []
 var _muzzles: Array[Node3D] = []
-var _weapon: int = 0
+var _weapon: int = 0  ## the mount in use
+var _held: int = 0  ## the weapon in hand (`Ids.WP_*`): the grips, the muzzle and the mesh of the third mount follow it
+var _holstered: int = -1  ## the weapon drawn on the pack (-1: not decided yet)
 var _yaw: float = 0.0
 var _fresh: bool = true
 var _recoil: float = 0.0
@@ -102,10 +107,12 @@ func bind(sim: SimWorld) -> void:
 	_flash = 0.0
 	_reload_amt = 0.0
 	_motion.reset()
+	_holstered = -1
+	_attach_holster()
 	_reloading = sim.warden.reload_ticks_left > 0
 	_reload_left = float(sim.warden.reload_ticks_left) * SimWorld.DT
 	_reload_total = maxf(_reload_left, 0.5)
-	_show_weapon(WeaponMeshes.model_index(sim.warden.weapon_index))
+	_show_weapon(sim.warden.weapon_index)
 	position = Vector3(sim.warden.x, 0.0, sim.warden.z)
 	Events.shot_fired.connect(_on_shot_fired)
 	Events.weapon_changed.connect(_on_weapon_changed)
@@ -129,6 +136,11 @@ func unbind() -> void:
 		Events.reload_finished.disconnect(_on_reload_finished)
 	_sim = null
 	visible = false
+	_parts.hide_holster()
+
+
+func _exit_tree() -> void:
+	_parts.free_holster()
 
 
 func render(_alpha: float, delta: float) -> void:
@@ -136,6 +148,7 @@ func render(_alpha: float, delta: float) -> void:
 		return
 	var w: WardenState = _sim.warden
 	position = Vector3(w.x, 0.0, w.z)
+	_update_holster()
 	var dx: float = w.aim_x - w.x
 	var dz: float = w.aim_z - w.z
 	if dx * dx + dz * dz > 0.0001:
@@ -157,7 +170,8 @@ func render(_alpha: float, delta: float) -> void:
 	if LookDevStyle.secondary_motion_enabled(_look, _tier):
 		_motion.step(delta, _yaw)
 		var progress: float = clampf(1.0 - _reload_left / _reload_total, 0.0, 1.0)
-		_motion.pose(_t, _reload_amt, progress, _weapon, _body, _hand, _parts)
+		_motion.pose(_t, _reload_amt, progress, _held, _body, _hand, _parts)
+		_parts.sync_holster()
 		_drive_accents()
 		_drive_muzzle_light()
 		return
@@ -200,8 +214,19 @@ func muzzle_position() -> Vector3:
 	return position + Vector3(0.0, 1.3, 0.0)
 
 
+## The mount in use (0 pistol, 1 SMG, 2 every other weapon).
 func weapon_index() -> int:
 	return _weapon
+
+
+## The weapon in hand (`Ids.WP_*`).
+func held_weapon() -> int:
+	return _held
+
+
+## The weapon drawn on the pack (`Ids.WP_*`), -1 before the first frame.
+func holstered_weapon() -> int:
+	return _holstered
 
 
 func weapon_visible(weapon: int) -> bool:
@@ -264,10 +289,34 @@ func _drive_muzzle_light() -> void:
 		_light.light_energy = MUZZLE_LIGHT_ENERGY * _flash
 
 
-func _show_weapon(index: int) -> void:
-	_weapon = clampi(index, 0, _weapons.size() - 1)
+## Puts weapon `weapon` (`Ids.WP_*`) in the hand: its mount is shown (the third takes the weapon's mesh) and its muzzle marker moves to
+## the weapon's muzzle. An index beyond the ten is drawn with the SMG.
+func _show_weapon(weapon: int) -> void:
+	_held = weapon if weapon >= 0 and weapon < Ids.WEAPONS.size() else 1
+	_weapon = WeaponMeshes.model_index(_held)
+	_parts.set_mount_weapon(_weapon, _held)
+	_muzzles[_weapon].position = WeaponMeshes.muzzle(_held)
 	for i: int in _weapons.size():
 		_weapons[i].visible = i == _weapon
+
+
+## Makes the holster (once a parent exists: the holster is a sibling of this node, not a child of it).
+func _attach_holster() -> void:
+	var parent: Node = get_parent()
+	if parent != null:
+		_parts.attach_holster(parent)
+
+
+## The weapon in the other slot (the next one of the loadout) rides on the pack: the pistol for an empty slot (VARIETY_SPEC 3.1).
+## A read of the arsenal, once per frame; the mesh is only swapped when the weapon changes.
+func _update_holster() -> void:
+	var a: ArsenalState = _sim.arsenal
+	var slot: int = (a.active + 1) % maxi(a.slot_count, 1)
+	var held: int = a.slot_weapon[slot] if slot < a.slot_weapon.size() else -1
+	var shown: int = held if held >= 0 and held < Ids.WEAPONS.size() else 0
+	if shown != _holstered:
+		_holstered = shown
+		_parts.set_holster(shown)
 
 
 func _mesh_node(node_name: String, mesh_res: ArrayMesh) -> MeshInstance3D:
@@ -288,7 +337,7 @@ func _on_shot_fired(source: int, _target_id: int) -> void:
 func _on_weapon_changed(weapon_id: StringName) -> void:
 	var index: int = Ids.weapon_index(weapon_id)
 	if index >= 0:
-		_show_weapon(WeaponMeshes.model_index(index))
+		_show_weapon(index)
 
 
 ## The weapon in the other slot comes into the hand (the swap takes `swap_ticks` of no fire in the sim; the view just changes models).

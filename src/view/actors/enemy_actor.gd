@@ -127,9 +127,9 @@ func _dress() -> void:
 		mesh.set_surface_override_material(s, chosen)
 
 
-## The Skitter and the Rusher take the baked material on every tier (`LookActorsStyle.shaded`).
+## The Skitter, the Rusher and the Borer (16 of them, 0.8 m long) take the baked material on every tier (`LookActorsStyle.shaded`).
 func _small() -> bool:
-	return kind == Ids.EN_SKITTER or kind == Ids.EN_RUSHER
+	return kind == Ids.EN_SKITTER or kind == Ids.EN_RUSHER or kind == Ids.EN_BORER
 
 
 func world_position() -> Vector3:
