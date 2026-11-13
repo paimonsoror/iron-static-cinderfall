@@ -4,7 +4,7 @@ extends RefCounted
 ## come and which boss stands in which wave. The legacy 5-wave content answers from its scripted waves (the four old
 ## types); variety content answers from the run definition: the waves of `run.waves`, the machines of the packs and the
 ## boss pools of the acts those waves use. Read-only helpers over the defs; the plan of one seed is not known here.
-# TODO(V4-U): with the full content the roster is every type of three acts; the briefing then wants the act's threats.
+## With the full content (V4) the roster is every type of the three acts: the briefing lists them all, weakest first, and scrolls.
 
 
 ## Waves in a run: the wave slots of a generated run, else the scripted waves.

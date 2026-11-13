@@ -5,6 +5,7 @@ extends Control
 
 var boss_bar: HudBossBar
 var ticker: HudThreatTicker
+var edge_arrows: HudEdgeArrows  ## chevrons at the field's edge toward an incoming RECOUNT or breach (the variety run)
 var warn_panel: PanelContainer
 var warn_label: Label
 var banner_box: PanelContainer
@@ -21,6 +22,8 @@ var _warn_tween: Tween
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	edge_arrows = HudEdgeArrows.new()
+	add_child(edge_arrows)
 	_stack = VBoxContainer.new()
 	_stack.add_theme_constant_override(&"separation", 8)
 	_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -105,6 +108,14 @@ func place(zone: Rect2, margins: Vector4, bottom_reserved: float) -> void:
 	hint_panel.custom_minimum_size = Vector2(inner_w, 0.0)
 	hint_panel.size = Vector2(inner_w, 0.0)
 	hint_panel.position = Vector2(left, maxf(0.0, zone.size.y - bottom_reserved - hint_panel.get_combined_minimum_size().y - 16.0))
+	fit_arrows()
+
+
+## The edge arrows fill the battlefield below the stacked bars (boss bar, ticker lines), so an arrow never sits under them.
+func fit_arrows() -> void:
+	var top: float = minf(_stack.position.y + _stack.get_combined_minimum_size().y + 8.0, size.y)
+	edge_arrows.position = Vector2(0.0, top)
+	edge_arrows.size = Vector2(size.x, maxf(size.y - top, 0.0))
 
 
 func set_boss(kind: StringName, hp: float, max_hp: float) -> void:
