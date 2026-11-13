@@ -1,6 +1,6 @@
 class_name SettingsScreen
 extends Control
-## Settings (GDD 10.2): Sound, Music, Haptics, Reduced Flash, High Contrast as ON/OFF rows, Quality (LOW/MID/HIGH)
+## Settings (GDD 10.2): Sound, Music, Haptics, Reduced Flash, High Contrast, Swap assist as ON/OFF rows, Quality (LOW/MID/HIGH)
 ## and FPS cap (30/60) as choices. Every change is written through Save.set_setting and put to work at once
 ## (UiSettingsApply; High Contrast re-skins this screen on the settings_changed signal). `closed` and setup() are
 ## the frozen contract (ARCH 9); setup() reads the current values from Save.
@@ -14,6 +14,7 @@ const TOGGLES: Array[Dictionary] = [
 	{"key": &"haptics_on", "title": "settings.haptics", "hint": "settings.haptics.hint"},
 	{"key": &"reduced_flash", "title": "settings.reduced_flash", "hint": "settings.reduced_flash.hint"},
 	{"key": &"high_contrast", "title": "settings.high_contrast", "hint": "settings.high_contrast.hint"},
+	{"key": &"swap_assist", "title": "settings.swap_assist", "hint": "settings.swap_assist.hint"},
 ]
 const QUALITY_KEYS: PackedStringArray = ["settings.quality.low", "settings.quality.mid", "settings.quality.high"]
 const QUALITY_VALUES: Array[int] = [0, 1, 2]  ## VisualQuality.Tier LOW, MID, HIGH

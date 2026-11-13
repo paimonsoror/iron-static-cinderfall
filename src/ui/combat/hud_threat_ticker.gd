@@ -8,6 +8,13 @@ extends VBoxContainer
 
 const MAX_LINES: int = 3
 const NOTICE_SECONDS: float = 4.0
+const PRIO_WARN_HARMFUL: int = 0
+const PRIO_CRATE_CONTESTED: int = 1
+const PRIO_CRATE: int = 2
+const PRIO_RUN_HARMFUL: int = 3
+const PRIO_WARN_HELPFUL: int = 4
+const PRIO_RUN_HELPFUL: int = 5
+const PRIO_NOTICE: int = 6
 
 var lines: Array[HudTickerLine] = []
 var _notices: Array[Dictionary] = []  ## { "text": String, "harmful": bool, "left": float }
@@ -23,22 +30,25 @@ func _init() -> void:
 		lines.append(line)
 
 
-## Re-reads the events that are warning or running (RunApi.active_events) and shows the first MAX_LINES lines.
-## `crate` is RunApi.crate_status(): a crate on the field gets the first line, "ACCORD DROP  7 s" with the bar filling
-## while the area is clear, "DROP CONTESTED" (red, the bar frozen) while an enemy stands on it.
+## Re-reads the events that are warning or running (RunApi.active_events) and shows the first MAX_LINES lines by priority:
+## a harmful event that is about to start, a contested crate, a crate in the clear, a harmful event that is running, a helpful
+## event about to start, a helpful event running, then the short notices. Within one priority the older line stays first.
+## `crate` is RunApi.crate_status(): a crate on the field is "ACCORD DROP  7 s" with the bar filling while the area is clear,
+## "DROP CONTESTED" (red, the bar frozen) while an enemy stands on it.
 func refresh(events: Array[Dictionary], content: ContentSet, crate: Dictionary = {}) -> void:
-	var shown: int = 0
+	var candidates: Array[Dictionary] = []  # { "prio": int, "text": String, "harmful": bool, "fraction": float }
 	if not crate.is_empty():
 		var crate_left: int = crate.get("ticks_left", 0)
 		var crate_all: int = crate.get("ticks_total", 1)
 		var crate_total: int = maxi(crate_all, 1)
 		var contested: bool = crate.get("contested", false)
 		var crate_text: String = Strings.tf("hud.ticker.on", [event_name(&"supply_drop", content), HudStyle.secs(crate_left)])
-		lines[shown].show_line(Strings.t("hud.crate.contested") if contested else crate_text, contested, 1.0 - float(crate_left) / float(crate_total))
-		shown += 1
+		candidates.append({
+			"prio": PRIO_CRATE_CONTESTED if contested else PRIO_CRATE,
+			"text": Strings.t("hud.crate.contested") if contested else crate_text,
+			"harmful": contested, "fraction": 1.0 - float(crate_left) / float(crate_total),
+		})
 	for e: Dictionary in events:
-		if shown >= MAX_LINES:
-			break
 		var id: StringName = e.get("id", &"")
 		var phase: int = e.get("phase", 0)
 		var left: int = e.get("ticks_left", 0)
@@ -47,19 +57,37 @@ func refresh(events: Array[Dictionary], content: ContentSet, crate: Dictionary =
 		var harmful: bool = e.get("harmful", false)
 		var secs: int = HudStyle.secs(left)
 		var title: String = event_name(id, content)
-		var fraction: float = 1.0 - float(left) / float(total) if phase == 0 else float(left) / float(total)
-		var text: String = Strings.tf("hud.ticker.in", [title, secs]) if phase == 0 else Strings.tf("hud.ticker.on", [title, secs])
-		lines[shown].show_line(text, harmful, fraction)
-		shown += 1
+		candidates.append({
+			"prio": priority_of(phase == 0, harmful),
+			"text": Strings.tf("hud.ticker.in", [title, secs]) if phase == 0 else Strings.tf("hud.ticker.on", [title, secs]),
+			"harmful": harmful,
+			"fraction": 1.0 - float(left) / float(total) if phase == 0 else float(left) / float(total),
+		})
 	for n: Dictionary in _notices:
+		candidates.append({"prio": PRIO_NOTICE, "text": n.get("text", ""), "harmful": n.get("harmful", false), "fraction": -1.0})
+	var ordered: Array[Dictionary] = []
+	for rank: int in PRIO_NOTICE + 1:  # a stable order: by priority, then as given
+		for c: Dictionary in candidates:
+			if c["prio"] == rank:
+				ordered.append(c)
+	var shown: int = 0
+	for c: Dictionary in ordered:
 		if shown >= MAX_LINES:
 			break
-		var notice_text: String = n.get("text", "")
-		var notice_harmful: bool = n.get("harmful", false)
-		lines[shown].show_line(notice_text, notice_harmful, -1.0)
+		var text: String = c["text"]
+		var harmful_line: bool = c["harmful"]
+		var fraction: float = c["fraction"]
+		lines[shown].show_line(text, harmful_line, fraction)
 		shown += 1
 	for i: int in range(shown, MAX_LINES):
 		lines[i].visible = false
+
+
+## The priority of an event line (lower shows first): `warning` = it has not started yet.
+static func priority_of(warning: bool, harmful: bool) -> int:
+	if warning:
+		return PRIO_WARN_HARMFUL if harmful else PRIO_WARN_HELPFUL
+	return PRIO_RUN_HARMFUL if harmful else PRIO_RUN_HELPFUL
 
 
 ## The count of lines on screen.
