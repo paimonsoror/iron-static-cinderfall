@@ -42,10 +42,11 @@ static func jammer_cooldown_rate(world: SimWorld) -> float:
 		return 1.0
 	var store: EnemyStore = world.enemies
 	var rate: float = 1.0
-	for i: int in store.high_water:
-		if store.alive[i] == 0 or store.type[i] != Ids.EN_JAMMER or store.stun_ticks[i] > 0:
-			continue
-		rate = minf(rate, world.content.enemies[Ids.EN_JAMMER].beh(&"cooldown_rate", 1.0))
+	var i: int = store.type.find(Ids.EN_JAMMER)  # a freed slot has type 0, so a hit is a living jammer
+	while i >= 0:
+		if store.alive[i] == 1 and store.stun_ticks[i] == 0:
+			rate = minf(rate, world.content.enemies[Ids.EN_JAMMER].beh(&"cooldown_rate", 1.0))
+		i = store.type.find(Ids.EN_JAMMER, i + 1)
 	return rate
 
 
@@ -55,13 +56,13 @@ static func turret_rate_milli(world: SimWorld, pad: int) -> int:
 	var rate: float = world.mods.t_rate_mul
 	if es.turret_rate_ticks > 0:
 		rate *= float(es.turret_rate_milli) / 1000.0
-	if world.mods.has_flag(&"od_turrets") and world.abilities.is_active(Ids.AB_OVERDRIVE):
+	if world.abilities.is_active(Ids.AB_OVERDRIVE) and world.mods.has_flag(&"od_turrets"):
 		rate *= float(world.content.abilities[Ids.AB_OVERDRIVE].fire_rate_mult_milli) / 1000.0
 	rate *= jammer_turret_rate(world, world.turrets.x[pad], world.turrets.z[pad])
 	return maxi(0, roundi(rate * 1000.0))
 
 
-## The `turret_rate_mult` of the nearest-in-effect jammer aura that covers (x, z); 1.0 when none does.
+## The `turret_rate_mult` of the weakest jammer aura that covers (x, z); 1.0 when none does.
 static func jammer_turret_rate(world: SimWorld, x: float, z: float) -> float:
 	if lock_active(world) or not _has_jammers(world):
 		return 1.0
@@ -69,13 +70,14 @@ static func jammer_turret_rate(world: SimWorld, x: float, z: float) -> float:
 	var def: EnemyDef = world.content.enemies[Ids.EN_JAMMER]
 	var reach: float = def.beh(&"aura_radius")
 	var rate: float = 1.0
-	for i: int in store.high_water:
-		if store.alive[i] == 0 or store.type[i] != Ids.EN_JAMMER or store.stun_ticks[i] > 0:
-			continue
-		var dx: float = store.x[i] - x
-		var dz: float = store.z[i] - z
-		if dx * dx + dz * dz <= reach * reach:
-			rate = minf(rate, def.beh(&"turret_rate_mult", 1.0))
+	var i: int = store.type.find(Ids.EN_JAMMER)
+	while i >= 0:
+		if store.alive[i] == 1 and store.stun_ticks[i] == 0:
+			var dx: float = store.x[i] - x
+			var dz: float = store.z[i] - z
+			if dx * dx + dz * dz <= reach * reach:
+				rate = minf(rate, def.beh(&"turret_rate_mult", 1.0))
+		i = store.type.find(Ids.EN_JAMMER, i + 1)
 	return rate
 
 

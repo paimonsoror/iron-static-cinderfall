@@ -45,7 +45,7 @@ static func launch_due(world: SimWorld) -> void:
 	if world.plan == null:
 		return
 	var pw: PlannedWave = world.plan.wave(world.wave)
-	if pw == null:
+	if pw == null or es.plan_cursor >= pw.events.size():
 		return
 	var elapsed: int = world.tick - wave_start_tick(world)
 	while es.plan_cursor < pw.events.size():
