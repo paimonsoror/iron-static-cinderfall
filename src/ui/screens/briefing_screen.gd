@@ -1,8 +1,8 @@
 class_name BriefingScreen
 extends Control
 ## Mission briefing (GDD 10.2): the mission name, the Accord radio text, the objectives (waves, core, boss), a threat
-## row per enemy with its silhouette and rank, then DEPLOY and BACK. The signals and setup() are the frozen
-## contract (ARCH 9).
+## row per enemy with its silhouette and rank, the kit selector (a generated run: a horizontal list of kit cards above DEPLOY;
+## a tap writes the kit to the profile), then DEPLOY and BACK. The signals and setup() are the frozen contract (ARCH 9).
 
 signal deploy_pressed
 signal back_pressed
@@ -14,6 +14,7 @@ var radio_speaker_label: Label
 var radio_label: Label
 var objective_labels: Array[Label] = []
 var threat_rows: Array[BriefingThreatRow] = []
+var kit_selector: KitSelector  ## the starting kits, above DEPLOY (a generated run only)
 var deploy_button: Button
 var back_button: Button
 var _frame: UiScreenFrame
@@ -31,6 +32,7 @@ func setup(content: ContentSet) -> void:
 	mission_label.text = Strings.t(content.mission.name_key).to_upper()
 	_fill_objectives(content)
 	_fill_threats(content)
+	kit_selector.setup(Save.profile, content)
 
 
 func _ensure_built() -> void:
@@ -61,6 +63,9 @@ func _ensure_built() -> void:
 	_threats_col = VBoxContainer.new()
 	_threats_col.add_theme_constant_override("separation", 14)
 	col.add_child(_threats_col)
+	kit_selector = KitSelector.new()
+	kit_selector.visible = false
+	_frame.footer.add_child(kit_selector)
 	deploy_button = UiKit.button_primary("briefing.deploy")
 	deploy_button.pressed.connect(func() -> void: deploy_pressed.emit())
 	_frame.footer.add_child(deploy_button)

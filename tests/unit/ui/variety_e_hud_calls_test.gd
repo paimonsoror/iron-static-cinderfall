@@ -38,7 +38,10 @@ func test_the_ticker_shows_at_most_three_lines_and_a_harmful_one_has_the_warning
 	assert_bool(line.harmful).is_true()
 	assert_str(line.text_label.text).is_equal(Strings.tf("hud.ticker.on", [Strings.t("event.static_front.name"), 5]))
 	assert_object(line.icon_rect.texture).is_not_null()
-	assert_bool(line.icon_rect.texture == _hud.banners.ticker.lines[0].icon_rect.texture).is_false()
+	# V4-U priorities: harmful running lines outrank the helpful Deadfall warning, which waits behind them (it is not shown)
+	for shown: HudTickerLine in _hud.banners.ticker.lines:
+		assert_bool(shown.harmful).is_true()
+		assert_str(shown.text_label.text).not_contains(Strings.t("event.deadfall_strike.name"))
 
 
 func test_an_elite_entering_the_field_is_a_ticker_notice() -> void:

@@ -33,7 +33,7 @@ func test_setup_fills_every_label_with_no_placeholder_and_writes_nothing() -> vo
 	var s: SettingsScreen = _settings()
 	assert_array(ScreensTestKit.bad_texts(s)).is_empty()
 	assert_array(_changed).is_empty()
-	assert_int(s.toggle_rows.size()).is_equal(5)
+	assert_int(s.toggle_rows.size()).is_equal(6)  # V4-U: + Swap assist
 	assert_str(s.header_plate.label.text).is_equal(Strings.t("settings.title").to_upper())
 
 
@@ -114,5 +114,5 @@ func test_close_emits_closed_once_and_every_control_is_at_least_132_px() -> void
 	assert_int(hits[0]).is_equal(1)
 	await ScreensTestKit.settle(get_tree())
 	assert_array(ScreensTestKit.small_buttons(s)).is_empty()
-	assert_int(UiKit.buttons(s).size()).is_equal(1 + 5 + 3 + 2)
+	assert_int(UiKit.buttons(s).size()).is_equal(1 + 6 + 3 + 2)
 	assert_float(s.close_button.size.y).is_greater_equal(148.0)

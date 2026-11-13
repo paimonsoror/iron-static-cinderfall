@@ -120,6 +120,7 @@ func test_a_new_offer_clears_the_selection() -> void:
 
 
 func test_the_boss_briefing_shows_name_attack_and_answer_and_continue_sends_continue_run() -> void:
+	Save.profile.unlocks.append("u_w_arc")  # the answer names the Arc Projector: a run that owns it (or an Archive without it) shows it as written
 	var api: FakeRunApi = VarietyEKit.api_for("boss_brief")
 	var b: BossBriefOverlay = VarietyEKit.overlay(self, "boss_brief", api) as BossBriefOverlay
 	assert_str(b.name_label.text).is_equal(Strings.t("boss.siege_hulk.name"))
@@ -133,9 +134,12 @@ func test_the_boss_briefing_shows_name_attack_and_answer_and_continue_sends_cont
 	b.continue_button.pressed.emit()
 	assert_int(VarietyEKit.calls_of(api, "continue_run").size()).is_equal(1)
 	assert_int(api.calls.size()).is_equal(1)
+	ScreensTestKit.fresh_save()
 
 
 func test_a_node_9_variant_shows_its_name_and_its_own_lines() -> void:
+	Save.profile.unlocks.append("u_w_torch")  # the plated line names the torch and the rail lance: a run that owns them shows it as written
+	Save.profile.unlocks.append("u_w_rail")
 	var api: FakeRunApi = VarietyEKit.api_for("boss_brief")
 	api.fake_boss_brief["variant"] = &"hulk_plated"
 	var b: BossBriefOverlay = VarietyEKit.overlay(self, "boss_brief", api) as BossBriefOverlay
@@ -143,6 +147,7 @@ func test_a_node_9_variant_shows_its_name_and_its_own_lines() -> void:
 	assert_str(b.variant_label.text).is_equal(Strings.t("boss.hulk_plated"))
 	assert_str(b.attack_label.text).is_equal(Strings.t("boss.hulk_plated.attack"))
 	assert_str(b.answer_label.text).is_equal(Strings.t("boss.hulk_plated.answer"))
+	ScreensTestKit.fresh_save()
 
 
 func test_every_boss_has_a_name_an_attack_line_and_an_answer_line() -> void:
