@@ -44,7 +44,7 @@ static func scattergun() -> ArrayMesh:
 	mb.tint = WeaponParts.bone(0.8)  # the pump forend
 	LookDevShapes.bevel_box(mb, Vector3(0.086, 0.07, 0.15), WeaponParts.at(0.0, 0.0, -0.22), C, 0.014, Vector2.ONE, 0.0, false)
 	mb.tint = WeaponParts.grey(0.4)
-	LookDevShapes.bevel_box(mb, Vector3(0.06, 0.1, 0.15), WeaponParts.at(0.0, 0.02, 0.19), G, 0.014, Vector2.ONE, 0.0, false)
+	LookDevShapes.bevel_box(mb, Vector3(0.06, 0.1, 0.15), WeaponParts.at(0.0, 0.02, 0.12), G, 0.014, Vector2.ONE, 0.0, false)
 	WeaponParts.grip(mb, 0.03)
 	mb.tint = WeaponParts.bone(0.66)  # the shell rack on the right flank
 	LookDevShapes.bevel_box(mb, Vector3(0.02, 0.09, 0.2), WeaponParts.at(0.07, 0.04, -0.1), C, 0.008, Vector2.ONE, 0.0, false)
@@ -75,7 +75,7 @@ static func assault_rifle() -> ArrayMesh:
 	LookDevShapes.bevel_box(mb, Vector3(0.05, 0.2, 0.07), mag, G, 0.012, Vector2.ONE, 0.0, true, true)
 	WeaponParts.grip(mb, 0.0)
 	mb.tint = WeaponParts.grey(0.4)
-	LookDevShapes.bevel_box(mb, Vector3(0.06, 0.1, 0.2), WeaponParts.at(0.0, 0.02, 0.2), G, 0.014, Vector2.ONE, 0.0, false)
+	LookDevShapes.bevel_box(mb, Vector3(0.06, 0.1, 0.2), WeaponParts.at(0.0, 0.02, 0.16), G, 0.014, Vector2.ONE, 0.0, false)
 	mb.tint = Color.WHITE
 	var _lit: int = mb.begin_part()
 	mb.box(Vector3(0.034, 0.03, 0.012), WeaponParts.at(0.0, 0.146, -0.152), L)
@@ -135,7 +135,7 @@ static func lmg() -> ArrayMesh:
 	LookDevShapes.bevel_box(mb, Vector3(0.03, 0.04, 0.2), WeaponParts.at(0.0, 0.12, -0.2), G, 0.008, Vector2.ONE, 0.0, false)
 	WeaponParts.grip(mb, 0.0)
 	mb.tint = WeaponParts.grey(0.4)
-	LookDevShapes.bevel_box(mb, Vector3(0.07, 0.11, 0.22), WeaponParts.at(0.0, 0.0, 0.22), G, 0.014, Vector2.ONE, 0.0, false)
+	LookDevShapes.bevel_box(mb, Vector3(0.07, 0.11, 0.22), WeaponParts.at(0.0, 0.0, 0.17), G, 0.014, Vector2.ONE, 0.0, false)
 	mb.tint = Color.WHITE
 	var _lit: int = mb.begin_part()
 	mb.ring(0.05, 0.085, 8, Transform3D(Basis(Vector3.BACK, -PI * 0.5), Vector3(0.052, -0.12, -0.17)), L)

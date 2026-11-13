@@ -7,7 +7,7 @@ extends RefCounted
 ## One MeshInstance3D per body part; the pivot of each extra part is its position in the Body frame.
 
 ## Where the holstered weapon's grip sits in pack space and the length it is scaled to.
-const HOLSTER_AT: Vector3 = Vector3(0.34, 0.02, 0.2)
+const HOLSTER_AT: Vector3 = Vector3(0.31, 0.02, 0.2)
 const HOLSTER_LENGTH: float = 0.62
 
 ## Extra parts: name, ActorMeshes part id, pivot in torso space.

@@ -1,7 +1,7 @@
 class_name LookActorsJammer
 extends RefCounted
 ## The hard-surface Jammer (V4-R; VARIETY_SPEC 5.1): a lean biped 1.8 m high with no head: instead a big upright ring antenna
-## stands over its shoulders (a halo, tilted back 26 degrees so the top-down camera sees it as an ellipse from any side), carried on two
+## stands over its shoulders (a halo, tilted back 37 degrees so the top-down camera sees it as an ellipse from any side), carried on two
 ## struts from the shoulder domes, and a sensor hub in the ring's centre on three thin spokes. The hub holds the single red optic.
 ## Dark armoured body, a pale chest slab, pale shoulder domes, thin hanging arms. The ring is the silhouette.
 ## Three surfaces (gunmetal, ceramic, emit_red), about 380 triangles, weathering baked in the vertex colours.
@@ -11,7 +11,7 @@ const C: StringName = &"ceramic"
 const SEED: int = 83
 const RING_AT: Vector3 = Vector3(0.0, 1.5, 0.06)
 const RING_R: float = 0.4
-const RING_TILT: float = 0.45
+const RING_TILT: float = 0.65
 const HUB_RADII: Vector3 = Vector3(0.12, 0.11, 0.12)
 
 

@@ -215,7 +215,7 @@ func _place_warden() -> void:
 
 ## The weapon meshes on their own in a row, dressed like the Warden's weapon nodes.
 func _place_weapons(look: int, tier: int) -> void:
-	var names: Array[StringName] = ActorMeshes.WARDEN_WEAPON_NODES
+	var names: Array[StringName] = Ids.WEAPONS
 	for k: int in names.size():
 		var m: ArrayMesh = ActorMeshes.warden_part(names[k], look)
 		var mi: MeshInstance3D = MeshInstance3D.new()
@@ -223,15 +223,15 @@ func _place_weapons(look: int, tier: int) -> void:
 		for s: int in m.get_surface_count():
 			var base: StringName = StringName(m.surface_get_material(s).resource_name)
 			mi.set_surface_override_material(s, null if look == LookDevStyle.Look.CURRENT else LookDevMat.surface(base, look, tier))
-		var row: int = floori(float(k) / 5.0)
-		mi.position = Vector3(-1.2 + float(k % 5) * 0.62, 0.0, 0.0 - float(row) * 0.5)
-		mi.scale = Vector3(1.4, 1.4, 1.4)
-		mi.rotation.y = deg_to_rad(90.0)
+		var col: int = floori(float(k) / 5.0)
+		mi.position = Vector3(float(col) * 2.0, 0.25, float(k % 5) * 0.42)
+		mi.scale = Vector3(1.3, 1.3, 1.3)
+		mi.rotation.y = deg_to_rad(-90.0)  # the barrel points to +X
 		_view.add_child(mi)
 		_weapon_nodes.append(mi)
-	_look_at = Vector3(-0.5, 0.0, -0.1)
+	_look_at = Vector3(1.1, 0.25, 0.84)
 	if _dist == 6.0:
-		_dist = 2.5
+		_dist = 4.2
 
 
 func _spawn(type_index: int, x: float, z: float) -> int:

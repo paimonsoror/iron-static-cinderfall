@@ -29,8 +29,8 @@ static func build() -> ArrayMesh:
 	var front: Vector3 = CAP_AT + Vector3(0.0, 0.15, -0.14)
 	var _part: int = mb.begin_part()
 	mb.tint = Color(0.45, 0.45, 0.45, 1.0)
-	mb.quad(Vector2(0.28, 0.14), Transform3D(face, front + Vector3(0.0, -0.005, -0.004)), R)
+	mb.quad(Vector2(0.26, 0.12), Transform3D(face, front + Vector3(0.0, -0.005, -0.004)), R)
 	mb.tint = Color.WHITE
-	mb.quad(Vector2(0.22, 0.08), Transform3D(face, front + Vector3(0.0, 0.0, -0.012)), R)
+	mb.quad(Vector2(0.2, 0.07), Transform3D(face, front + Vector3(0.0, 0.0, -0.012)), R)
 	LookDevBake.ao(mb, 0.6, 0.05, 0.3, 0.0, 0.5, 0.1, LookActorsKit.SKIP_EMISSIVE)
 	return mb.build()
