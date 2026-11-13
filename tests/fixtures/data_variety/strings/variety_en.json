@@ -268,7 +268,7 @@
   "boss.aegis_array.answer": "Pylons first. EMP drops all pylon protection for 3 s.",
   "boss.tremor_rig.attack": "Stomps every 10 s: turrets offline for 4 s and your magazine emptied. Opens breaches at 66% and 33% HP.",
   "boss.tremor_rig.answer": "A Shield active at the stomp negates it. Heat weapons ignore the magazine dump.",
-  "boss.siege_hulk.attack": "Takes three slots at the core and shoves the rest aside. Below 25% HP it attacks 30% faster.",
+  "boss.siege_hulk.attack": "Takes three slots at the core and shoves the rest aside. Below 25% HP it attacks 40% faster.",
   "boss.siege_hulk.answer": "Armor 12. The Arc Projector ignores armor, and piercing directives strip it.",
   "boss.hulk_plated.attack": "Armor 24. Sheds plating at 66% and 33% HP and speeds up each time.",
   "boss.hulk_plated.answer": "Piercing, the torch and the rail lance. Hit it hard while the plates are off.",
