@@ -13,7 +13,7 @@ var cards: Array[DirectiveCard] = []
 var reroll_button: Button
 var patch_button: Button
 var skip_button: Button
-var build_button: Button
+var build_button: DraftBuildButton
 var title_label: Label
 var sub_label: Label
 var corrupted_label: Label
@@ -37,10 +37,12 @@ func _populate() -> void:
 	header.add_child(title_label)
 	sub_label = RunUi.label(Strings.t("draft.sub"), RunUi.MIN_TEXT, &"dim")
 	header.add_child(sub_label)
-	build_info = RunUi.label("", RunUi.MIN_TEXT, &"dim")
-	build_info.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	var _first: RunHintLine = add_hint("hint.draft")
+	build_info = RunUi.wrap(RunUi.label("", RunUi.MIN_TEXT, &"dim"), 2)
 	header.add_child(build_info)
-	build_button = _make_build_button()
+	build_button = DraftBuildButton.new()
+	build_button.pressed.connect(_on_build_pressed)
+	build_button.setup(_api)
 	controls.add_child(build_button)
 	_cards_row = HBoxContainer.new()
 	_cards_row.add_theme_constant_override(&"separation", 14)
@@ -74,78 +76,6 @@ func _action_button(handler: Callable) -> Button:
 	return b
 
 
-## The wide BUILD button: the tags held as chips and the weapons carried. Tapping it opens the BuildList.
-func _make_build_button() -> Button:
-	var b: Button = RunUi.button("", false)
-	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	b.pressed.connect(_on_build_pressed)
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override(&"separation", 12)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	b.add_child(row)
-	UiKit.fill(row)
-	row.offset_left = 18.0
-	row.offset_right = -18.0
-	row.add_child(RunUi.label(Strings.t("draft.build"), RunUi.MIN_TEXT, &"dim", true))
-	var tags: Array[StringName] = _tags_by_stacks()
-	for tag: StringName in tags:
-		var chip: PanelContainer = PanelContainer.new()
-		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		chip.add_theme_stylebox_override(&"panel", RunUi.chip_box(UiTheme.rim(&"warden_cyan", RunUi.hc())))
-		chip.add_child(RunUi.label(_chip_text(tag), RunUi.MIN_TEXT, &"friendly", true))
-		row.add_child(chip)
-	if tags.is_empty():
-		row.add_child(RunUi.label(Strings.t("draft.nothing_yet"), RunUi.MIN_TEXT, &"dim"))
-	var weapons: Label = RunUi.label("%s %s" % [Strings.t("draft.weapons"), _weapon_names()], RunUi.MIN_TEXT, &"body", true)
-	weapons.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	weapons.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	weapons.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(weapons)
-	return b
-
-
-## The tags held, most stacks first (at most four).
-func _tags_by_stacks() -> Array[StringName]:
-	var tags: Array[StringName] = []
-	var stacks: Dictionary = _api.build_tags()
-	for key: Variant in stacks.keys():
-		var tag: StringName = key
-		var n: int = stacks[key]
-		if n > 0:
-			tags.append(tag)
-	tags.sort_custom(_tag_before)
-	return tags.slice(0, 4)
-
-
-func _tag_before(a: StringName, b: StringName) -> bool:
-	var stacks: Dictionary = _api.build_tags()
-	var sa: int = stacks.get(a, 0)
-	var sb: int = stacks.get(b, 0)
-	return sa > sb or (sa == sb and String(a) < String(b))
-
-
-func _chip_text(tag: StringName) -> String:
-	var stacks: Dictionary = _api.build_tags()
-	var n: int = stacks.get(tag, 0)
-	return "%s %s" % [RunUi.tag_name(tag), Strings.tf("build.stacks", [n])]
-
-
-func _chips_line() -> String:
-	var parts: PackedStringArray = PackedStringArray()
-	for tag: StringName in _tags_by_stacks():
-		parts.append(_chip_text(tag))
-	return "  ".join(parts)
-
-
-func _weapon_names() -> String:
-	var names: PackedStringArray = PackedStringArray()
-	for i: int in _api.weapon_slot_count():
-		var wid: StringName = _api.weapon_slot(i).get("id", &"")
-		if wid != &"":
-			names.append(RunUi.opt("weapon.%s.short" % String(wid), String(wid).to_upper()))
-	return "  ".join(names)
-
-
 ## Rebuilds the cards from the offer. `keep` keeps a still-valid selection (a directive was just taken from a draft that
 ## stays open: the picked slot reads -1 now, the selection on another slot survives); a new offer clears it.
 func _build_cards(keep: bool = false) -> void:
@@ -177,6 +107,8 @@ func _build_cards(keep: bool = false) -> void:
 		header.add_child(corrupted_label)
 	if corrupted_label != null:
 		corrupted_label.visible = any_corrupted
+	if any_corrupted:
+		var _second: RunHintLine = add_hint("hint.corrupted")
 	if kept_pick == SKIP or (kept_pick >= 0 and kept_pick < cards.size() and cards[kept_pick].enabled):
 		selected_slot = kept_pick
 		if kept_buyout >= 0 and kept_buyout < cards.size() and cards[kept_buyout].enabled and kept_buyout != kept_pick:
@@ -192,10 +124,15 @@ func _relayout() -> void:
 	var card_h: float = clampf(h * 0.29, 440.0, 560.0)
 	for card: DirectiveCard in cards:
 		card.custom_minimum_size.y = card_h
+	var hint_shown: bool = false
+	for line: RunHintLine in hint_lines:
+		hint_shown = hint_shown or line.visible
 	build_button.visible = h >= COMPACT_HEIGHT
-	build_info.visible = h < COMPACT_HEIGHT
+	build_info.visible = h < COMPACT_HEIGHT and not hint_shown  # a near-square window gives the build line's room to a hint
 	sub_label.visible = h >= COMPACT_HEIGHT
-	build_info.text = "%s  %s    %s %s" % [Strings.t("draft.build"), _chips_line(), Strings.t("draft.weapons"), _weapon_names()]
+	build_info.text = "%s  %s    %s %s" % [
+		Strings.t("draft.build"), DraftBuildButton.chips_line(_api), Strings.t("draft.weapons"), DraftBuildButton.weapon_names(_api),
+	]
 
 
 # --- state ---

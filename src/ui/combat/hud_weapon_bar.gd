@@ -19,6 +19,7 @@ var freight: HudCallButton
 var _api: RunApi
 var _content: ContentSet
 var _sig: String = ""
+var _assist_fired: bool = false  ## SWAP ASSIST already answered this reload
 
 
 func _init() -> void:
@@ -59,8 +60,26 @@ func refresh() -> void:
 	var hint: bool = _swap_would_help(infos, active)
 	for i: int in count:
 		cards[i].show_slot(infos[i], i == active, hint and i == active)
+	_assist(infos, active, hint)
 	_refresh_calls()
 	_layout()
+
+
+## SWAP ASSIST (the accessibility setting, VARIETY_SPEC 3.1): the moment the active weapon starts a reload or a vent while
+## the other one is ready, the same swap a tap on the holstered card issues goes out once. Off by default; the hint above
+## is what everyone else gets.
+func _assist(infos: Array[Dictionary], active: int, helps: bool) -> void:
+	if not helps:
+		_assist_fired = false
+		return
+	if _assist_fired or _api == null or not MetaProfile.swap_assist():
+		return
+	for i: int in infos.size():
+		var id: StringName = infos[i].get("id", &"")
+		if i != active and id != &"" and infos[i].get("state", RunApi.SLOT_EMPTY) == RunApi.SLOT_READY:
+			_assist_fired = true
+			_api.swap_weapon(_api.next_command_id(), i)
+			return
 
 
 ## Active card reloading or venting while a holstered one is ready (a hint, never an automatic swap).

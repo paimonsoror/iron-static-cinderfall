@@ -23,6 +23,7 @@ var wave_label: Label
 var core_label: Label
 var scrap_label: Label
 var modal: Control  ## the open detail panel or build list, or null
+var hint_lines: Array[RunHintLine] = []  ## the first-run hints this screen showed (at most one per key, once per profile)
 
 var _api: RunApi
 var _content: ContentSet
@@ -186,6 +187,36 @@ func refresh_info() -> void:
 	scrap_label.text = UiKit.group(_api.scrap())
 
 
+## One first-run hint line in the header (GDD 10.4): the hint of `key` ("hint.draft") when this profile has not seen it. The
+## choice screens cover the combat HUD's hint banner, so they show their own. A hint counts as seen when it is on screen: a
+## near-square window has no room for a second line, so it shows one at a time and the other waits for a later screen. Null
+## when the hint was seen before, is already on this screen or has no text.
+func add_hint(key: String) -> RunHintLine:
+	if not RunHintLine.due(key):
+		return null
+	for existing: RunHintLine in hint_lines:
+		if existing.key == key:
+			return null
+	var line: RunHintLine = RunHintLine.new(key)
+	header.add_child(line)
+	hint_lines.append(line)
+	_sync_hints()
+	return line
+
+
+## Shows the hint lines that have room (all on a tall screen, the first on a compact one) and remembers them as seen.
+func _sync_hints() -> void:
+	var compact: bool = is_compact()
+	var shown: int = 0
+	for line: RunHintLine in hint_lines:
+		var show: bool = not compact or shown == 0
+		line.visible = show
+		if show:
+			shown += 1
+			Save.mark_hint_seen(line.key)
+	_relayout()  # a screen that is short of room gives the hint's space back to its choices
+
+
 ## A command id for one tap; the API call is the caller's.
 func _next_id() -> int:
 	return _api.next_command_id()
@@ -261,13 +292,15 @@ func _build_frame() -> void:
 	_density()
 	resized.connect(_density)
 	resized.connect(_relayout)
+	resized.connect(_sync_hints)
 
 
-## The dimming layer: nearly opaque where the HUD bands sit (so the combat HUD never ghosts through the header or the
-## choices) and lighter in the middle, where the frozen battlefield shows. High Contrast dims more.
+## The dimming layer: fully opaque where the HUD bands sit (so not a trace of the combat HUD shows through the header, the
+## gaps between the cards or the footer) and lighter in the middle, where the frozen battlefield shows. High Contrast dims
+## the middle more.
 func _scrim_texture() -> GradientTexture2D:
 	var tone: Color = UiTheme.color(&"obsidian").lerp(Color.BLACK, 0.35)
-	var strong: float = 0.985 if RunUi.hc() else 0.965
+	var strong: float = 1.0
 	var mid: float = SCRIM_ALPHA + (0.08 if RunUi.hc() else 0.0) - 0.04
 	var g: Gradient = Gradient.new()
 	g.offsets = PackedFloat32Array([0.0, 0.17, 0.31, 0.45, 0.55, 1.0])
@@ -334,6 +367,7 @@ func _on_setting_changed(key: StringName) -> void:
 			band.remove_child(child)
 			child.queue_free()
 	notice_label = null
+	hint_lines.clear()
 	_populate()
 	_relayout()
 	refresh_info()
