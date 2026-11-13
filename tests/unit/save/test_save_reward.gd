@@ -15,7 +15,7 @@ func before_test() -> void:
 func after_test() -> void:
 	if Events.profile_changed.is_connected(_on_profile_changed):
 		Events.profile_changed.disconnect(_on_profile_changed)
-	SaveTestData.boot(MemorySaveFs.new())
+	SaveTestData.reset()
 
 
 func _on_profile_changed() -> void:

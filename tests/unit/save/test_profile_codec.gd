@@ -35,10 +35,16 @@ func test_full_round_trip() -> void:
 func test_encoded_text_has_the_arch_keys() -> void:
 	var text: String = ProfileCodec.encode(Profile.defaults())
 	var parsed: Dictionary = JSON.parse_string(text)
-	for key: String in ["schema_version", "data", "missions_completed", "best_core_hp", "runs_played", "awarded_run_ids", "hints_seen", "settings"]:
+	for key: String in ["schema_version", "data", "data_lifetime", "missions_completed", "best_core_hp", "runs_played", "awarded_run_ids",
+			"hints_seen", "unlocks", "claimed", "kit", "codex_seen", "best_wave", "boss_kills", "victories_by_kit", "victory_weapons",
+			"daily", "settings"]:
 		assert_bool(parsed.has(key)).is_true()
+	assert_int(parsed.size()).is_equal(18)
+	var schema: float = parsed["schema_version"]
+	assert_float(schema).is_equal(2.0)
 	var settings: Dictionary = parsed["settings"]
-	assert_int(settings.size()).is_equal(7)
+	assert_int(settings.size()).is_equal(8)
+	assert_bool(settings["swap_assist"] == false).is_true()
 	assert_bool(text.ends_with("}\n")).is_true()
 
 
@@ -96,7 +102,7 @@ func test_unknown_keys_are_ignored_and_never_loaded() -> void:
 	var r: ProfileDecodeResult = ProfileCodec.decode(text)
 	assert_int(r.profile.data).is_equal(5)
 	assert_bool(r.profile.settings.has(&"path")).is_false()
-	assert_int(r.profile.settings.size()).is_equal(7)
+	assert_int(r.profile.settings.size()).is_equal(8)
 
 
 func test_truncated_file_is_unusable() -> void:

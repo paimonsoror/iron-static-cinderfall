@@ -1,0 +1,29 @@
+{
+	"schema_version": 2,
+	"data": 275,
+	"data_lifetime": 1180,
+	"missions_completed": 4,
+	"best_core_hp": 810,
+	"runs_played": 14,
+	"awarded_run_ids": ["1763100001-21", "1763100100-22"],
+	"hints_seen": ["hint_first_draft", "hint_first_route"],
+	"unlocks": ["u_w_lmg", "u_w_hornet", "u_p_blast", "k_breacher"],
+	"claimed": ["ms_first_boss_siege_hulk", "ms_first_victory"],
+	"kit": "k_breacher",
+	"codex_seen": ["enemy.burster"],
+	"best_wave": 11,
+	"boss_kills": {"siege_hulk": 2},
+	"victories_by_kit": {"k_standard": 3, "k_breacher": 1},
+	"victory_weapons": ["arc_projector", "lmg"],
+	"daily": {"date": "2026-11-12", "best_wave": 7, "won": false, "rewarded": true},
+	"settings": {
+		"sound_on": true,
+		"music_on": true,
+		"haptics_on": false,
+		"reduced_flash": false,
+		"high_contrast": false,
+		"quality": 2,
+		"fps_cap": 60,
+		"swap_assist": true
+	}
+}

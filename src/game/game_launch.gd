@@ -47,3 +47,36 @@ static func make_run_id(seed_value: int, used: Dictionary[String, bool], awarded
 		candidate = "%s-%d" % [base, n]
 	used[candidate] = true
 	return candidate
+
+
+# --- the Daily Run (VARIETY_SPEC 8.5, decision D8). The sim never reads the clock: the date is read here and only the
+# seed derived from it reaches the sim. ---
+
+## The kit of every Daily Run and the prefix of its seed text: the Daily Run is the same for everyone on a given UTC day.
+const DAILY_KIT: StringName = &"k_standard"
+const DAILY_SEED_PREFIX: String = "daily|"
+const SEED_MASK: int = 0x7FFFFFFF  ## run seeds are 31-bit (pick_seed)
+
+
+## "YYYY-MM-DD" of the UTC day of `unix_time` (-1 = now).
+static func utc_date(unix_time: int = -1) -> String:
+	var at: int = int(Time.get_unix_time_from_system()) if unix_time < 0 else unix_time
+	return Time.get_date_string_from_unix_time(at)
+
+
+## The seed of the Daily Run of `date` ("YYYY-MM-DD", UTC): the first 31 bits of sha256("daily|" + date). Same date,
+## same seed, on every machine; any other date gives a different one. An empty or malformed date gives -1 (no seed).
+static func daily_seed(date: String) -> int:
+	if not Profile.is_date(date):
+		return -1
+	var digest: String = (DAILY_SEED_PREFIX + date).sha256_text()
+	return digest.substr(0, 8).hex_to_int() & SEED_MASK
+
+
+## The UTC date a run id was made on ("<unix>-<seed>" or "<unix>-<seed>-<n>", GameLaunch.make_run_id), or "" when the id
+## does not start with a unix time. A Daily Run counts for the day it started, not the day it ended.
+static func run_date(run_id: String) -> String:
+	var head: String = run_id.get_slice("-", 0)
+	if head.is_empty() or not head.is_valid_int():
+		return ""
+	return utc_date(head.to_int())
