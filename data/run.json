@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "note": "Variety milestone, vertical slice (VARIETY_SPEC 15.2): act I only (4 generated waves and a boss wave), 3 packs, 1 modifier. All three acts are defined so the act tiers are known; waves 6 to 15, the other packs and modifiers come with V4-C. First-pass numbers from VARIETY_CONTENT 1, 3.7, 7 and 10.",
+  "note": "Variety milestone (VARIETY_SPEC 15.2): act I only (4 generated waves and a boss wave) while the act II and III bosses are not in enemies.json. All three acts are defined so the act tiers are known. V4-C appended the packs (12 of CONTENT 1.3) and the modifiers (10 of CONTENT 1.4); waves 6 to 15 come with the 15-wave integration (V5-A) because a boss wave needs a boss of its act (validator). First-pass numbers from VARIETY_CONTENT 1, 3.7, 7 and 10.",
   "acts": [
     { "id": "act_yard", "name_key": "act.yard.name", "hp_mult": 1.0, "core_dmg_mult": 1.0,
       "rarity_weights": [70, 26, 4], "corrupted_chance": 0.12, "elites_min": 0, "elites_max": 1, "affixes_min": 1, "affixes_max": 1 },
@@ -32,11 +32,85 @@
         { "enemy": "burster", "share": 0.35, "region": "right", "start": 0.15, "tempo": 1.0 },
         { "enemy": "skitter", "share": 0.45, "region": "right", "start": 0.0, "tempo": 0.8 },
         { "enemy": "mote", "share": 0.20, "region": "upper_right", "start": 0.3, "tempo": 0.5 }
+      ] },
+    { "id": "pack_breach", "name_key": "pack.breach.name", "min_act": 1, "budget_mult": 1.0, "extra_elites": 0,
+      "groups": [
+        { "enemy": "rusher", "share": 0.50, "region": "upper_right", "start": 0.25, "tempo": 0.8 },
+        { "enemy": "skitter", "share": 0.50, "region": "right", "start": 0.0, "tempo": 1.0 }
+      ] },
+    { "id": "pack_battery", "name_key": "pack.battery.name", "min_act": 1, "budget_mult": 1.0, "extra_elites": 0,
+      "groups": [
+        { "enemy": "spitter", "share": 0.35, "region": "upper_right", "start": 0.2, "tempo": 1.0 },
+        { "enemy": "hollow_warden", "share": 0.25, "region": "right", "start": 0.1, "tempo": 1.0 },
+        { "enemy": "skitter", "share": 0.40, "region": "right", "start": 0.0, "tempo": 1.0 }
+      ] },
+    { "id": "pack_brood", "name_key": "pack.brood.name", "min_act": 2, "budget_mult": 1.0, "extra_elites": 0,
+      "groups": [
+        { "enemy": "splitter", "share": 0.45, "region": "right", "start": 0.1, "tempo": 1.0 },
+        { "enemy": "mote", "share": 0.25, "region": "upper_right", "start": 0.0, "tempo": 0.5 },
+        { "enemy": "skitter", "share": 0.30, "region": "right", "start": 0.3, "tempo": 1.0 }
+      ] },
+    { "id": "pack_bulwark", "name_key": "pack.bulwark.name", "min_act": 2, "budget_mult": 1.0, "extra_elites": 0,
+      "groups": [
+        { "enemy": "shieldbearer", "share": 0.30, "region": "right", "start": 0.1, "tempo": 1.0 },
+        { "enemy": "hollow_warden", "share": 0.30, "region": "right", "start": 0.15, "tempo": 1.0 },
+        { "enemy": "rusher", "share": 0.40, "region": "upper_right", "start": 0.4, "tempo": 0.8 }
+      ] },
+    { "id": "pack_repair", "name_key": "pack.repair.name", "min_act": 2, "budget_mult": 1.0, "extra_elites": 0,
+      "groups": [
+        { "enemy": "reclaimer", "share": 0.15, "region": "upper_right", "start": 0.0, "tempo": 1.0 },
+        { "enemy": "hollow_warden", "share": 0.45, "region": "right", "start": 0.1, "tempo": 1.0 },
+        { "enemy": "rusher", "share": 0.40, "region": "upper_right", "start": 0.3, "tempo": 0.8 }
+      ] },
+    { "id": "pack_static", "name_key": "pack.static.name", "min_act": 2, "budget_mult": 1.0, "extra_elites": 0,
+      "groups": [
+        { "enemy": "jammer", "share": 0.20, "region": "upper_right", "start": 0.1, "tempo": 1.0 },
+        { "enemy": "rusher", "share": 0.35, "region": "right", "start": 0.3, "tempo": 0.8 },
+        { "enemy": "skitter", "share": 0.45, "region": "right", "start": 0.0, "tempo": 1.0 }
+      ] },
+    { "id": "pack_undermine", "name_key": "pack.undermine.name", "min_act": 2, "budget_mult": 1.0, "extra_elites": 0,
+      "groups": [
+        { "enemy": "borer", "share": 0.40, "region": "breach", "start": 0.3, "tempo": 0.6 },
+        { "enemy": "skitter", "share": 0.40, "region": "right", "start": 0.0, "tempo": 1.0 },
+        { "enemy": "burster", "share": 0.20, "region": "upper_right", "start": 0.2, "tempo": 1.0 }
+      ] },
+    { "id": "pack_everything", "name_key": "pack.everything.name", "min_act": 3, "budget_mult": 1.0, "extra_elites": 0,
+      "groups": [
+        { "enemy": "skitter", "share": 0.25, "region": "right", "start": 0.0, "tempo": 1.0 },
+        { "enemy": "rusher", "share": 0.15, "region": "upper_right", "start": 0.05, "tempo": 1.0 },
+        { "enemy": "hollow_warden", "share": 0.15, "region": "right", "start": 0.1, "tempo": 1.0 },
+        { "enemy": "burster", "share": 0.15, "region": "right", "start": 0.15, "tempo": 1.0 },
+        { "enemy": "spitter", "share": 0.10, "region": "upper_right", "start": 0.2, "tempo": 1.0 },
+        { "enemy": "splitter", "share": 0.10, "region": "right", "start": 0.3, "tempo": 1.0 },
+        { "enemy": "mote", "share": 0.10, "region": "upper_right", "start": 0.4, "tempo": 1.0 }
+      ] },
+    { "id": "pack_hunt", "name_key": "pack.hunt.name", "min_act": 2, "budget_mult": 0.7, "extra_elites": 2,
+      "groups": [
+        { "enemy": "hollow_warden", "share": 0.50, "region": "right", "start": 0.0, "tempo": 1.0 },
+        { "enemy": "rusher", "share": 0.50, "region": "upper_right", "start": 0.2, "tempo": 1.0 }
       ] }
   ],
   "modifiers": [
     { "id": "mod_volatile", "name_key": "modifier.volatile.name", "list": "hot",
-      "ops": [ { "flag": "volatile_skitters" }, { "stat": "volatile_radius", "add": 1.2 }, { "stat": "volatile_damage", "add": 20 } ] }
+      "ops": [ { "flag": "volatile_skitters" }, { "stat": "volatile_radius", "add": 1.2 }, { "stat": "volatile_damage", "add": 20 } ] },
+    { "id": "mod_plated", "name_key": "modifier.plated.name", "list": "mild",
+      "ops": [ { "stat": "enemy_armor_add", "add": 4 } ] },
+    { "id": "mod_rush", "name_key": "modifier.rush.name", "list": "mild",
+      "ops": [ { "stat": "spawn_interval_mul", "mul": 0.6 } ] },
+    { "id": "mod_twin_gate", "name_key": "modifier.twin_gate.name", "list": "mild",
+      "ops": [ { "flag": "twin_gate" } ] },
+    { "id": "mod_bounty", "name_key": "modifier.bounty.name", "list": "mild",
+      "ops": [ { "stat": "scrap_mul", "mul": 1.5 }, { "stat": "enemy_hp_mul", "mul": 1.2 } ] },
+    { "id": "mod_squall", "name_key": "modifier.squall.name", "list": "hot",
+      "ops": [ { "stat": "range_mul", "mul": 0.7 } ] },
+    { "id": "mod_static_air", "name_key": "modifier.static_air.name", "list": "hot",
+      "ops": [ { "stat": "ability_cd_rate_mul", "mul": 0.5 } ] },
+    { "id": "mod_low_power", "name_key": "modifier.low_power.name", "list": "hot",
+      "ops": [ { "stat": "turret_offline_ticks", "add": 720 } ] },
+    { "id": "mod_elite_pair", "name_key": "modifier.elite_pair.name", "list": "hot",
+      "ops": [ { "stat": "extra_elites", "add": 2 } ] },
+    { "id": "mod_no_breather", "name_key": "modifier.no_breather.name", "list": "hot",
+      "ops": [ { "flag": "no_breather" } ] }
   ],
   "route_rewards": [
     { "id": "rw_scrap", "name_key": "reward.scrap.name", "weight_standard": 30, "weight_hot": 10,
