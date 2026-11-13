@@ -91,14 +91,21 @@ static func early_deaths(runs: Array[Dictionary]) -> Dictionary:
 	var played: int = 0
 	var before_3: int = 0
 	var before_4: int = 0
+	var by_policy: Dictionary[String, PackedInt32Array] = {}  ## policy -> [runs, before wave 3, before wave 4]
 	for rec: Dictionary in ScorecardRecord.main_runs(runs):
-		if ScorecardRecord.text(rec, "policy") == "none":
+		var policy: String = ScorecardRecord.text(rec, "policy")
+		if policy == "none":
 			continue
 		played += 1
+		var tally: PackedInt32Array = by_policy.get(policy, PackedInt32Array([0, 0, 0]))
+		tally[0] += 1
 		if ScorecardRecord.is_loss(rec):
 			var wave: int = ScorecardRecord.whole(rec, "death_wave")
 			before_3 += 1 if wave < 3 else 0
 			before_4 += 1 if wave < 4 else 0
+			tally[1] += 1 if wave < 3 else 0
+			tally[2] += 1 if wave < 4 else 0
+		by_policy[policy] = tally
 	var target: String = "0 defeats before wave 3; before wave 4 at most %s" % ScorecardStats.percent(S8_BEFORE_4_MAX_RATE)
 	if played == 0:
 		return Scorecard.missing("S8", "Are early waves survivable?", target, "no runs")
@@ -107,7 +114,12 @@ static func early_deaths(runs: Array[Dictionary]) -> Dictionary:
 	var verdict: int = Scorecard.pass_or_warn(rate_4 <= S8_BEFORE_4_MAX_RATE)
 	if before_3 > S8_BEFORE_3_MAX:
 		verdict = Scorecard.Verdict.FAIL
-	return Scorecard.row("S8", "Are early waves survivable?", float(before_3), measured, target, verdict)
+	var detail: PackedStringArray = PackedStringArray()
+	for policy: String in by_policy:
+		var t: PackedInt32Array = by_policy[policy]
+		if t[2] > 0:
+			detail.append("%s: %d before wave 3, %d before wave 4, of %d runs" % [policy, t[1], t[2], t[0]])
+	return Scorecard.row("S8", "Are early waves survivable?", float(before_3), measured, target, verdict, detail)
 
 
 ## S9: the `balanced` losses are spread over the acts (each holds 15% or more) and the boss waves hold 25% to 50%.
