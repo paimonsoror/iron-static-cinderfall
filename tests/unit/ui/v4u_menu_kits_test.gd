@@ -76,7 +76,7 @@ func test_the_kit_cards_are_touch_sized_and_scroll_sideways() -> void:
 	for card: KitCard in s.cards:
 		assert_float(card.size.y).is_greater_equal(132.0)
 		assert_float(card.size.x).is_greater_equal(KitCard.WIDTH - 1.0)
-	assert_int(s.scroll.horizontal_scroll_mode).is_equal(ScrollContainer.SCROLL_MODE_AUTO)
+	assert_int(s.scroll.horizontal_scroll_mode).is_equal(ScrollContainer.SCROLL_MODE_SHOW_NEVER)
 	for label: Label in UiKit.labels(s):
 		if label.is_visible_in_tree() and label.text != "":
 			assert_int(label.get_theme_font_size(&"font_size")).is_greater_equal(30)

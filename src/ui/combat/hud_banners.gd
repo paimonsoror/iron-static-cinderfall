@@ -96,8 +96,6 @@ func _build_hint() -> void:
 func place(zone: Rect2, margins: Vector4, bottom_reserved: float) -> void:
 	position = zone.position
 	size = zone.size
-	edge_arrows.position = Vector2.ZERO
-	edge_arrows.size = zone.size
 	_bottom_reserved = bottom_reserved
 	var inner_w: float = zone.size.x - 2.0 * HudStyle.EDGE - margins.x - margins.z
 	var left: float = HudStyle.EDGE + margins.x
@@ -110,6 +108,14 @@ func place(zone: Rect2, margins: Vector4, bottom_reserved: float) -> void:
 	hint_panel.custom_minimum_size = Vector2(inner_w, 0.0)
 	hint_panel.size = Vector2(inner_w, 0.0)
 	hint_panel.position = Vector2(left, maxf(0.0, zone.size.y - bottom_reserved - hint_panel.get_combined_minimum_size().y - 16.0))
+	fit_arrows()
+
+
+## The edge arrows fill the battlefield below the stacked bars (boss bar, ticker lines), so an arrow never sits under them.
+func fit_arrows() -> void:
+	var top: float = minf(_stack.position.y + _stack.get_combined_minimum_size().y + 8.0, size.y)
+	edge_arrows.position = Vector2(0.0, top)
+	edge_arrows.size = Vector2(size.x, maxf(size.y - top, 0.0))
 
 
 func set_boss(kind: StringName, hp: float, max_hp: float) -> void:

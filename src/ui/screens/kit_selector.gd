@@ -23,7 +23,7 @@ func _init() -> void:
 	add_child(heading)
 	scroll = ScrollContainer.new()
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER  # a drag scrolls; the next card peeking in is the cue
 	scroll.custom_minimum_size = Vector2(0.0, KitCard.HEIGHT + 24.0)  # room for the lifted card and its halo
 	add_child(scroll)
 	_row = HBoxContainer.new()

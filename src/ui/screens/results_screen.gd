@@ -34,8 +34,7 @@ var act_label: Label  ## "ACT II  WAVE 8 OF 15" (a generated run)
 var recap: ResultsRecapPanels
 var milestone_label: Label
 var hook_label: Label
-var seed_label: Label
-var seed_row: HBoxContainer
+var seed_label: Label  ## "SEED 48211" under the act line (a generated run)
 var same_seed_button: Button
 var archive_button: Button
 var archive_screen: ArchiveScreen  ## the open Archive overlay, or null
@@ -81,11 +80,13 @@ func setup(summary: RunSummary, content: ContentSet, profile: Profile, reward_gr
 
 ## The milestones this run paid, `{ "id": StringName, "data": int }` each (the game layer reads them from the reward): one
 ## "MILESTONE: NODE 9 FIRST KILL  +50" line each, under the Recovered Data.
-func show_milestones(items: Array[Dictionary]) -> void:
+func show_milestones(items: Array) -> void:
 	_ensure_built()
 	var lines: PackedStringArray = PackedStringArray()
-	for item: Dictionary in items:
-		lines.append(ResultsRecap.milestone_text(item))
+	for item: Variant in items:
+		if typeof(item) == TYPE_DICTIONARY:
+			var entry: Dictionary = item
+			lines.append(ResultsRecap.milestone_text(entry))
 	milestone_label.text = "\n".join(lines)
 	milestone_label.visible = not lines.is_empty()
 
@@ -146,34 +147,34 @@ func _ensure_built() -> void:
 	act_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	act_label.visible = false
 	_frame.header.add_child(act_label)
+	seed_label = UiKit.label_text("", UiTheme.LABEL_NUMBER, UiTheme.FONT_SMALL)
+	seed_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	seed_label.visible = false
+	_frame.header.add_child(seed_label)
+	# The Recovered Data (with its milestones and the Archive hook, the "one more run") comes before the recaps: it is what
+	# the player came to read, and the recaps and the kills below it scroll.
 	col.add_child(_lore_panel())
 	col.add_child(_stats_grid())
+	col.add_child(_data_panel())
 	recap = ResultsRecapPanels.new()
 	col.add_child(recap)
 	col.add_child(_kills_panel())
-	col.add_child(_data_panel())
 	_build_footer()
 
 
 func _build_footer() -> void:
-	seed_row = HBoxContainer.new()
-	seed_row.add_theme_constant_override("separation", 20)
-	seed_row.visible = false
-	seed_label = UiKit.label_text("", UiTheme.LABEL_NUMBER, UiTheme.FONT_BODY)
-	seed_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	seed_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	seed_row.add_child(seed_label)
-	same_seed_button = UiKit.button("results.same_seed")
-	same_seed_button.custom_minimum_size = Vector2(UiTheme.TOUCH_MIN * 2, UiTheme.TOUCH_MIN)
-	same_seed_button.pressed.connect(_on_same_seed)
-	seed_row.add_child(same_seed_button)
-	_frame.footer.add_child(seed_row)
 	retry_button = UiKit.button_primary("results.retry")
 	retry_button.pressed.connect(func() -> void: retry_pressed.emit())
 	_frame.footer.add_child(retry_button)
 	var row: HBoxContainer = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 20)
 	_frame.footer.add_child(row)
+	same_seed_button = UiKit.button("results.same_seed")
+	same_seed_button.custom_minimum_size = Vector2(UiTheme.TOUCH_MIN, UiTheme.BTN_PRIMARY_H)
+	same_seed_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	same_seed_button.visible = false
+	same_seed_button.pressed.connect(_on_same_seed)
+	row.add_child(same_seed_button)
 	archive_button = UiKit.button("results.archive")
 	archive_button.custom_minimum_size = Vector2(UiTheme.TOUCH_MIN, UiTheme.BTN_PRIMARY_H)
 	archive_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -284,7 +285,8 @@ func _fill_run_extras(summary: RunSummary, content: ContentSet, profile: Profile
 	act_label.visible = variety
 	recap.show_run(summary, content)
 	archive_button.visible = variety
-	seed_row.visible = variety
+	same_seed_button.visible = variety
+	seed_label.visible = variety
 	hook_label.text = ResultsRecap.hook_text(content, profile) if variety else ""
 	hook_label.visible = hook_label.text != ""
 	milestone_label.visible = milestone_label.visible and variety

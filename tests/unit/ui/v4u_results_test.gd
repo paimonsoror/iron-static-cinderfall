@@ -96,7 +96,8 @@ func test_a_generated_run_shows_the_act_line_the_recap_the_seed_and_the_archive_
 	assert_str(s.recap.broke_lines[0].text).contains("skitter 412")
 	assert_array(s.recap.build_directives.map(func(l: Label) -> String: return l.text)).contains("HOT LOADS x3")
 	assert_str(s.seed_label.text).is_equal("SEED 48211")
-	assert_bool(s.seed_row.visible).is_true()
+	assert_bool(s.seed_label.visible).is_true()
+	assert_bool(s.same_seed_button.visible).is_true()
 	assert_bool(s.archive_button.visible).is_true()
 	assert_str(s.hook_label.text).contains("LMG")
 	assert_bool(s.hook_label.visible).is_true()
@@ -160,7 +161,8 @@ func test_the_legacy_results_keep_their_old_shape() -> void:
 	var screen: ResultsScreen = _results(s, Profile.defaults(), Vector2(1080.0, 2400.0), legacy)
 	assert_bool(screen.act_label.visible).is_false()
 	assert_bool(screen.recap.visible).is_false()
-	assert_bool(screen.seed_row.visible).is_false()
+	assert_bool(screen.seed_label.visible).is_false()
+	assert_bool(screen.same_seed_button.visible).is_false()
 	assert_bool(screen.archive_button.visible).is_false()
 	assert_bool(screen.hook_label.visible).is_false()
 
@@ -190,3 +192,11 @@ func test_the_back_gesture_closes_the_archive_overlay_of_the_results() -> void:
 	assert_bool(s.close_overlay()).is_true()
 	await V4uKit.settle(get_tree())
 	assert_object(s.archive_screen).is_null()
+
+
+func test_the_recovered_data_comes_before_the_recaps_so_it_is_on_the_first_screen() -> void:
+	var s: ResultsScreen = _results(V4uKit.summary(_cs), V4uKit.profile(130), Vector2(1080.0, 1920.0))
+	await V4uKit.settle(get_tree())
+	assert_float(s.data_label.global_position.y).is_less(s.recap.global_position.y)
+	assert_float(s.data_label.global_position.y + s.data_label.size.y).is_less(1920.0 - 400.0)  # above the footer on a 1920 screen
+	assert_float(s.hook_label.global_position.y + s.hook_label.size.y).is_less(1920.0 - 300.0)

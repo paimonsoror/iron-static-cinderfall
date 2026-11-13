@@ -52,7 +52,8 @@ func refresh() -> void:
 	_hud.bottom.weapon_bar.refresh()
 	var events: Array[Dictionary] = _api.active_events()
 	_hud.banners.ticker.refresh(events, _content, _api.crate_status())
-	_hud.banners.edge_arrows.refresh(events, to_screen, _hud.banners.position)
+	_hud.banners.fit_arrows()  # the ticker may have grown or shrunk
+	_hud.banners.edge_arrows.refresh(events, to_screen, _hud.banners.position + _hud.banners.edge_arrows.position)
 	_hud.banners.boss_bar.pips.set_phase(_api.boss_phase(), _api.boss_phase_count())
 	var def: BossDef = _content.boss(_boss_kind)
 	_hud.banners.boss_bar.title_text = Strings.t(def.name_key) if def != null else ""

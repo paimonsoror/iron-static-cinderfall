@@ -290,3 +290,20 @@ func test_the_session_lets_go_when_the_hud_leaves() -> void:
 	hud.get_parent().remove_child(hud)
 	assert_object(RunSession.current_api()).is_null()
 	hud.free()
+
+
+func test_the_arrow_zone_starts_below_the_ticker_lines() -> void:
+	var api: FakeRunApi = VarietyEKit.api_for("combat2")
+	api.fake_active_events = [
+		_ev(&"static_front", 0, true), _ev(&"floor_breach", 1, true, _cs.arena.max_x, _cs.arena.min_z), _ev(&"accord_window", 1, false),
+	]
+	var hud: CombatHud = VarietyEKit.hud(self, api)
+	await VarietyEKit.settle(get_tree())
+	hud.refresh()
+	var ticker: HudThreatTicker = hud.banners.ticker
+	assert_int(ticker.visible_lines()).is_equal(3)
+	var ticker_bottom: float = ticker.global_position.y + ticker.size.y
+	var zone_top: float = hud.banners.edge_arrows.global_position.y
+	assert_float(zone_top).is_greater_equal(ticker_bottom - 1.0)
+	assert_int(hud.banners.edge_arrows.visible_count()).is_equal(1)
+	assert_float(hud.banners.edge_arrows.arrows[0].global_position.y).is_greater_equal(ticker_bottom - 1.0)  # the breach arrow at the top edge clears the ticker
