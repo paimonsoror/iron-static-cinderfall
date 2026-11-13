@@ -93,10 +93,14 @@ static func step(world: SimWorld) -> void:
 		store.attack_cd[i] -= 1
 		if store.attack_cd[i] <= 0:
 			due.append(i)
+	if variety:
+		CoreHooks.step(world)
 	if due.is_empty():
 		return
 	_sort_by_id(store, due)
 	for i: int in due:
+		if alive[i] == 0:
+			continue  # killed earlier in this tick (a hook's blast, a neighbour's detonation)
 		_hit_core(world, i)
 		if one_time.has(i):
 			world.kill_enemy(i, DeathHooks.SOURCE_SELF)
@@ -120,6 +124,8 @@ static func damage_core(world: SimWorld, amount: float, enemy_id: int, type_inde
 		var before: float = world.core_hp
 		world.set_core_hp(before - remainder)
 		hp_damage = before - world.core_hp
+		if world.content.run != null and hp_damage > 0.0:
+			CoreHooks.on_core_changed(world, before, world.core_hp)
 		world.stats.core_damage_taken += hp_damage
 		if type_index >= 0 and type_index < world.stats.core_damage_by_type.size():
 			world.stats.core_damage_by_type[type_index] += hp_damage
@@ -169,9 +175,11 @@ static func _standoff_tick(world: SimWorld, index: int, type_index: int) -> void
 		return
 	var store: EnemyStore = world.enemies
 	store.attack_cd[index] -= 1
+	world.ext.aux_cd[index] = store.attack_cd[index]
 	if store.attack_cd[index] > 0:
 		return
 	store.attack_cd[index] = period_of(world, index, def)
+	world.ext.aux_cd[index] = store.attack_cd[index]  # the highest aux_cd among spitters = the one that just fired (the view)
 	world.ext.flags[index] |= F_FIRED
 	var flight: int = maxi(1, Formulas.ticks(def.beh(&"bolt_flight_s")))
 	var arena: ArenaDef = world.content.arena

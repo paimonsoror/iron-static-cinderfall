@@ -28,7 +28,8 @@ static func hit(world: SimWorld, enemy_index: int, base_damage: float, damage_le
 ## and conditional multipliers already applied by the caller; this applies effective armor (reduced by `flags` and
 ## shred), the boss rule of F_BOSS_HALF and debug_damage_mult, tallies by `source` (DamageSource.Id; a value outside
 ## the enum is not tallied), pushes ENEMY_DAMAGED and kills at 0 hp. Returns the damage dealt.
-# TODO(V4-N): wards and the shieldbearer reduction go here (F_NO_WARD skips them).
+## After armor and the boss rules the hit passes the wards (StatusSystem.absorb: a shieldbearer's cover, a WARDED elite's
+## own ward, a body under the ground; F_NO_WARD skips the wards).
 static func hit_ex(world: SimWorld, enemy_index: int, amount: float, flags: int, source: int) -> float:
 	var store: EnemyStore = world.enemies
 	if enemy_index < 0 or enemy_index >= store.capacity or store.alive[enemy_index] == 0:
@@ -40,6 +41,7 @@ static func hit_ex(world: SimWorld, enemy_index: int, amount: float, flags: int,
 	if (flags & F_BURN) == 0:
 		raw = maxf(1.0, raw - effective_armor(world, enemy_index, flags))
 	raw *= BossSystem.damage_taken_mult(world, enemy_index)
+	raw = StatusSystem.absorb(world, enemy_index, raw, flags)
 	raw *= world.config.debug_damage_mult
 	var hp_before: float = maxf(0.0, store.hp[enemy_index])
 	var dealt: float = minf(raw, hp_before)
@@ -64,6 +66,7 @@ static func effective_armor(world: SimWorld, enemy_index: int, flags: int) -> fl
 	var content: ContentSet = world.content
 	var armor: float = BossSystem.armor_of(world, enemy_index, content.enemies[world.enemies.type[enemy_index]].armor)
 	if content.run != null:
+		armor += EliteSystem.armor_add(world, enemy_index)  # PLATED
 		armor = maxf(0.0, armor + world.mods.enemy_armor_add - float(world.ext.shred_milli[enemy_index]) / 1000.0)
 	var piercing: UpgradeDef = content.upgrades[Ids.UP_ARMOR_PIERCING]
 	var eff: float = Formulas.effective_armor(
@@ -126,7 +129,16 @@ static func warden_hit(
 	return dealt
 
 
-## Restores up to `amount` hp (never above max_hp); pushes ENEMY_HEALED. Returns the hp restored.
-# TODO(V4-N): the stub heals nothing.
-static func heal(_world: SimWorld, _enemy_index: int, _amount: float) -> float:
-	return 0.0
+## Restores up to `amount` hp (never above max_hp); pushes ENEMY_HEALED(enemy id, healer enemy id, amount, hp after),
+## the healer being StatusSystem.healer_id (0 = none). Returns the hp restored.
+static func heal(world: SimWorld, enemy_index: int, amount: float) -> float:
+	var store: EnemyStore = world.enemies
+	if enemy_index < 0 or enemy_index >= store.capacity or store.alive[enemy_index] == 0 or amount <= 0.0:
+		return 0.0
+	var before: float = store.hp[enemy_index]
+	var after: float = minf(store.max_hp[enemy_index], before + amount)
+	if after <= before:
+		return 0.0
+	store.hp[enemy_index] = after
+	world.events.push(SimEventKind.Id.ENEMY_HEALED, store.id[enemy_index], StatusSystem.healer_id, after - before, after)
+	return after - before
