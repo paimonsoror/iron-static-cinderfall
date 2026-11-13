@@ -72,7 +72,62 @@ static func tick(w: SimWorld) -> void:
 	EventSystem.step(w)
 	AbilitySystem.step(w)
 	TurretSystem.step(w)
+	_sync_prev(w)
 	HazardSystem.step(w)
+
+
+## The movement step copies every position to prev_x / prev_z before it moves anyone; these tests have no movement step.
+static func _sync_prev(w: SimWorld) -> void:
+	for i: int in w.enemies.high_water:
+		w.enemies.prev_x[i] = w.enemies.x[i]
+		w.enemies.prev_z[i] = w.enemies.z[i]
+
+
+## The call as the command applies it: at the start of the next tick, before the event steps of that tick.
+static func call_on_next_tick(w: SimWorld, event_index: int) -> int:
+	w.tick += 1
+	w.events.current_tick = w.tick
+	var reason: int = EventSystem.call_event(w, 1000 + w.tick, event_index)
+	EventSystem.step(w)
+	AbilitySystem.step(w)
+	TurretSystem.step(w)
+	HazardSystem.step(w)
+	return reason
+
+
+## The world of a run whose kit grants `n` charges of the Deadfall Strike (a SIGNAL-like kit made in the test).
+static func kit_world(n: int) -> SimWorld:
+	var content: ContentSet = TestContent.variety()
+	var grant: OpDef = OpDef.new()
+	grant.kind = OpDef.Kind.GRANT
+	grant.target = &"event_charge"
+	grant.arg = &"deadfall_strike"
+	grant.value = float(n)
+	var kit: KitDef = KitDef.new()
+	kit.id = &"k_test_signal"
+	kit.index = content.kits.size()
+	kit.ops = [grant]
+	content.kits.append(kit)
+	var cfg: SimConfig = SimConfig.create(content, 1)
+	cfg.kit_index = kit.index
+	return SimWorld.new(cfg)
+
+
+## The slice content stretched to 15 waves and three acts (acts II and III with two event slots per wave), for plan rules.
+static func long_content() -> ContentSet:
+	var c: ContentSet = TestContent.variety()
+	for n: int in range(6, 16):
+		var s: WaveSlotDef = WaveSlotDef.new()
+		s.index = n
+		s.act = 2 if n <= 10 else 3
+		s.kind = WaveSlotDef.Kind.BOSS if n % 5 == 0 else WaveSlotDef.Kind.NORMAL
+		s.budget = 100.0
+		s.window_ticks = 2000
+		s.peak_bodied = 40
+		s.peak_minis = 20
+		s.event_slots = 2
+		c.run.waves.append(s)
+	return c
 
 
 static func run(w: SimWorld, ticks: int) -> void:
