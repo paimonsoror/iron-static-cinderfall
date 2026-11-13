@@ -167,7 +167,10 @@ static func to_line(rec: Dictionary) -> String:
 
 
 static func from_line(line: String) -> Dictionary:
-	var parsed: Variant = JSON.parse_string(line)
+	var json: JSON = JSON.new()
+	if json.parse(line) != OK:  # JSON.parse_string would print an engine error for a bad line
+		return {}
+	var parsed: Variant = json.data
 	if parsed is Dictionary:
 		var d: Dictionary = parsed
 		return d
