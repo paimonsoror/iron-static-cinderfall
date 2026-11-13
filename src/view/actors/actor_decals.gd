@@ -45,6 +45,12 @@ func setup(parent: Node3D, arena: ArenaDef) -> void:
 	_bar_basis = cam * Basis(Vector3.RIGHT, PI * 0.5)
 
 
+## High Contrast thickens the red ring of an elite (GDD 10.3): the same transform-only pool draws a wider band.
+func set_high_contrast(on: bool) -> void:
+	if _ring_mm != null:
+		_ring_mm.mesh = ActorMeshes.elite_ring(on)
+
+
 func begin_frame() -> void:
 	_shadows = 0
 	_bars = 0

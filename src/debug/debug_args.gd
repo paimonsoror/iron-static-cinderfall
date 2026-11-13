@@ -22,6 +22,7 @@ var reduced_flash: bool = false
 var hud_step: int = -1  ## --hud-step=<n>: pin the HUD sandbox to one state instead of cycling
 var hud: bool = false  ## --hud: the view sandbox draws the real CombatHud over the puppet's world (V5-B captures)
 var second_weapon: String = ""  ## --weapon2=<id>: the puppet's Warden also carries this weapon (the HUD's weapon bar shows two)
+var weapon2_active: bool = false  ## --weapon2-active: ... and holds it in hand
 ## Variety milestone (VARIETY_SPEC 13.8). --state=draft|route|boss_brief|salvage|combat2 pins the HUD sandbox to a
 ## FakeRunPresets state; --kit=<id>, --unlock=all|none|<id,id>, --daily are parsed here and wired into the launch by V2-D.
 var hud_state: String = ""
@@ -215,6 +216,8 @@ static func parse(args: PackedStringArray) -> DebugArgs:
 				a.hud = true
 			"--weapon2":
 				a.second_weapon = value
+			"--weapon2-active":
+				a.weapon2_active = true
 			"--hud-step":
 				if value.is_valid_int():
 					a.hud_step = maxi(0, value.to_int())

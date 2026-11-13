@@ -43,6 +43,7 @@ var _texts: FloatingTexts
 var _auras: VfxAuras
 var _flash: ScreenFlash
 var _chaos: FxChaos
+var _weapons: FxWeaponShots = FxWeaponShots.new()  ## the look of each gun's shot (scattergun fan, rifle through-line, LMG brass)
 var _facing: Basis = Basis.IDENTITY  ## the camera-facing basis of the billboard pools, as of the last render
 var _lit_meshes: Dictionary[StringName, ArrayMesh] = {}  ## full brightness, by pool name
 var _dim_meshes: Dictionary[StringName, ArrayMesh] = {}  ## Reduced Flash copies
@@ -73,9 +74,7 @@ func setup(content: ContentSet, rig: CameraRig, actors: ActorLayer) -> void:
 	_dim_meshes[&"ring"] = VfxMeshes.ring(0.9, 40, &"add_cyan", &"add_white", DIM)
 	_muzzles = _make_pool("Muzzle", _lit_meshes[&"muzzle"], MUZZLE_CAP, VfxPool.Mode.BILLBOARD, bounds)
 	_sparks = _make_pool("Sparks", VfxMeshes.streak(&"emit_amber"), SPARK_CAP, VfxPool.Mode.STREAK, bounds)
-	_debris = _make_pool(
-		"Debris", VfxMeshes.cube(&"gunmetal"), BURST_CAP * DEBRIS_PER_BURST, VfxPool.Mode.DEBRIS, bounds
-	)
+	_debris = _make_pool("Debris", VfxMeshes.cube(&"gunmetal"), BURST_CAP * DEBRIS_PER_BURST, VfxPool.Mode.DEBRIS, bounds)
 	_bursts = _make_pool("Bursts", _lit_meshes[&"burst"], BURST_CAP, VfxPool.Mode.BILLBOARD, bounds)
 	_dust = _make_pool("Dust", VfxMeshes.puff(&"add_white", 0.16), DUST_CAP, VfxPool.Mode.BILLBOARD, bounds)
 	_rings = _make_pool("EmpRings", _lit_meshes[&"ring"], RING_CAP, VfxPool.Mode.FLAT, bounds)
@@ -91,6 +90,8 @@ func setup(content: ContentSet, rig: CameraRig, actors: ActorLayer) -> void:
 	_chaos = FxChaos.new()
 	_chaos.setup(self, content, rig, actors, _sparks, bounds, _rng)
 	_pools.append_array(_chaos.pools())
+	_weapons.setup(self, bounds, _tracers, _sparks, _dust, _rng)
+	_pools.append_array(_weapons.pools())
 	if _actors != null:
 		_actors.footfall.connect(_on_footfall)
 	set_quality(_quality)
@@ -99,6 +100,7 @@ func setup(content: ContentSet, rig: CameraRig, actors: ActorLayer) -> void:
 func bind(sim: SimWorld) -> void:
 	unbind()
 	_sim = sim
+	_weapons.sim = sim
 	_flash_cd = 0.0
 	Events.shot_fired.connect(_on_shot_fired)
 	Events.enemy_died_at.connect(_on_enemy_died_at)
@@ -108,15 +110,13 @@ func bind(sim: SimWorld) -> void:
 
 
 func unbind() -> void:
-	if Events.shot_fired.is_connected(_on_shot_fired):
-		Events.shot_fired.disconnect(_on_shot_fired)
-	if Events.enemy_died_at.is_connected(_on_enemy_died_at):
-		Events.enemy_died_at.disconnect(_on_enemy_died_at)
-	if Events.core_hit.is_connected(_on_core_hit):
-		Events.core_hit.disconnect(_on_core_hit)
-	if Events.ability_activated.is_connected(_on_ability_activated):
-		Events.ability_activated.disconnect(_on_ability_activated)
+	for pair: Array in [[Events.shot_fired, _on_shot_fired], [Events.enemy_died_at, _on_enemy_died_at], [Events.core_hit, _on_core_hit], [Events.ability_activated, _on_ability_activated]]:
+		var sig: Signal = pair[0]
+		var handler: Callable = pair[1]
+		if sig.is_connected(handler):
+			sig.disconnect(handler)
 	_sim = null
+	_weapons.sim = null
 	for p: VfxPool in _pools:
 		p.clear()
 	if _chaos != null:
@@ -153,6 +153,7 @@ func set_quality(tier: int) -> void:
 	_texts.set_cap(TEXT_CAP_BY_TIER[_quality])
 	_auras.set_quality(_quality)
 	_chaos.set_quality(_quality)
+	_weapons.set_quality(_quality)
 
 
 ## Reduced Flash (GDD 10.3): no full-screen flash, dimmer muzzle, burst and EMP flashes, no shimmer.
@@ -180,6 +181,10 @@ func tracer_capacity() -> int:
 
 func spark_count() -> int:
 	return _sparks.live_count()
+
+
+func weapon_shots() -> FxWeaponShots:
+	return _weapons
 
 
 func debris_count() -> int:
@@ -252,7 +257,7 @@ func _on_shot_fired(source: int, target_id: int) -> void:
 	if _chaos.owns_shot(source):  # the torch and the lance are beams (V4-X): the ribbon follows, the line fires; no tracer, no muzzle star
 		_chaos.beams.shot(source, from, hit)
 		if has_target:
-			_impact_sparks(hit, from - hit, SPARKS_PER_HIT[_quality], 1.0)
+			_weapons.impact_sparks(hit, from - hit, SPARKS_PER_HIT[_quality], 1.0)
 		return
 	var overdrive: bool = source == DamageSource.Id.WARDEN and _sim.abilities.is_active(Ids.AB_OVERDRIVE)
 	var life: float = TRACER_LIFE_OVERDRIVE_S if overdrive else TRACER_LIFE_S
@@ -260,7 +265,8 @@ func _on_shot_fired(source: int, target_id: int) -> void:
 	var size: float = 0.45 if _reduced else 0.85
 	var _flash_slot: int = _muzzles.spawn(from, Vector3.ZERO, size, size * 0.2, 0.07, _rng.randf_range(0.0, TAU))
 	if has_target:
-		_impact_sparks(hit, from - hit, SPARKS_PER_HIT[_quality], 1.0)
+		_weapons.impact_sparks(hit, from - hit, SPARKS_PER_HIT[_quality], 1.0)
+	_weapons.shot(source, from, hit, has_target)
 
 
 func _on_enemy_died_at(_enemy_id: int, kind: StringName, x: float, z: float, scrap: int) -> void:
@@ -312,7 +318,7 @@ func _on_core_hit(enemy_id: int, _kind: StringName, hp_damage: float, absorbed: 
 	var at: Vector3 = core + dir * _arena.core_radius + Vector3(0.0, 1.1, 0.0)
 	if hp_damage > 0.0:
 		var _flash_slot: int = _muzzles.spawn(at, Vector3.ZERO, 0.8, 0.15, 0.1, _rng.randf_range(0.0, TAU))
-		_impact_sparks(at, dir, SPARKS_PER_HIT[_quality], 1.4)
+		_weapons.impact_sparks(at, dir, SPARKS_PER_HIT[_quality], 1.4)
 		if hp_damage >= 25.0 and _flash_cd <= 0.0:
 			_flash_cd = CORE_FLASH_COOLDOWN_S
 			_flash.trigger(_content.tokens.color(&"chorus_red"), 0.14, 0.28)
@@ -349,19 +355,6 @@ func _on_footfall(world_pos: Vector3, weight: float) -> void:
 
 
 ## `n` sparks leaving `at`, mostly along `away`; `power` scales their length and speed.
-func _impact_sparks(at: Vector3, away: Vector3, n: int, power: float) -> void:
-	var flat: Vector3 = Vector3(away.x, 0.0, away.z)
-	var base: Vector3 = Vector3.LEFT
-	if flat.length() > 0.01:
-		base = flat.normalized()
-	for _i: int in n:
-		var jitter: Vector3 = Vector3(_rng.randf_range(-1.0, 1.0), 0.0, _rng.randf_range(-1.0, 1.0)) * 0.8
-		var dir: Vector3 = (base * _rng.randf_range(0.3, 1.0) + jitter).normalized()
-		var vel: Vector3 = dir * _rng.randf_range(3.5, 7.0) * power + Vector3(0.0, _rng.randf_range(1.5, 3.5), 0.0)
-		var life: float = _rng.randf_range(0.18, 0.3)
-		var _spark: int = _sparks.spawn(at, vel, 0.5 * power, 0.06, life)
-
-
 func _origin_of(source: int) -> Vector3:
 	if source == DamageSource.Id.WARDEN:
 		return _actors.warden_muzzle_position()

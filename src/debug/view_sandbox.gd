@@ -7,6 +7,7 @@ extends Node
 ##   --scenario=boss:<id>|event:<id>        V5-B: the real boss or event systems run (see SimPuppet)
 ##   --hud [--weapon2=<id>]                 the real CombatHud over the puppet's world (a composite like the game's)
 ##   --high-contrast  --reduced-flash       accessibility looks (the HUD follows them too)
+##   --debug-perf --measure=<seconds>       the [PERF] line every 5 s, quit after N seconds (the fps cap is lifted: V5-B perf table)
 ##   --debug-overlay[=all|flow,slots,stuck,spawns]   debug layers   --debug-perf   PerfHud and the [PERF] log line
 ##   --seed=<n>   --look=current|stylised|stylised_plus   the Warden look (W3-C look-dev; see look_dev_sandbox.tscn for the rest)
 ## In a capture the puppet steps a fixed 1/60 s per frame, so `--capture-frames=N` always shows second N/60 of the
@@ -26,6 +27,8 @@ var _hud: CombatHud
 var _hud_layer: CanvasLayer
 var _runner: RunController  ## a controller that is not in the tree: it only lends its RunApi (queries on the puppet's world)
 var _flags_set: Array[StringName] = []
+var _measure_s: float = 0.0
+var _elapsed: float = 0.0
 
 
 func _ready() -> void:
@@ -46,6 +49,7 @@ func _ready() -> void:
 		_view.arena_view.set_look(args.look)
 	_puppet = SimPuppet.new()
 	_puppet.second_weapon = StringName(args.second_weapon)
+	_puppet.second_active = args.weapon2_active
 	add_child(_puppet)
 	_puppet.setup(
 		_content, args.scenario if args.scenario != "" else "hold50", args.run_seed if args.has_seed else 1,
@@ -59,6 +63,9 @@ func _ready() -> void:
 	_overlay.apply_spec(args.debug_overlay)
 	if args.debug_perf:
 		_add_perf_hud()
+	_measure_s = args.measure_s
+	if _measure_s > 0.0:
+		Engine.max_fps = 0  # the 60 fps cap would hide headroom when measuring
 	if args.hud:
 		_add_hud(args)
 	get_viewport().size_changed.connect(_refit)
@@ -75,6 +82,9 @@ func _exit_tree() -> void:
 
 func _process(delta: float) -> void:
 	var dt: float = SimPuppet.TICK_DT if _fixed_step else delta
+	_elapsed += delta
+	if _measure_s > 0.0 and _elapsed >= _measure_s:
+		get_tree().quit(0)
 	var alpha: float = _puppet.advance(dt)
 	if _fixed_step:
 		alpha = 1.0
@@ -155,6 +165,9 @@ func _add_hud(args: DebugArgs) -> void:
 	_hud = packed.instantiate() as CombatHud
 	root.add_child(_hud)
 	_hud.setup(_runner.api, _content, _view)
+	var boss: int = _puppet.world.boss_store_index()  # the boss spawned during setup, before this HUD listened: tell it now
+	if boss >= 0:
+		Events.boss_spawned.emit(_puppet.world.enemies.id[boss], Ids.ENEMIES[_puppet.world.enemies.type[boss]])
 
 
 ## True when the ActorLayer says it can draw the variety enemy types. The handshake with the view task (V2-F): once

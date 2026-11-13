@@ -21,6 +21,11 @@ const SPAWN_EVERY_TICKS: int = 5
 const DAMAGE_MULT: float = 0.3  ## the crowd must survive long enough to be looked at
 const BOSS_ESCORT: int = 14
 const MIX: Array[int] = [0, 0, 0, 1, 0, 2, 0, 0, 1, 2]  ## six skitters, two hollow wardens, two rushers
+## `mixed<N>+<M>` (V5-B legibility pass): every bodied enemy type of the roster in rotation, so a crowd shows each of them once in ten.
+const MIX_ALL: Array[int] = [
+	Ids.EN_SKITTER, Ids.EN_SKITTER, Ids.EN_HOLLOW, Ids.EN_RUSHER, Ids.EN_BURSTER, Ids.EN_SPITTER, Ids.EN_SPLITTER, Ids.EN_SHIELDBEARER,
+	Ids.EN_RECLAIMER, Ids.EN_JAMMER,
+]
 ## Seconds after the start: when each action first happens (abilities repeat whenever they are ready again).
 const T_TURRET_0: float = 0.5
 const T_TURRET_1: float = 1.0
@@ -43,7 +48,9 @@ var scenario: String = "hold50"
 var hold: int = 50
 var boss_mode: bool = false
 var boss_kind: StringName = &""  ## `boss:<id>`: which boss (empty = the Siege Hulk of the plain `boss` scenario)
+var mixed: bool = false  ## `mixed<N>+<M>`: the crowd is drawn from MIX_ALL
 var event_id: StringName = &""  ## `event:<id>`: which chaos event to open
+var second_active: bool = false  ## set before `setup`: ... and holds it in hand
 var second_weapon: StringName = &""  ## set before `setup`: the Warden also carries this weapon in slot 2 (a HUD capture shows two cards)
 var tick_usec_avg: float = 0.0  ## moving average of one puppet tick (the sim systems), for the perf line
 var tick_sink: Callable = Callable()  ## called with the microseconds of every tick (PerfHud.record_tick_usec)
@@ -68,7 +75,7 @@ var _core_refill: float = 1.0
 ## `scenario_name`: `hold<N>` (N clamped to the enemy cap), `hold<N>+<M>` (M minis, clamped to `swarm_cap`), `chain`
 ## `chain<N>+<M>`, `boss`, `boss:<id>` or `event:<id>`; anything else is hold50. Returns {hold, boss, minis, chain, boss_kind, event}.
 static func parse(scenario_name: String, enemy_cap: int, swarm_cap: int = 0) -> Dictionary[String, Variant]:
-	var out: Dictionary[String, Variant] = {"hold": 50, "boss": false, "minis": 0, "chain": false, "boss_kind": &"", "event": &""}
+	var out: Dictionary[String, Variant] = {"hold": 50, "boss": false, "minis": 0, "chain": false, "boss_kind": &"", "event": &"", "mixed": false}
 	var crowd: String = scenario_name.substr(4) if scenario_name.begins_with("hold") else ""
 	var plus: int = crowd.find("+")
 	if scenario_name == "boss":
@@ -81,6 +88,12 @@ static func parse(scenario_name: String, enemy_cap: int, swarm_cap: int = 0) -> 
 	elif scenario_name.begins_with("event:"):
 		out["hold"] = mini(LAB_HOLD, enemy_cap)
 		out["event"] = StringName(scenario_name.substr(6))
+	elif scenario_name.begins_with("mixed") and scenario_name.substr(5).find("+") > 0:  # `mixed<N>+<M>`
+		var tail_mixed: String = scenario_name.substr(5)
+		var cut: int = tail_mixed.find("+")
+		out["mixed"] = true
+		out["hold"] = clampi(tail_mixed.substr(0, cut).to_int(), 1, enemy_cap)
+		out["minis"] = clampi(tail_mixed.substr(cut + 1).to_int(), 0, swarm_cap)
 	elif scenario_name.begins_with("chain"):  # `chain` (CHAIN_HOLD bodies) or `chain<N>+<M>` (N bodies and M minis around the line)
 		var tail: String = scenario_name.substr(5)
 		var split: int = tail.find("+")
@@ -107,6 +120,7 @@ func setup(content: ContentSet, scenario_name: String = "hold50", puppet_seed: i
 	boss_mode = spec["boss"]
 	boss_kind = spec["boss_kind"]
 	event_id = spec["event"]
+	mixed = spec["mixed"]
 	_lab = boss_kind != &"" or event_id != &""
 	chaos.minis = spec["minis"]
 	chaos.chain = spec["chain"]
@@ -123,10 +137,13 @@ func setup(content: ContentSet, scenario_name: String = "hold50", puppet_seed: i
 	chaos.setup(world, content, _rng)
 	if second_weapon != &"" and content.weapon(second_weapon) != null and world.arsenal.slot_count > 1:
 		ArsenalSystem.give_weapon(world, 1, Ids.WEAPONS.find(second_weapon))
+		if second_active:
+			var _swap: int = ArsenalSystem.swap(world, 0, 1)
 	if boss_mode:
-		_core_floor = 0.08
-		_core_refill = 0.3
-		world.set_core_hp(world.core_max_hp * 0.3)
+		var named: bool = boss_kind != &""  # a named boss is looked at, not survived: the core stays healthy
+		_core_floor = 0.4 if named else 0.08
+		_core_refill = 0.7 if named else 0.3
+		world.set_core_hp(world.core_max_hp * _core_refill)
 	if boss_mode or hold >= 40:
 		var boss_type: int = BOSS_TYPES.get(boss_kind, Ids.EN_HULK)
 		var boss: int = _spawn_along_path(boss_type, 0.55)
@@ -135,7 +152,7 @@ func setup(content: ContentSet, scenario_name: String = "hold50", puppet_seed: i
 			_pick_variant()
 	_event_index = content.event_index(event_id) if event_id != &"" else -1
 	while world.alive_count() < hold:
-		var _i: int = _spawn_along_path(MIX[_spawned_n % MIX.size()], _rng.randf_range(0.05, 1.0))
+		var _i: int = _spawn_along_path(_mix_at(_spawned_n), _rng.randf_range(0.05, 1.0))
 		_spawned_n += 1
 	for _t: int in PREROLL_TICKS:
 		_tick()
@@ -288,12 +305,16 @@ func _repair_core() -> void:
 		world.set_core_hp(world.core_max_hp * _core_refill)
 
 
+func _mix_at(n: int) -> int:
+	return MIX_ALL[n % MIX_ALL.size()] if mixed else MIX[n % MIX.size()]
+
+
 ## Keeps `hold` enemies alive: a replacement walks in from a spawn region every few ticks.
 func _top_up() -> void:
 	var bodied: int = world.alive_count() - (chaos.minis_alive() if chaos.minis > 0 else 0)
 	if bodied >= hold or _clock % SPAWN_EVERY_TICKS != 0:
 		return
-	var kind: int = MIX[_spawned_n % MIX.size()]
+	var kind: int = _mix_at(_spawned_n)
 	_spawned_n += 1
 	var _i: int = _spawn_along_path(kind, 0.0)
 

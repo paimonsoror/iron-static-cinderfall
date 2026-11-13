@@ -98,15 +98,16 @@ static func bolt(outer_mat: StringName, core_mat: StringName, scale: float = 1.0
 	return b.build([outer_mat, core_mat], scale)
 
 
-## The red ring under an elite (VARIETY_SPEC 5.2): a band of radius 1 with four chevrons pointing at the centre.
-static func elite_ring(mat_id: StringName) -> ArrayMesh:
+## The red ring under an elite (VARIETY_SPEC 5.2): a band of radius 1 with four chevrons pointing at the centre. `inner` is where the band
+## starts (0.84: a thin ring; High Contrast thickens it, GDD 10.3, with 0.66).
+static func elite_ring(mat_id: StringName, inner: float = 0.84) -> ArrayMesh:
 	var b: Builder = Builder.new()
-	b.add_band(0.84, 1.0, 28, 0)
+	b.add_band(inner, 1.0, 28, 0)
 	for k: int in 4:
 		var a: float = TAU * float(k) / 4.0 + PI * 0.25
 		var dir: Vector3 = Vector3(cos(a), 0.0, sin(a))
 		var side: Vector3 = Vector3(-sin(a), 0.0, cos(a))
-		b.tri(0, dir * 0.84 + side * 0.13, dir * 0.84 - side * 0.13, dir * 0.58)
+		b.tri(0, dir * inner + side * 0.13, dir * inner - side * 0.13, dir * (inner - 0.26))
 	return b.build([mat_id], 1.0)
 
 

@@ -4,14 +4,15 @@ extends RefCounted
 ## (small balls on low arcs that fan out of the muzzle) and the spitter's bolt (a RED ball on its way to the core). Each is a BILLBOARD that
 ## flies from its origin to the point the sim says it lands (`delayed_hit(kind, x, z, ticks)`) in exactly the ticks the sim gives, so the
 ## ball arrives on the tick the blast starts; the ground ring under it is the telegraph (`FxTelegraph.delayed`), this is the thing itself.
-## One colour per pool (SPEC 5.6 rule 3): shells are amber-white, hornets cyan-white and the enemy's bolt is red. Pools (allocated once at the HIGH size): shells 4 slots and hornets 20, together limited to the
+## One colour per pool (SPEC 5.6 rule 3): shells are amber-white, hornets cyan and the enemy's bolt is red. Pools (allocated once at the HIGH size): shells 4 slots and hornets 20, together limited to the
 ## tier's 12 / 18 / 24 (`VisualQuality.lob_cap`, shells first); the spitter's bolts 12 slots on EVERY tier, because an enemy projectile
 ## is never tier-gated. The origin of a shell or a hornet is the Warden's muzzle; the origin of a bolt is the spitter that fired it (the one
 ## whose timer was just reset, else the nearest to the core), else the standoff ring. Pool exhaustion drops the oldest.
 
 const SHELL_SLOTS: int = 4
 const SHELL_SIZE_M: float = 0.5
-const HORNET_SIZE_M: float = 0.22
+const HORNET_SIZE_M: float = 0.2  ## the width of a hornet's streak
+const HORNET_STREAK_M: float = 0.95  ## its length
 const BOLT_SIZE_M: float = 0.36
 const BOLT_HEIGHT_M: float = 1.0  ## the bolt lands this high on the core cage
 const END_Y: float = 0.3
@@ -34,7 +35,8 @@ func setup(parent: Node3D, bounds: AABB, ctx: FxContext) -> void:
 	_ctx = ctx
 	var friendly: int = VisualQuality.LOB_CAP[VisualQuality.Tier.HIGH]
 	shells = _make(parent, "LobShells", VfxMeshes.orb(&"add_amber", &"add_white"), SHELL_SLOTS, bounds)
-	hornets = _make(parent, "LobHornets", VfxMeshes.orb(&"add_cyan", &"add_white"), friendly - SHELL_SLOTS, bounds)
+	hornets = _make(parent, "LobHornets", VfxMeshes.tracer(&"add_cyan"), friendly - SHELL_SLOTS, bounds)
+	hornets.streak_len = HORNET_STREAK_M
 	bolts = _make(parent, "LobBolts", VfxMeshes.orb(&"add_red", &"add_red"), VisualQuality.BOLT_CAP[VisualQuality.Tier.HIGH], bounds)
 	set_quality(ctx.tier)
 
