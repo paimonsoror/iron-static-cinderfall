@@ -9,8 +9,8 @@ extends RefCounted
 ## S + 600, and so on every 600 ticks; a stun holds the clock and the telegraph. When it lands with the Shield up it does
 ## nothing (F_BRACED); otherwise the turrets are offline for 240 ticks and the magazine of the weapon in the Warden's
 ## hands is emptied (a heat weapon has none and keeps firing). The stomp never touches the core.
-## Breaches: on the tick T its HP is at or below 66% (then 33%) the phase advances and the cracks show
-## (BOSS_TELEGRAPH ATK_BREACH, 150, an announcement: BossState keeps `telegraph_attack` for the stomp); at T + 150
+## Breaches: on the tick T its HP is at or below 66% (then 33%) the phase advances (BOSS_PHASE) and the cracks show
+## (timers[T_BREACH] = 150; no BOSS_TELEGRAPH, which belongs to the stomp); at T + 150
 ## three borers come out of each of two breach points of the arena. `breach_points` gives the cracked points to the
 ## view. Borers that find a cap full wait in the spawn queue. One breach at a time: a hit that crosses both
 ## thresholds opens the second after the first. An arena without breach points or a content without the borer turns a
@@ -121,7 +121,6 @@ static func _start_breach(world: SimWorld) -> void:
 		b.timers[T_POINT + k] = ((stage * want + k) % points.size()) + 1 if k < want else 0
 	var borer: EnemyDef = world.content.enemies[Ids.EN_BORER]
 	b.timers[T_BREACH] = BossKit.ticks(world, &"breach_warn_s", borer.beh(&"breach_delay_s", 2.5))
-	BossKit.announce(world, BossState.ATK_BREACH, b.timers[T_BREACH])
 
 
 ## The cracked points open: `breach_borers` borers at each, on a small ring, in a fixed order.

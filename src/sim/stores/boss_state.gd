@@ -17,9 +17,9 @@ const ATK_NONE: int = -1
 const ATK_HATCH: int = 0  ## brood carrier: the hatches open and release motes
 const ATK_LANCE: int = 1  ## lance platform: the beam at the core
 const ATK_STOMP: int = 2  ## tremor rig: turrets offline, the magazine emptied
-const ATK_BREACH: int = 3  ## tremor rig: borers come out of the breach points (event only, see BossTremorRig)
+const ATK_BREACH: int = 3  ## reserved (a breach is announced by BOSS_PHASE and read from BossTremorRig.breach_points)
 const ATK_CHARGE: int = 4  ## overclocked hulk: the charge starts
-const ATK_REDEPLOY: int = 5  ## aegis array: the exposed window ends (event only: nothing to interrupt)
+const ATK_REDEPLOY: int = 5  ## reserved (the exposed window is read from exposed_left; no event)
 
 ## `flags` bits.
 const F_BEGUN: int = 1  ## the first step after the spawn has run (parts and escorts were sent)

@@ -9,8 +9,8 @@ extends RefCounted
 ## the spawn, 2 after the first exposed window, 1 after the second; when that last pylon falls the array stays exposed
 ## for good. The phase is the deployment (0, 1, 2) and 3 for the final exposed state, so the bar shows 4 pips.
 ## Timeline: the pylons leave on the first step after the spawn. On the tick T the last pylon of a deployment dies the
-## window opens (F_EXPOSED, exposed_left 600, BOSS_TELEGRAPH ATK_REDEPLOY 600 as an announcement); the next deployment
-## leaves at T + 600 (BOSS_PHASE). The EMP drops the protection for 3 s (180 ticks) although pylons live.
+## window opens (F_EXPOSED, exposed_left 600; no event of its own: the last pylon's death is the signal); the next
+## deployment leaves at T + 600 (BOSS_PHASE). The EMP drops the protection for 3 s (180 ticks) although pylons live.
 ## Pylons are `ward_pylon` enemies of their own (300 HP, a priority target): the script parks them as attackers that
 ## never hit and carries them on a ring of `orbit_m` around the boss. A pylon that finds no room (a cap) is owed and
 ## sent on a later tick. They die with the boss.
@@ -100,7 +100,6 @@ static func _step_exposed(world: SimWorld) -> void:
 			BossKit.set_phase(world, total)
 			return
 		b.exposed_left = BossKit.ticks(world, &"exposed_s", 10.0)
-		BossKit.announce(world, BossState.ATK_REDEPLOY, b.exposed_left)
 		return
 	if b.exposed_left <= 0:
 		return

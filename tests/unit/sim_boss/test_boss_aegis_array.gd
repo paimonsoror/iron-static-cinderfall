@@ -58,11 +58,10 @@ func test_first_60_seconds_deployments_of_3_2_1_with_a_600_tick_window_after_eac
 	assert_float(BossSystem.damage_taken_mult(w, i)).is_equal(1.0)
 	assert_array(VarietyLKit.spawn_ticks(w, PYLON)).is_equal([1, 701, 1401])
 	assert_int(w.stats.kills_by_type[PYLON]).is_equal(6)
-	assert_array(VarietyLKit.telegraph_ticks(w, BossState.ATK_REDEPLOY)).is_equal([101, 801])
-	for e: SimEvent in VarietyLKit.events_of(w, SimEventKind.Id.BOSS_TELEGRAPH):
-		assert_int(e.b).is_equal(600)
+	# no telegraph event: the audio hears the window in the last pylon's death, the HUD reads exposed_left
+	assert_int(VarietyLKit.events_of(w, SimEventKind.Id.BOSS_TELEGRAPH).size()).is_equal(0)
 	assert_array(VarietyLKit.phases(w)).is_equal([Vector2i(1, 4), Vector2i(2, 4), Vector2i(3, 4)])
-	assert_int(w.boss.telegraph_attack).is_equal(BossState.ATK_NONE)  # the window is an announcement, not an attack
+	assert_int(w.boss.telegraph_attack).is_equal(BossState.ATK_NONE)
 	assert_int(VarietyLKit.events_of(w, SimEventKind.Id.CORE_HIT).size()).is_equal(0)  # parked pylons never hit
 
 

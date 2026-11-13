@@ -11,6 +11,9 @@ extends RefCounted
 ## Clock convention: a boss file counts its own ticks from the tick after the spawn, and a stunned boss does not count
 ## (its timers and telegraphs hold). An attack telegraphed at tick T with `b` ticks lands at tick T + b when no stun
 ## falls between.
+## BOSS_TELEGRAPH is pushed only for a blow of the boss itself (hatch, beam, stomp, charge): the audio plays the boss's
+## warning on every one and schedules the blow `b` ticks later. What is not such a blow (the Aegis window, a breach)
+## is carried by BOSS_PHASE and by BossState.
 
 
 ## The BossDef of an enemy type, or null (a boss body that the data file does not list as a boss).
@@ -81,12 +84,6 @@ static func telegraph(world: SimWorld, attack: int, lead: int) -> void:
 	b.telegraph_attack = attack
 	b.telegraph_left = maxi(1, lead)
 	world.events.push(SimEventKind.Id.BOSS_TELEGRAPH, attack, b.telegraph_left)
-
-
-## A warning that nothing can interrupt (a breach, the end of the exposed window): the event only, BossState keeps
-## `telegraph_attack` for the attacks a tool can answer.
-static func announce(world: SimWorld, attack: int, lead: int) -> void:
-	world.events.push(SimEventKind.Id.BOSS_TELEGRAPH, attack, maxi(1, lead))
 
 
 static func clear_telegraph(world: SimWorld) -> void:
