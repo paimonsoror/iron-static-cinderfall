@@ -17,8 +17,10 @@ static func grant(summary: RunSummary) -> bool:
 	if summary.result != RunResult.Id.VICTORY and summary.result != RunResult.Id.DEFEAT:
 		return false
 	var launch: Dictionary = launch_of(summary)
-	var granted: bool = Save.grant_run_reward(
-		summary.run_id, summary.result, summary.data_reward, summary.core_hp, extras_of(summary, Save.content_set(), launch))
+	var extras: Dictionary = {}
+	if not launch.is_empty():
+		extras = extras_of(summary, Save.content_set(), launch)
+	var granted: bool = Save.grant_run_reward(summary.run_id, summary.result, summary.data_reward, summary.core_hp, extras)
 	if not granted and Save.profile_dirty():
 		var _retried: bool = Save.flush()
 	flush_pending = Save.profile_dirty()
@@ -27,17 +29,19 @@ static func grant(summary: RunSummary) -> bool:
 	return granted
 
 
-## How the run of `summary` was started, from the live run when it is this one: { "kit": StringName, "daily": bool }.
-## A run that is not live (a stale run file closed at launch, a test) was a plain run with the profile's kit.
+## How the run of `summary` was started: { "kit": StringName, "daily": bool }, known only to the live generated run
+## (`Game.run` with this run id). {} for anything else (a stale run file closed at launch, a run of the legacy five-wave
+## content, a controller driven without `Game`): such a run is paid its Data and nothing of the Archive layer (milestones,
+## records, Daily Run) is recorded for it.
 static func launch_of(summary: RunSummary) -> Dictionary:
 	var live: RunController = Game.run
-	if live != null and live.run_id == summary.run_id and live.sim != null:
-		var config: SimConfig = live.sim.config
-		var kit_id: StringName = Profile.DEFAULT_KIT
-		if config.kit_index >= 0 and config.kit_index < config.content.kits.size():
-			kit_id = config.content.kits[config.kit_index].id
-		return {"kit": kit_id, "daily": config.daily}
-	return {"kit": Save.profile.kit, "daily": false}
+	if live == null or live.run_id != summary.run_id or live.sim == null or not live.sim.content.is_variety():
+		return {}
+	var config: SimConfig = live.sim.config
+	var kit_id: StringName = Profile.DEFAULT_KIT
+	if config.kit_index >= 0 and config.kit_index < config.content.kits.size():
+		kit_id = config.content.kits[config.kit_index].id
+	return {"kit": kit_id, "daily": config.daily}
 
 
 ## What the Archive layer of the profile learns from a finished run (RewardLedger lists the keys): the best wave, the

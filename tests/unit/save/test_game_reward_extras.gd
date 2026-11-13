@@ -82,12 +82,23 @@ func test_a_daily_run_carries_the_date_it_started_on() -> void:
 	assert_dict(e["daily"]).is_equal({"date": "2025-11-13"})
 
 
-func test_a_run_that_is_not_live_was_a_plain_run_with_the_profiles_kit() -> void:
-	Save.profile.unlocks.append("k_ledger")
-	Save.set_kit(&"k_ledger")
-	var launch: Dictionary = GameRewards.launch_of(_summary(RunResult.Id.DEFEAT, 3))
-	assert_str(str(launch["kit"])).is_equal("k_ledger")
-	assert_bool(launch["daily"]).is_false()
+func test_a_run_that_is_not_live_has_no_launch_and_is_paid_as_plain_data() -> void:
+	assert_dict(GameRewards.launch_of(_summary(RunResult.Id.VICTORY, 15, true))).is_empty()
+	assert_bool(GameRewards.grant(_summary(RunResult.Id.VICTORY, 15, true))).is_true()
+	assert_int(Save.profile.data).is_equal(60)  # no milestone, no record: only the run's Data
+	assert_int(Save.profile.claimed.size()).is_equal(0)
+	assert_int(Save.profile.best_wave).is_equal(0)
+	assert_int(Save.profile.missions_completed).is_equal(1)
+	assert_dict(Save.last_reward).is_not_empty()
+
+
+func test_a_live_run_of_the_legacy_content_is_plain_too() -> void:
+	var cfg: SimConfig = SimConfig.create(TestContent.baseline(), 3)
+	_live = auto_free(RunController.new())
+	_live.run_id = RUN_ID
+	_live.sim = SimWorld.new(cfg)
+	Game.run = _live
+	assert_dict(GameRewards.launch_of(_summary(RunResult.Id.VICTORY, 5))).is_empty()
 
 
 func test_the_live_run_says_which_kit_and_whether_it_was_daily() -> void:
@@ -96,7 +107,7 @@ func test_the_live_run_says_which_kit_and_whether_it_was_daily() -> void:
 	assert_str(str(launch["kit"])).is_equal("k_gunline")
 	assert_bool(launch["daily"]).is_true()
 	var other: Dictionary = GameRewards.launch_of(_summary(RunResult.Id.DEFEAT, 3, false, ["pistol"], "999-1"))  # not this run
-	assert_bool(other["daily"]).is_false()
+	assert_dict(other).is_empty()
 
 
 func test_a_victory_pays_the_run_and_its_milestones_once() -> void:
