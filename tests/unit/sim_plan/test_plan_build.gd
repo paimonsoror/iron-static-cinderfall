@@ -57,7 +57,7 @@ func test_golden_plan_of_seeds_1_to_3() -> void:
 		3: [[0, 0, 2, 1], [0, 0, 2, 6], [0, 3, 1, 2]],
 	}
 	var variants: Dictionary[int, int] = {1: 0, 2: 2, 3: 0}
-	var c: ContentSet = VarietyAKit.content()
+	var c: ContentSet = VarietyAKit.slice_content()  # 3 packs, 1 modifier: the content the numbers above were recorded on
 	for s: int in [1, 2, 3]:
 		var plan: RunPlan = RunPlanSystem.build_for(c, s)
 		assert_array(Array(plan.boss_ids)).is_equal([Ids.EN_HULK, -1, -1])
@@ -70,7 +70,7 @@ func test_golden_plan_of_seeds_1_to_3() -> void:
 
 
 func test_golden_groups_of_seed_1_wave_2() -> void:
-	var c: ContentSet = VarietyAKit.content()
+	var c: ContentSet = VarietyAKit.slice_content()
 	var o: RouteOption = RunPlanSystem.build_for(c, 1).wave(2).options[0]
 	var got: Array = []
 	for g: SpawnGroupDef in o.groups:
@@ -132,8 +132,12 @@ func test_option_a_is_standard_and_option_b_is_hot_with_a_modifier() -> void:
 			assert_int(pw.options[1].modifier_index).is_not_equal(-1)
 			if pw.act == 1:
 				assert_bool(pw.options[0].hot).is_false()  # "both hot" starts in act II
-			if not pw.options[0].hot:
-				assert_int(pw.options[0].modifier_index).is_equal(-1)  # the slice has no mild modifier
+			var mod_a: int = pw.options[0].modifier_index
+			if not pw.options[0].hot:  # a standard option has no modifier or a mild one
+				assert_bool(mod_a == -1 or c.run.modifiers[mod_a].list == ModifierDef.List.MILD).is_true()
+			else:
+				assert_bool(mod_a >= 0 and c.run.modifiers[mod_a].list == ModifierDef.List.HOT).is_true()
+			assert_int(c.run.modifiers[pw.options[1].modifier_index].list).is_equal(ModifierDef.List.HOT)
 
 
 func test_both_hot_waves_start_in_act_two_and_happen_about_one_time_in_seven() -> void:

@@ -22,7 +22,12 @@ const DRUMS_PER_ACT: int = 3
 static func build(world: SimWorld) -> RunPlan:
 	if not world.content.is_variety():
 		return null
-	return build_for(world.content, world.config.run_seed)
+	var plan: RunPlan = build_for(world.content, world.config.run_seed)
+	world.plan = plan
+	for def: DirectiveDef in world.content.directives:  # a kit that gave a plan-patch directive at tick 0
+		if def.hook == ModSystem.HOOK_PLAN_PATCH and world.draft.stacks_of(def.index) > 0:
+			PlanPatch.apply(world, def.index)
+	return plan
 
 
 ## The plan of `run_seed` on variety content. Pure: the same inputs always give the same plan.
@@ -55,10 +60,9 @@ static func build_for(content: ContentSet, run_seed: int) -> RunPlan:
 
 
 ## Patches the remaining waves for a directive that changes the future (chorus_handshake, static_pact, open_gate),
-## with the stream `plan.patch:<directive>:<w>`.
-# TODO(V4-C): the three plan patches.
-static func patch(_world: SimWorld, _directive_index: int) -> void:
-	pass
+## with the stream `plan.patch:<directive>:<w>` (see PlanPatch). DraftSystem calls it after the pick.
+static func patch(world: SimWorld, directive_index: int) -> void:
+	PlanPatch.apply(world, directive_index)
 
 
 ## The boss of every act (an enemy index, -1 when the act has no boss pool) from `plan.boss`, then the Node 9 variant.

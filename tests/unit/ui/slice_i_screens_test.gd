@@ -10,6 +10,8 @@ var _legacy: ContentSet
 func before_test() -> void:
 	ScreensTestKit.fresh_save()
 	_variety = TestContent.variety()
+	_variety.run.packs.resize(3)  # these screens are pinned to the slice packs: five machines
+	_variety.run.modifiers.resize(1)
 	_legacy = TestContent.baseline()
 
 

@@ -6,7 +6,14 @@
     { "id": "u_w_lmg", "branch": "armory", "tier": 1, "cost": 120, "grants": ["lmg"] },
     { "id": "u_w_mortar", "branch": "armory", "tier": 2, "cost": 160, "grants": ["slag_mortar"] },
     { "id": "u_w_torch", "branch": "armory", "tier": 2, "cost": 220, "grants": ["cutting_torch"] },
-    { "id": "u_w_rail", "branch": "armory", "tier": 3, "cost": 300, "grants": ["rail_lance"] }
+    { "id": "u_w_rail", "branch": "armory", "tier": 3, "cost": 300, "grants": ["rail_lance"] },
+    { "id": "u_p_blast", "branch": "directives", "tier": 1, "cost": 100, "grants": ["overpressure", "aftershock", "shield_burst", "unstable_munitions"] },
+    { "id": "u_p_arc", "branch": "directives", "tier": 1, "cost": 100, "grants": ["shock_rounds", "arc_pylons", "emp_tether", "emp_overload"] },
+    { "id": "u_p_fortress", "branch": "directives", "tier": 2, "cost": 150, "grants": ["reactive_plating", "core_lash", "ember_vent", "dead_mans_switch"] },
+    { "id": "u_p_gunline", "branch": "directives", "tier": 2, "cost": 150, "grants": ["overwatch", "sentry_link", "flak_heads", "mine_layer", "pad_capacitors"] },
+    { "id": "u_p_ledger", "branch": "directives", "tier": 2, "cost": 200, "grants": ["compound_interest", "data_siphon", "quartermaster", "scrap_rounds"] },
+    { "id": "u_p_corrupted", "branch": "directives", "tier": 3, "cost": 250, "grants": ["borrowed_time", "static_pact", "single_point", "the_tally"] },
+    { "id": "u_p_proto", "branch": "directives", "tier": 3, "cost": 300, "grants": ["twin_link", "last_stand_protocol", "bottomless", "cascade"] }
   ],
   "kits": [
     { "id": "k_standard", "name_key": "kit.standard.name", "cost": 0, "ops": [] }

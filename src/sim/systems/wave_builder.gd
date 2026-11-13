@@ -114,12 +114,37 @@ static func _finish(
 	WaveRules.cap_specialists(content, drafts, slot.act)
 	WaveRules.lift_fodder(content, drafts)
 	WaveRules.fit_budget(drafts, budget)
+	_trim_specialists(drafts, budget)
 	WaveRules.delay_reclaimers(drafts, slot.window_ticks)
 	var out: Array[SpawnGroupDef] = []
 	for d: GroupDraft in drafts:
 		out.append(d.to_def(slot.window_ticks))
 	WaveRules.delay_bursters(out)
 	return out
+
+
+## The fit of WaveRules stops when taking one more fodder body away would break rule 3 (a pack whose fodder share is
+## exactly 40 percent). A wave that is still above its band then loses bodies of the other groups instead, one at a time,
+## while that brings it closer to the budget: only non-fodder bodies go, so rule 3 can only improve, and no group drops
+## below one body.
+static func _trim_specialists(drafts: Array[GroupDraft], budget: float) -> void:
+	var band: float = budget * WaveRules.BUDGET_TOLERANCE
+	for _step: int in 400:
+		var spent: float = WaveRules.total(drafts)
+		if spent <= budget + band:
+			return
+		var best: GroupDraft = null
+		var best_off: float = absf(spent - budget)
+		for d: GroupDraft in drafts:
+			if WaveRules.FODDER.has(d.enemy_index) or d.count <= 1:
+				continue
+			var off: float = absf(spent - d.cost - budget)
+			if off < best_off:
+				best = d
+				best_off = off
+		if best == null:
+			return
+		best.count -= 1
 
 
 ## count = max(1, roundi(budget * share / cost * (0.9 + 0.2 * u))) (CONTENT 1.3).
