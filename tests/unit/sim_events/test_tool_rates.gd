@@ -137,10 +137,10 @@ func test_offline_turrets_do_not_fire_or_charge_and_fire_as_before_when_back() -
 	assert_int(_shots(w, 300)).is_between(normal - 1, normal + 1)
 
 
-func test_the_low_power_modifier_takes_the_turrets_offline_for_the_first_twelve_seconds() -> void:
+func test_the_low_power_outage_that_modsystem_sets_is_counted_down_and_not_reset_by_a_new_wave() -> void:
 	var w: SimWorld = _world()
-	w.mods.turret_offline_ticks = 720.0
-	VarietyVKit.begin_wave(w, 4)
+	w.events_state.turret_offline_ticks = 720  # what ModSystem.set_wave_modifier writes for mod_low_power
+	VarietyVKit.begin_wave(w, 4)  # EventSystem.begin_wave leaves it alone
 	assert_int(w.events_state.turret_offline_ticks).is_equal(720)
 	_with_turret(w)
 	assert_int(_shots(w, 719)).is_equal(0)

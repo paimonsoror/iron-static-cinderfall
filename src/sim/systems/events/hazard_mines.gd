@@ -9,17 +9,26 @@ extends RefCounted
 ## Lays a mine for pad `pad` at (x, z). False when the pad already has `per_owner` mines on the field.
 static func place(world: SimWorld, x: float, z: float, pad: int) -> bool:
 	var h: HazardState = world.hazards
-	var mine_cap: int = roundi(HazardDrums.hazard_num(world, &"mine", &"per_owner", 3.0))
-	var laid: int = 0
-	for m: int in h.m_owner:
-		if m == pad:
-			laid += 1
-	if laid >= mine_cap:
+	if held_by(world, pad) >= cap(world):
 		return false
 	h.m_x.append(x)
 	h.m_z.append(z)
 	h.m_owner.append(pad)
 	return true
+
+
+## The most mines one pad may have on the field.
+static func cap(world: SimWorld) -> int:
+	return roundi(HazardDrums.hazard_num(world, &"mine", &"per_owner", 3.0))
+
+
+## Mines of pad `pad` waiting now.
+static func held_by(world: SimWorld, pad: int) -> int:
+	var n: int = 0
+	for m: int in world.hazards.m_owner:
+		if m == pad:
+			n += 1
+	return n
 
 
 ## Mines waiting now.

@@ -130,6 +130,7 @@ static func directive_world(held: Dictionary[StringName, int]) -> SimWorld:
 	begin_wave(w, 4)
 	for id: StringName in held:
 		w.draft.stacks[content.directive_index(id)] = held[id]
+	ModSystem.recompute(w)
 	return w
 
 

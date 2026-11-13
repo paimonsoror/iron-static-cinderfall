@@ -184,16 +184,15 @@ func test_the_player_events_start_with_their_charges() -> void:
 	assert_int(w.events_state.charges_of(VarietyVKit.ACCORD)).is_equal(0)
 
 
-func test_an_act_start_earns_a_strike_charge_and_signal_hijack_a_freight_charge() -> void:
+func test_an_act_start_earns_the_charges_of_the_entry_and_leaves_the_directive_stats_to_modsystem() -> void:
 	var w: SimWorld = TestContent.variety_world(1)
 	w.phase = GameState.Id.SPAWNING
-	w.mods.freight_per_act = 1.0
+	w.mods.freight_per_act = 1.0  # signal_hijack: ModSystem.set_wave_modifier grants these, not EventSystem
 	w.mods.strike_per_act = 1.0  # deadfall_uplink
 	w.plan.waves[3].act = 2  # wave 4 opens act II in this test
-	var second_act: int = 4
-	VarietyVKit.begin_wave(w, second_act)
-	assert_int(w.events_state.charges_of(VarietyVKit.STRIKE)).is_equal(3)  # 1 + (1 data + 1 directive)
-	assert_int(w.events_state.charges_of(VarietyVKit.FREIGHT)).is_equal(1)
+	VarietyVKit.begin_wave(w, 4)
+	assert_int(w.events_state.charges_of(VarietyVKit.STRIKE)).is_equal(2)  # 1 + the entry's charges_per_act
+	assert_int(w.events_state.charges_of(VarietyVKit.FREIGHT)).is_equal(0)
 
 
 func test_the_first_act_start_does_not_double_the_starting_charge() -> void:

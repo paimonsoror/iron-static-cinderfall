@@ -6,8 +6,9 @@ extends RefCounted
 ## Ability cooldowns: a Static Front freezes them (no tick passes); otherwise the rate is ModState.ability_cd_rate_mul
 ## times the jammer rate (the jammer's `cooldown_rate` while at least one jammer lives and is not stunned). A rate that
 ## is not 1.0 skips or repeats cooldown ticks with an integer pattern of the tick number, so it needs no state.
-## Turrets: Core Surge x2, ModState.t_rate_mul, `od_turrets` while Overdrive runs, and the jammer aura (the jammer's
-## `turret_rate_mult` for a pad inside `aura_radius`). A Static Front puts the jammer auras down.
+## Turrets: Core Surge x2, ModState.t_rate_mul, the fire-rate level sentry_link gives them (TurretRules), last_stand_protocol,
+## `od_turrets` while Overdrive runs, and the jammer aura (the jammer's `turret_rate_mult` for a pad inside `aura_radius`).
+## A Static Front puts the jammer auras down.
 
 const RATE_ONE: int = 1000
 
@@ -53,7 +54,10 @@ static func jammer_cooldown_rate(world: SimWorld) -> float:
 ## Fire rate x 1000 of the turret on `pad` this tick (1000 = the base rate).
 static func turret_rate_milli(world: SimWorld, pad: int) -> int:
 	var es: EventState = world.events_state
-	var rate: float = world.mods.t_rate_mul
+	var rate: float = world.mods.t_rate_mul * ModRules.last_stand_turret_rate(world)
+	var inherited: int = TurretRules.rate_level(world)
+	if inherited > 0:
+		rate *= 1.0 + world.content.upgrades[Ids.UP_FIRE_RATE].per_level * float(inherited)
 	if es.turret_rate_ticks > 0:
 		rate *= float(es.turret_rate_milli) / 1000.0
 	if world.abilities.is_active(Ids.AB_OVERDRIVE) and world.mods.has_flag(&"od_turrets"):

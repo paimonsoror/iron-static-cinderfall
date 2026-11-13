@@ -19,7 +19,9 @@ const STATIC_FRONT: StringName = &"static_front"
 
 
 ## A wave starts (PhaseAwaits.begin_wave): the plan cursor and the per-wave counters restart, the Core Vent is charged,
-## the drums and charges of a new act are laid, and a modifier that takes the turrets offline starts its clock.
+## and the drums and charges of a new act are laid. The offline time of a modifier (mod_low_power) is set by ModSystem
+## before this call and is neither read nor reset here; the charges that `strike_per_act` / `freight_per_act` add at an
+## act start are ModSystem's too.
 static func begin_wave(world: SimWorld, wave: int) -> void:
 	var es: EventState = world.events_state
 	es.plan_cursor = 0
@@ -35,8 +37,6 @@ static func begin_wave(world: SimWorld, wave: int) -> void:
 	var previous: PlannedWave = world.plan.wave(wave - 1)
 	if previous == null or previous.act != pw.act:
 		_begin_act(world, pw.act)
-	if world.mods.turret_offline_ticks > 0.0:
-		es.turret_offline_ticks = maxi(es.turret_offline_ticks, roundi(world.mods.turret_offline_ticks))
 
 
 ## Starts the warning of every planned event of the wave whose time has come (EventSystem.step, in combat).
@@ -124,8 +124,8 @@ static func wave_start_tick(world: SimWorld) -> int:
 	return world.stats.wave_start_tick[world.wave]
 
 
-## An act begins: its three drums are laid and the player events earn their per-act charges (not at the very start of
-## the run: the starting charges are that).
+## An act begins: its three drums are laid and the player events earn the `charges_per_act` of their own entry (not at the
+## very start of the run: the starting charges are that). The directive stats are not added here: ModSystem does it.
 static func _begin_act(world: SimWorld, act: int) -> void:
 	HazardDrums.place(world, act)
 	if act <= 1:
@@ -134,10 +134,6 @@ static func _begin_act(world: SimWorld, act: int) -> void:
 		if def.who != EventDef.Who.PLAYER:
 			continue
 		var n: float = def.param(&"charges_per_act")
-		if def.id == &"deadfall_strike":
-			n += world.mods.strike_per_act
-		elif def.id == &"freight_call":
-			n += world.mods.freight_per_act
 		if n >= 1.0:
 			EventSlots.grant(world, def.index, roundi(n))
 

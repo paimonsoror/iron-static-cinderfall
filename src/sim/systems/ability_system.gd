@@ -41,6 +41,7 @@ static func activate(world: SimWorld, command_id: int, ability_index: int) -> in
 			EventSystem.on_shield_activated(world)
 		_:
 			pass
+	CoreHooks.on_ability(world, ability_index)
 	return Reason.Id.OK
 
 
@@ -127,7 +128,7 @@ static func end_all(world: SimWorld) -> void:
 	var st: AbilityState = world.abilities
 	for a: int in mini(world.content.abilities.size(), st.active_left.size()):
 		if st.active_left[a] > 0:
-			_end(world, a, world.content.abilities[a])
+			_end(world, a, world.content.abilities[a], false)
 
 
 ## Every living enemy without stun immunity: stun_ticks = max(stun_ticks, stun). The boss gets boss_stun_ticks.
@@ -143,10 +144,13 @@ static func _apply_emp(world: SimWorld, def: AbilityDef) -> void:
 		if ticks > store.stun_ticks[i]:
 			store.stun_ticks[i] = ticks
 			world.events.push(SimEventKind.Id.ENEMY_STUNNED, store.id[i], ticks)
+	CoreHooks.on_emp(world)
 
 
-## The active period is over (time ran out, or the shield was used up): clear effects and start the cooldown.
-static func _end(world: SimWorld, ability_index: int, def: AbilityDef) -> void:
+## The active period is over (time ran out, or the shield was used up): clear effects and start the cooldown. A shield that
+## ends calls CoreHooks.on_shield_end afterwards (shield_burst, the cooldown of a free amber_surge shield); `end_all` at the
+## end of a run asks for no hooks.
+static func _end(world: SimWorld, ability_index: int, def: AbilityDef, hooks: bool = true) -> void:
 	var st: AbilityState = world.abilities
 	st.active_left[ability_index] = 0
 	if def.cooldown_start == AbilityDef.CooldownStart.ON_END:
@@ -155,6 +159,8 @@ static func _end(world: SimWorld, ability_index: int, def: AbilityDef) -> void:
 		world.shield_hp = 0.0
 		world.events.push(SimEventKind.Id.SHIELD_CHANGED, 0, 0, 0.0, def.absorb)
 	world.events.push(SimEventKind.Id.ABILITY_ENDED, ability_index)
+	if hooks and ability_index == Ids.AB_SHIELD:
+		CoreHooks.on_shield_end(world)
 
 
 ## Counts stun and immunity down. A boss whose stun reaches 0 becomes immune for boss_immunity_ticks (counted from
