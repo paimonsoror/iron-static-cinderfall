@@ -256,12 +256,12 @@ func test_events_json() -> void:
 
 
 func test_unlocks_json() -> void:
-	assert_int(c.unlocks.size()).is_equal(12)  # the 5 armory unlocks and the 7 directive packs
+	assert_int(c.unlocks.size()).is_equal(17)  # 5 armory unlocks, 7 directive packs and 5 kit unlocks
 	var lmg: UnlockDef = c.unlock(&"u_w_lmg")
 	assert_int(lmg.branch).is_equal(UnlockDef.Branch.ARMORY)
 	assert_int(lmg.cost).is_equal(120)
 	assert_array(lmg.grants).is_equal([&"lmg"])
-	assert_int(c.kits.size()).is_equal(1)
+	assert_int(c.kits.size()).is_equal(6)
 	assert_int(c.kit_index(&"k_standard")).is_equal(0)
 	assert_int(c.kits[0].cost).is_equal(0)
 	assert_array(Array(c.run.tier_gates)).is_equal([3, 8])

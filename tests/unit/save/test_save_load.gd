@@ -11,7 +11,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
-	SaveTestData.boot(MemorySaveFs.new())  # leave the autoload on a clean in-memory profile
+	SaveTestData.reset()  # leave the autoload on a clean in-memory profile
 
 
 func _reload() -> int:

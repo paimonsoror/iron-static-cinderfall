@@ -15,6 +15,8 @@ const BURSTER_FUSE_S: float = 1.2
 
 ## `phase`: seconds since the actor entered `mode` (the Burster's fuse); the other archetypes ignore it.
 static func pose(kind: int, t: float, mode: int, phase: float = 0.0) -> Transform3D:
+	if kind > Ids.EN_BURSTER:  # the V4-R machines have their own gaits (the minis are hopped by the MiniSwarm)
+		return ActorMotion2.pose(kind, t, mode, phase)
 	var swell: float = 1.0
 	var y: float = 0.0
 	var pitch: float = 0.0
@@ -105,8 +107,10 @@ static func dying_pose(u: float) -> Transform3D:
 	return Transform3D(basis, Vector3(0.0, -0.9 * k * k, 0.0))
 
 
-## Number of footfalls completed at gait time `t` for the Siege Hulk; -1 for the other archetypes.
+## Number of footfalls completed at gait time `t` for the Siege Hulk and the Tremor Rig; -1 for the other archetypes.
 static func step_index(kind: int, t: float) -> int:
+	if kind == Ids.EN_TREMOR_RIG:
+		return ActorMotion2.step_index(kind, t)
 	if kind != Ids.EN_HULK:
 		return -1
 	return floori(t * HULK_STEP_RATE / PI)

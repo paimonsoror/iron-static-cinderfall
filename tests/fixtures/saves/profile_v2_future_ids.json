@@ -1,0 +1,11 @@
+{
+	"schema_version": 2,
+	"data": 90,
+	"data_lifetime": 90,
+	"unlocks": ["u_w_lmg", "u_x_from_a_newer_build", "u_w_lmg", 7, ""],
+	"claimed": ["ms_first_victory", "ms_from_a_newer_build"],
+	"kit": "k_from_a_newer_build",
+	"boss_kills": {"siege_hulk": 1, "boss_from_a_newer_build": 4},
+	"victory_weapons": ["weapon_from_a_newer_build"],
+	"settings": {}
+}

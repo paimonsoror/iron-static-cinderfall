@@ -1,0 +1,18 @@
+{
+	"schema_version": 1,
+	"data": 30,
+	"missions_completed": 0,
+	"best_core_hp": 0,
+	"runs_played": 1,
+	"awarded_run_ids": ["1763000001-11"],
+	"hints_seen": [],
+	"settings": {
+		"sound_on": true,
+		"music_on": true,
+		"haptics_on": true,
+		"reduced_flash": false,
+		"high_contrast": false,
+		"quality": 2,
+		"fps_cap": 60
+	}
+}
