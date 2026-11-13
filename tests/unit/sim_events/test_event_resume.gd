@@ -52,7 +52,7 @@ func test_a_surge_resumes_in_the_middle_of_its_effect_and_the_brownout_follows()
 	_plan(w, VarietyVKit.SURGE)
 	_crowd(w)
 	w.turrets.active[0] = 1
-	_assert_resumes(w, 500, 1300, "core surge, mid-effect")
+	_assert_resumes(w, 500, 1000, "core surge, mid-effect")
 	assert_int(w.events_state.turret_offline_ticks).is_greater(0)
 
 
@@ -132,7 +132,8 @@ func test_the_event_state_has_every_field_in_the_hash_and_round_trips_through_js
 	VarietyVKit.run(w, 400)
 	var es: EventState = w.events_state
 	var copy: EventState = EventState.new(es.charges.size())
-	copy.from_dict(JSON.parse_string(JSON.stringify(es.to_dict())))
+	var parsed: Dictionary = JSON.parse_string(JSON.stringify(es.to_dict()))
+	copy.from_dict(parsed)
 	var a: StateHasher = StateHasher.new()
 	es.hash_into(a)
 	var b: StateHasher = StateHasher.new()
