@@ -9,7 +9,10 @@ extends RefCounted
 ## of death blasts is never recursion.
 ## The queue keeps running outside combat (a blast that is in the air when the wave clears still lands and is seen);
 ## only its core part is dropped there, because a defeat is decided during a wave.
-# TODO(V4-V): mines, drums, the core vent. TODO(V4-N): K_BOLT (a spitter bolt hits the core).
+## Hazards that belong to events live in systems/events/: HazardDrums (fuel drums: ignition by any blast, pool, strike or
+## freight car, the chain, the slag pool), HazardMines (mines laid by directives), EventCoreVent.land (the vent's knockback)
+## and EventSupplyDrop.steer (squatters on a crate, steered here because this step runs after the movement step).
+# TODO(V4-N): K_BOLT (a spitter bolt hits the core).
 
 const DEFAULT_MAX_PER_TICK: int = 8
 const POOL_PULSE_TICKS: int = 30  ## a pool deals half a second of its damage twice a second
@@ -21,6 +24,9 @@ static func step(world: SimWorld) -> void:
 		_land_due(world, h)
 	if not h.p_id.is_empty():
 		_step_pools(world, h)
+	if not h.m_x.is_empty():
+		HazardMines.step(world)
+	EventSupplyDrop.steer(world)
 
 
 ## Queues a hit that lands at `due_tick` (HazardState.K_* kind), never earlier than the next tick. Pushes
@@ -133,6 +139,21 @@ static func _land_due(world: SimWorld, h: HazardState) -> void:
 			AreaDamage.apply(world, x, z, radius, damage, edge, flags, source)
 		if core_damage > 0.0 and GameState.is_combat(world.phase):
 			CoreAttackSystem.damage_core(world, core_damage, 0, type_index)
+		_after_landing(world, kind, x, z, radius, source)
+
+
+## What a landed hit sets off: the vent throws the survivors back, a drum blast leaves its slag pool, a slag mortar shell
+## leaves the pool of the mortar, and any blast ignites the standing fuel drums it reaches (the ignition is queued, so a
+## chain is a ripple, never recursion).
+static func _after_landing(world: SimWorld, kind: int, x: float, z: float, radius: float, source: int) -> void:
+	if kind == HazardState.K_VENT:
+		EventCoreVent.land(world, x, z, radius)
+	elif kind == HazardState.K_DRUM:
+		HazardDrums.after_blast(world, x, z)
+	elif kind == HazardState.K_SHELL:
+		HazardShells.landed(world, x, z, source)
+	if not world.hazards.d_alive.is_empty():
+		HazardDrums.touch(world, x, z, radius)
 
 
 static func _remove_hit(h: HazardState, at: int) -> void:
@@ -159,6 +180,8 @@ static func _step_pools(world: SimWorld, h: HazardState) -> void:
 		if h.p_ticks_left[at] % POOL_PULSE_TICKS == 0:
 			var pulse: float = h.p_dps[at] * float(POOL_PULSE_TICKS) / 60.0
 			var slow_milli: int = roundi(h.p_slow[at] * 1000.0)
+			if not h.d_alive.is_empty():
+				HazardDrums.touch(world, h.p_x[at], h.p_z[at], h.p_radius[at])
 			AreaDamage.query(world, h.p_x[at], h.p_z[at], h.p_radius[at], victims)
 			for i: int in victims:
 				if slow_milli > 0:
