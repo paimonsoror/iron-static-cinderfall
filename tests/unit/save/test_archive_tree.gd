@@ -121,7 +121,7 @@ func test_the_shipped_file_and_its_fixture_copy_are_byte_identical() -> void:
 
 func test_every_shipped_row_is_a_row_of_the_complete_tree() -> void:
 	var shipped: ContentSet = TestContent.variety()
-	assert_int(shipped.unlocks.size()).is_equal(12)
+	assert_int(shipped.unlocks.size()).is_equal(5)  # the slice rows: the rest waits for the pieces named in the file note
 	for u: UnlockDef in shipped.unlocks:
 		assert_str(_row(shipped, u.id)).is_equal(_row(cs, u.id))
 	assert_array(Array(shipped.run.tier_gates)).is_equal(Array(cs.run.tier_gates))
@@ -129,9 +129,8 @@ func test_every_shipped_row_is_a_row_of_the_complete_tree() -> void:
 	assert_str(String(shipped.kits[0].id)).is_equal("k_standard")
 
 
-func test_the_shipped_unlocks_hold_back_only_weapons_and_field_options() -> void:
+func test_the_shipped_unlocks_validate_on_their_own() -> void:
 	var shipped: ContentSet = TestContent.variety()
 	for u: UnlockDef in shipped.unlocks:
-		assert_bool(u.branch == UnlockDef.Branch.ARMORY or u.branch == UnlockDef.Branch.FIELD).is_true()
-	assert_bool(shipped.unlock(&"u_w_arc") != null).is_true()
-	assert_str("\n".join(ContentValidator.validate(shipped))).is_empty()  # the shipped rows validate on their own
+		assert_int(u.branch).is_equal(UnlockDef.Branch.ARMORY)
+	assert_str("\n".join(ContentValidator.validate(shipped))).is_empty()

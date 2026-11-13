@@ -31,13 +31,16 @@ static func grant(summary: RunSummary) -> bool:
 
 ## How the run of `summary` was started: { "kit": StringName, "daily": bool }, known only to the live generated run
 ## (`Game.run` with this run id). {} for anything else (a stale run file closed at launch, a run of the legacy five-wave
-## content, a controller driven without `Game`): such a run is paid its Data and nothing of the Archive layer (milestones,
-## records, Daily Run) is recorded for it.
+## content, a controller driven without `Game`) and for a run with a debug switch on (invulnerable core, damage
+## multiplier, starting Scrap): such a run is paid its Data and nothing of the Archive layer (milestones, records,
+## Daily Run) is recorded for it, so a debug build cannot fill the Archive.
 static func launch_of(summary: RunSummary) -> Dictionary:
 	var live: RunController = Game.run
 	if live == null or live.run_id != summary.run_id or live.sim == null or not live.sim.content.is_variety():
 		return {}
 	var config: SimConfig = live.sim.config
+	if config.debug_invulnerable_core or config.debug_damage_mult != 1.0 or config.debug_start_scrap != 0:
+		return {}
 	var kit_id: StringName = Profile.DEFAULT_KIT
 	if config.kit_index >= 0 and config.kit_index < config.content.kits.size():
 		kit_id = config.content.kits[config.kit_index].id

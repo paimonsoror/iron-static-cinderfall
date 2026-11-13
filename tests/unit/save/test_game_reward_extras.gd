@@ -92,6 +92,20 @@ func test_a_run_that_is_not_live_has_no_launch_and_is_paid_as_plain_data() -> vo
 	assert_dict(Save.last_reward).is_not_empty()
 
 
+func test_a_live_run_with_a_debug_switch_is_plain_too() -> void:
+	_go_live(RUN_ID, &"k_standard", false)
+	_live.sim.config.debug_damage_mult = 50.0
+	assert_dict(GameRewards.launch_of(_summary(RunResult.Id.VICTORY, 15, true))).is_empty()
+	_live.sim.config.debug_damage_mult = 1.0
+	_live.sim.config.debug_invulnerable_core = true
+	assert_dict(GameRewards.launch_of(_summary(RunResult.Id.VICTORY, 15, true))).is_empty()
+	_live.sim.config.debug_invulnerable_core = false
+	_live.sim.config.debug_start_scrap = 100
+	assert_bool(GameRewards.grant(_summary(RunResult.Id.VICTORY, 15, true))).is_true()
+	assert_int(Save.profile.data).is_equal(60)  # no milestone for a debug run
+	assert_int(Save.profile.claimed.size()).is_equal(0)
+
+
 func test_a_live_run_of_the_legacy_content_is_plain_too() -> void:
 	var cfg: SimConfig = SimConfig.create(TestContent.baseline(), 3)
 	_live = auto_free(RunController.new())
