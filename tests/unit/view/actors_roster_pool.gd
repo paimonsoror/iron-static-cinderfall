@@ -210,6 +210,7 @@ func test_a_steady_state_of_new_bodies_spawning_and_dying_allocates_nothing() ->
 		layer.render(0.5, 0.016)
 	var nodes: int = ActorsTestKit.count_nodes(layer)
 	var objects_before: int = 0
+	Sfx.disabled = true  # the audio autoload answers every hit and kill with a one-shot voice: those are not the view's objects
 	for n: int in 450:
 		if n == 150:
 			var _events: Array[SimEvent] = w.events.drain()
@@ -230,5 +231,6 @@ func test_a_steady_state_of_new_bodies_spawning_and_dying_allocates_nothing() ->
 	var _tail: Array[SimEvent] = w.events.drain()
 	_tail = []
 	var grown: int = VarietyFKit.objects() - objects_before
+	Sfx.disabled = false
 	assert_int(ActorsTestKit.count_nodes(layer)).is_equal(nodes)
-	assert_int(grown).is_less_equal(4)
+	assert_int(grown).is_less_equal(2)

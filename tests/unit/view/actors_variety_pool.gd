@@ -178,6 +178,7 @@ func test_a_steady_state_of_spawns_and_kills_allocates_nothing() -> void:
 		layer.render(0.5, 0.016)
 	var nodes: int = ActorsTestKit.count_nodes(layer)
 	var objects_before: int = 0
+	Sfx.disabled = true  # the audio autoload answers every hit and kill with a one-shot voice (V4-A routes more of them): those are not the view's objects
 	for n: int in 450:
 		if n == 150:  # the first 150 frames warm everything up; the next 300 are measured
 			var _spawn_events: Array[SimEvent] = w.events.drain()
@@ -196,6 +197,7 @@ func test_a_steady_state_of_spawns_and_kills_allocates_nothing() -> void:
 	var _tail: Array[SimEvent] = w.events.drain()
 	_tail = []
 	var grown: int = VarietyFKit.objects() - objects_before  # measured before the first assert: an assertion is an object too
+	Sfx.disabled = false
 	assert_int(ActorsTestKit.count_nodes(layer)).is_equal(nodes)
 	assert_int(grown).is_less_equal(2)  # the counter test: 300 frames of spawns, hits and kills, nothing allocated
 	assert_int(layer.minis_drawn()).is_equal(30)
