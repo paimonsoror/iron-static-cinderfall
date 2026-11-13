@@ -14,7 +14,7 @@ func _kit_content(ops: Array[OpDef]) -> ContentSet:
 
 func _kit_world(ops: Array[OpDef], run_seed: int = 1) -> SimWorld:
 	var cfg: SimConfig = SimConfig.create(_kit_content(ops), run_seed)
-	cfg.kit_index = 1
+	cfg.kit_index = cfg.content.kits.size() - 1  # the kit appended by _kit_content is the last one
 	return SimWorld.new(cfg)
 
 
@@ -101,7 +101,7 @@ func test_the_same_kit_seed_grants_the_same_directive() -> void:
 	var picks: Array[Array] = []
 	for run_seed: int in [4, 4, 5]:
 		var cfg: SimConfig = SimConfig.create(c, run_seed)
-		cfg.kit_index = 1
+		cfg.kit_index = cfg.content.kits.size() - 1
 		var w: SimWorld = SimWorld.new(cfg)
 		picks.append(Array(w.draft.stacks))
 	assert_array(picks[0]).is_equal(picks[1])
