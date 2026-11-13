@@ -80,7 +80,7 @@ func _fan(from: Vector3, along: Vector3, height: float) -> void:
 func _brass(from: Vector3, along: Vector3) -> void:
 	var side: Vector3 = along.cross(Vector3.UP)
 	var vel: Vector3 = side * _rng.randf_range(1.6, 2.8) - along * _rng.randf_range(0.2, 0.8) + Vector3(0.0, _rng.randf_range(1.8, 3.0), 0.0)
-	var size: float = _rng.randf_range(0.07, 0.1)
+	var size: float = _rng.randf_range(0.11, 0.16)  # big enough to read as a glint at phone size
 	var _case: int = brass.spawn(from, vel, size, size, _rng.randf_range(0.7, 1.1), _rng.randf_range(-12.0, 12.0))
 
 

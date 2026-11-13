@@ -65,7 +65,8 @@ func _ready() -> void:
 		_add_perf_hud()
 	_measure_s = args.measure_s
 	if _measure_s > 0.0:
-		Engine.max_fps = 0  # the 60 fps cap would hide headroom when measuring
+		Engine.max_fps = 0  # the 60 fps cap and the vsync would hide headroom when measuring
+		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	if args.hud:
 		_add_hud(args)
 	get_viewport().size_changed.connect(_refit)

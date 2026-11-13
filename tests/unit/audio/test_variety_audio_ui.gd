@@ -153,3 +153,14 @@ func test_the_resume_link_is_played_by_name_and_is_an_interface_sound() -> void:
 	assert_int(AudioCatalog.voice_class(&"resume_link")).is_equal(AudioCatalog.CLASS_UI)
 	assert_bool(_dir.try_play(&"resume_link")).is_true()  # what `Sfx.play(&"resume_link")` does for the RESUME RUN button
 	assert_that(_last()).is_equal(&"resume_link")
+
+
+func test_the_mirrors_follow_the_shipped_data_too_not_only_the_frozen_fixture() -> void:
+	# `res://data/` is the game: when its run grows to 15 waves or gains a corrupted directive, this fails until the mirrors follow.
+	var shipped: ContentSet = Content.db
+	var budgets: PackedInt32Array = AudioVarietyRoutes.WAVE_BUDGETS
+	for i: int in mini(shipped.run.waves.size(), budgets.size()):
+		assert_float(float(budgets[i])).override_failure_message("shipped wave %d" % (i + 1)).is_equal(shipped.run.waves[i].budget)
+	for def: DirectiveDef in shipped.directives:
+		var mirrored: bool = AudioVarietyRoutes.CORRUPTED_DIRECTIVES.has(def.id)
+		assert_bool(mirrored).override_failure_message("%s: corrupted in the shipped data = %s" % [def.id, def.category == DirectiveDef.Category.CORRUPTED]).is_equal(def.category == DirectiveDef.Category.CORRUPTED)
