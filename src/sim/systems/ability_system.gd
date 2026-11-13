@@ -137,7 +137,7 @@ static func _apply_emp(world: SimWorld, def: AbilityDef) -> void:
 	var stun: int = emp_stun_ticks_of(world)
 	world.events_state.emp_until = world.tick + stun
 	for i: int in store.high_water:
-		if store.alive[i] == 0 or store.stun_immune_ticks[i] > 0:
+		if store.alive[i] == 0 or store.stun_immune_ticks[i] > 0 or EliteSystem.is_anchored(world, i):
 			continue
 		var is_boss: bool = world.content.enemies[store.type[i]].is_boss
 		var ticks: int = def.boss_stun_ticks if is_boss else stun

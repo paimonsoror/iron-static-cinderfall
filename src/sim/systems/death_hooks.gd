@@ -54,6 +54,7 @@ static func on_killed(world: SimWorld, enemy_index: int, source: int) -> void:
 		_queue(world, def, x, z, world.mods.volatile_radius, world.mods.volatile_damage, 1.0, 0.0)
 	SalvageSystem.on_enemy_killed(world, enemy_index, source)
 	_directive_blasts(world, enemy_index, def, source)
+	StatusSystem.on_enemy_killed(world, enemy_index, source)  # V4-N: the splitter's shards, the jammer's death stun, VOLATILE
 	if source != SOURCE_SELF and world.ext.is_elite(enemy_index) and ModRules.held(world, &"chorus_handshake") > 0:
 		if world.salvage.elite_kills % CHORUS_ELITES_PER_CRATE == 0:
 			SalvageSystem.grant_crate(world, false)
