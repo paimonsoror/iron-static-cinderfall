@@ -31,6 +31,7 @@ var archive_button: Button
 var settings_button: Button
 var quit_button: Button
 var archive_screen: ArchiveScreen  ## the open Archive overlay, or null
+var _frame: UiScreenFrame
 var _profile: Profile
 var _today: String = ""
 var _built: bool = false
@@ -104,6 +105,12 @@ func _on_archive_closed(screen: ArchiveScreen) -> void:
 		setup(_profile)  # the Archive may have spent Data
 
 
+## The tagline wraps in two equal lines, never one line and a lone word.
+func _balance_tagline() -> void:
+	if _frame != null and tagline_label != null and _frame.size.x > 1.0:
+		UiKit.balance(tagline_label, _frame.available_width())
+
+
 func _refresh_daily() -> void:
 	if daily_button == null:
 		return
@@ -133,6 +140,7 @@ func _ensure_built() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var frame: UiScreenFrame = UiScreenFrame.new(UiBackdrop.Mode.HERO)
 	add_child(frame)
+	_frame = frame
 	var col: VBoxContainer = frame.content
 	col.add_child(UiKit.spacer(60.0))
 	title_block = UiTitleBlock.new(true)
@@ -141,6 +149,8 @@ func _ensure_built() -> void:
 	tagline_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tagline_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(tagline_label)
+	frame.resized.connect(_balance_tagline)
+	_balance_tagline.call_deferred()
 	col.add_child(UiKit.spacer(0.0, 0.0, true))
 	var stats: HBoxContainer = HBoxContainer.new()
 	stats.add_theme_constant_override("separation", 16)

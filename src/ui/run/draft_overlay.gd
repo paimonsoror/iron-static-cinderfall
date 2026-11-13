@@ -124,6 +124,7 @@ func _relayout() -> void:
 	var card_h: float = clampf(h * 0.29, 440.0, 560.0)
 	for card: DirectiveCard in cards:
 		card.custom_minimum_size.y = card_h
+		card.set_compact(h < COMPACT_HEIGHT)
 	var hint_shown: bool = false
 	for line: RunHintLine in hint_lines:
 		hint_shown = hint_shown or line.visible

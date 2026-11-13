@@ -4,7 +4,9 @@ extends Node
 ##   --scenario=hold10|hold28|hold50|boss   crowd (default hold50)
 ##   --scenario=hold<N>+<M>|chain           variety: N bodies plus M minis; a burster chain with a strike (PuppetChaos)
 ##   --quality=0|1|2                        LOW, MID, HIGH (default MID)
-##   --high-contrast  --reduced-flash       accessibility looks
+##   --scenario=boss:<id>|event:<id>        V5-B: the real boss or event systems run (see SimPuppet)
+##   --hud [--weapon2=<id>]                 the real CombatHud over the puppet's world (a composite like the game's)
+##   --high-contrast  --reduced-flash       accessibility looks (the HUD follows them too)
 ##   --debug-overlay[=all|flow,slots,stuck,spawns]   debug layers   --debug-perf   PerfHud and the [PERF] log line
 ##   --seed=<n>   --look=current|stylised|stylised_plus   the Warden look (W3-C look-dev; see look_dev_sandbox.tscn for the rest)
 ## In a capture the puppet steps a fixed 1/60 s per frame, so `--capture-frames=N` always shows second N/60 of the
@@ -20,6 +22,10 @@ var _perf_layer: CanvasLayer
 var _fixed_step: bool = false
 var _tier: int = VisualQuality.Tier.MID
 var _high_contrast: bool = false
+var _hud: CombatHud
+var _hud_layer: CanvasLayer
+var _runner: RunController  ## a controller that is not in the tree: it only lends its RunApi (queries on the puppet's world)
+var _flags_set: Array[StringName] = []
 
 
 func _ready() -> void:
@@ -39,6 +45,7 @@ func _ready() -> void:
 		_view.actor_layer.set_look(args.look)
 		_view.arena_view.set_look(args.look)
 	_puppet = SimPuppet.new()
+	_puppet.second_weapon = StringName(args.second_weapon)
 	add_child(_puppet)
 	_puppet.setup(
 		_content, args.scenario if args.scenario != "" else "hold50", args.run_seed if args.has_seed else 1,
@@ -52,8 +59,18 @@ func _ready() -> void:
 	_overlay.apply_spec(args.debug_overlay)
 	if args.debug_perf:
 		_add_perf_hud()
+	if args.hud:
+		_add_hud(args)
 	get_viewport().size_changed.connect(_refit)
 	_refit()
+
+
+func _exit_tree() -> void:
+	for key: StringName in _flags_set:
+		Save.profile.settings[key] = false  # the looks are set in memory only: nothing is saved
+	if _runner != null:
+		_runner.free()
+	RunSession.bind(null, null)
 
 
 func _process(delta: float) -> void:
@@ -110,7 +127,34 @@ func _refit() -> void:
 	var size: Vector2 = get_viewport().get_visible_rect().size
 	var top: float = HudLayout.top_band_px(size, Vector4.ZERO, _content.tokens)
 	var bottom: float = HudLayout.bottom_band_px(size, Vector4.ZERO, _content.tokens)
+	if _hud != null:
+		top = _hud.top_band_px()
+		bottom = _hud.bottom_band_px()
 	_view.fit_camera(size, top, bottom)
+
+
+## The real combat HUD over the puppet's world: a RunController that never enters the tree lends its RunApi, whose queries read
+## the world; the puppet's events reach the HUD through the bus exactly as they reach it in a run.
+func _add_hud(args: DebugArgs) -> void:
+	for key: StringName in [&"high_contrast", &"reduced_flash"]:
+		if (key == &"high_contrast" and args.high_contrast) or (key == &"reduced_flash" and args.reduced_flash):
+			Save.profile.settings[key] = true
+			_flags_set.append(key)
+	_runner = RunController.new()
+	_runner.sim = _puppet.world
+	_hud_layer = CanvasLayer.new()
+	_hud_layer.name = "HudLayer"
+	_hud_layer.layer = 10
+	add_child(_hud_layer)
+	var root: Control = Control.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.theme = UiTheme.build(_content.tokens, args.high_contrast)
+	_hud_layer.add_child(root)
+	var packed: PackedScene = load("res://src/ui/combat/combat_hud.tscn") as PackedScene
+	_hud = packed.instantiate() as CombatHud
+	root.add_child(_hud)
+	_hud.setup(_runner.api, _content, _view)
 
 
 ## True when the ActorLayer says it can draw the variety enemy types. The handshake with the view task (V2-F): once

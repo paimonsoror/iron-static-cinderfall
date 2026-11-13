@@ -25,6 +25,7 @@ func _init(title_key: String = "", hint_key: String = "", on: bool = false) -> v
 	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(text)
 	title_label = UiKit.label_text(Strings.t(title_key).to_upper(), UiTheme.LABEL_HEADING, UiTheme.FONT_BODY + 4)
+	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # "REDUCED FLASH" wraps on a window narrower than the phone
 	text.add_child(title_label)
 	hint_label = UiKit.label_text(Strings.t(hint_key), UiTheme.LABEL_CAPTION)
 	hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

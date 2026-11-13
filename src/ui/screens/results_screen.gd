@@ -14,6 +14,7 @@ signal archive_pressed
 
 const ARCHIVE_SCENE: String = "res://src/ui/screens/archive_screen.tscn"
 
+const STATS_TWO_COLUMNS_FROM: float = 900.0
 const COUNT_SECONDS: float = 1.2
 const COUNT_STEP: float = 0.05  ## the count-up redraws its number at 20 Hz, not every frame
 
@@ -41,6 +42,7 @@ var archive_screen: ArchiveScreen  ## the open Archive overlay, or null
 var open_archive_overlay: bool = true  ## false when the game layer opens the Archive itself on `archive_pressed`
 var _seed: int = 0
 var _frame: UiScreenFrame
+var _stats: GridContainer
 var _kills_col: VBoxContainer
 var _built: bool = false
 var _target: int = 0
@@ -51,6 +53,11 @@ var _counting: bool = false
 
 func _ready() -> void:
 	_ensure_built()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED and _stats != null:
+		_stats.columns = 2 if size.x >= STATS_TWO_COLUMNS_FROM else 1  # a window narrower than the phone stacks the four figures
 
 
 func setup(summary: RunSummary, content: ContentSet, profile: Profile, reward_granted: bool) -> void:
@@ -145,6 +152,7 @@ func _ensure_built() -> void:
 	_frame.header.add_child(subtitle_label)
 	act_label = UiKit.label_text("", UiTheme.LABEL_ACCENT)
 	act_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	act_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	act_label.visible = false
 	_frame.header.add_child(act_label)
 	seed_label = UiKit.label_text("", UiTheme.LABEL_NUMBER, UiTheme.FONT_SMALL)
@@ -215,6 +223,7 @@ func _stats_grid() -> GridContainer:
 	kills_cell = UiStatCell.new(Strings.t("results.kills_total"), "")
 	for cell: UiStatCell in [waves_cell, time_cell, core_cell, kills_cell]:
 		grid.add_child(cell)
+	_stats = grid
 	return grid
 
 

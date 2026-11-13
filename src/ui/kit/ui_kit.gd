@@ -22,6 +22,7 @@ static func button(text_key: String) -> Button:
 	b.text = Strings.t(text_key)
 	b.custom_minimum_size = Vector2(UiTheme.TOUCH_MIN * 3, UiTheme.BTN_PRIMARY_H)
 	b.focus_mode = Control.FOCUS_NONE
+	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # a long label ("RESUME RUN (WAVE 15)") wraps on a narrow window, it never widens the screen
 	b.pressed.connect(_tap)
 	return b
 
@@ -75,6 +76,36 @@ static func bar() -> ProgressBar:
 	p.show_percentage = false
 	p.custom_minimum_size = Vector2(0.0, 24.0)
 	return p
+
+
+## Balanced wrapping for a short centered text (a tagline): the label gets the narrowest width that keeps the number of lines it has
+## at `room`, so the lines come out about equally long and the last one is never a lone word ("... Three pushes. One" over "Warden.").
+## A one-line text keeps its natural width.
+static func balance(l: Label, room: float) -> void:
+	var font: Font = l.get_theme_font(&"font")
+	var px: int = l.get_theme_font_size(&"font_size")
+	var lines: int = _line_count(font, px, l.text, room)
+	l.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if lines > 1 else Control.SIZE_FILL
+	if lines <= 1:
+		l.custom_minimum_size.x = 0.0
+		return
+	var lo: float = 0.0
+	var hi: float = room
+	for _i: int in 12:
+		var mid: float = (lo + hi) * 0.5
+		if _line_count(font, px, l.text, mid) > lines:
+			lo = mid
+		else:
+			hi = mid
+	l.custom_minimum_size.x = ceilf(hi)
+
+
+static func _line_count(font: Font, px: int, text: String, width: float) -> int:
+	var para: TextParagraph = TextParagraph.new()
+	var _added: bool = para.add_string(text, font, px)
+	para.width = width
+	para.break_flags = TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
+	return para.get_line_count()
 
 
 ## An empty Control `h` tall (and `w` wide); with `grow` it also takes the free space of its container.

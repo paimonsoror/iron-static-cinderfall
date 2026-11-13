@@ -10,6 +10,7 @@ signal tapped(slot: int)
 
 const HEIGHT: float = 150.0
 const NARROW: float = 290.0  ## below this width the silhouette column is left out
+const COMPACT: float = 200.0  ## below this width (three weapons and FREIGHT) the name line becomes number, silhouette and level marks
 
 var slot: int = 0
 var weapon_id: StringName = &""
@@ -21,7 +22,15 @@ var status_label: Label
 var bar: HudBar
 var icon_rect: TextureRect
 var marks: HudLevelMarks
+var compact: bool = false  ## the card is narrower than COMPACT: short state words, no name line
 var _icon_col: VBoxContainer
+var _body: MarginContainer
+var _compact_row: HBoxContainer
+var _compact_num: Label
+var _compact_icon: TextureRect
+var _compact_marks: HudLevelMarks
+var _info: Dictionary = {}
+var _hint: bool = false
 var _total: int = 0
 var _look: String = ""
 var _tween: Tween
@@ -32,16 +41,15 @@ func _init(card_slot: int = 0) -> void:
 	custom_minimum_size = Vector2(HudStyle.TOUCH, HEIGHT)
 	focus_mode = Control.FOCUS_NONE
 	pressed.connect(func() -> void: tapped.emit(slot))
-	var body: MarginContainer = MarginContainer.new()
-	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for side: String in ["left", "right", "top", "bottom"]:
-		body.add_theme_constant_override("margin_" + side, 10)
-	add_child(body)
-	body.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_body = MarginContainer.new()
+	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_set_margin(10)
+	add_child(_body)
+	_body.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var row: HBoxContainer = HBoxContainer.new()
 	row.add_theme_constant_override(&"separation", 10)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	body.add_child(row)
+	_body.add_child(row)
 	_icon_col = VBoxContainer.new()
 	_icon_col.add_theme_constant_override(&"separation", 4)
 	_icon_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -58,6 +66,7 @@ func _init(card_slot: int = 0) -> void:
 	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(col)
+	_build_compact_row(col)
 	name_label = HudStyle.make_label("-", HudStyle.FONT_SMALL, HudStyle.color(&"bone_ceramic"))
 	HudStyle.bold(name_label)
 	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -74,6 +83,8 @@ func _init(card_slot: int = 0) -> void:
 
 ## Shows slot `info` (RunApi.weapon_slot): `is_active` = the weapon in hand, `hint` = swapping would help now.
 func show_slot(info: Dictionary, is_active: bool, hint: bool) -> void:
+	_info = info
+	_hint = hint
 	var id: StringName = info.get("id", &"")
 	var new_state: int = info.get("state", RunApi.SLOT_READY)
 	var left: int = info.get("ticks_left", 0)
@@ -90,7 +101,7 @@ func show_slot(info: Dictionary, is_active: bool, hint: bool) -> void:
 	var red: Color = HudStyle.color(&"chorus_red")
 	if empty:
 		name_label.text = str(slot + 1)
-		_status(Strings.t("hud.weapon.empty"), HudStyle.color(&"gunmetal").lightened(0.4))
+		_status(_word("empty"), HudStyle.color(&"gunmetal").lightened(0.4))
 		bar.visible = false
 		icon_rect.texture = null
 		marks.set_level(0, amber)
@@ -99,7 +110,11 @@ func show_slot(info: Dictionary, is_active: bool, hint: bool) -> void:
 		icon_rect.texture = HudStyle.texture(StringName("weapon_%s" % String(id)))
 		marks.set_level(level, amber)
 		_feed(info, left, amber, cyan, red)
+	_compact_icon.texture = icon_rect.texture
+	_compact_marks.set_level(0 if empty else level, amber)
+	_compact_num.text = str(slot + 1)
 	icon_rect.modulate = Color.WHITE if is_active else Color(1.0, 1.0, 1.0, 0.6)
+	_compact_icon.modulate = icon_rect.modulate
 	name_label.add_theme_color_override(&"font_color", HudStyle.color(&"bone_ceramic") if is_active else HudStyle.color(&"bone_ceramic").darkened(0.12))
 	_restyle(hint, empty)
 
@@ -109,16 +124,16 @@ func _feed(info: Dictionary, left: int, amber: Color, cyan: Color, red: Color) -
 	var heat: int = info.get("heat", 0)
 	match state:
 		RunApi.SLOT_RELOADING:
-			_status(Strings.t("hud.weapon.reloading"), amber)
+			_status(_word("reloading"), amber)
 			_progress(1.0 - float(left) / float(maxi(_total, 1)), amber)
 		RunApi.SLOT_VENTING:
-			_status(Strings.t("hud.weapon.venting"), red.lightened(0.2))
+			_status(_word("venting"), red.lightened(0.2))
 			_progress(float(left) / float(maxi(_total, 1)), red)
 		RunApi.SLOT_SWAPPING:
-			_status(Strings.t("hud.weapon.swapping"), cyan)
+			_status(_word("swapping"), cyan)
 			_progress(1.0 - float(left) / float(maxi(_total, 1)), cyan)
 		RunApi.SLOT_CHARGING:
-			_status(Strings.t("hud.weapon.charging"), amber)
+			_status(_word("charging"), amber)
 			_progress(1.0 - float(left) / float(maxi(_total, 1)), amber)
 		_:
 			if heat_cap > 0:
@@ -147,9 +162,50 @@ func _progress(fraction: float, color: Color) -> void:
 	bar.set_state(fraction, 0.0)
 
 
-## The card's width decides whether the silhouette column fits (a narrow card keeps the chevrons under the name instead).
+## The card's width decides how much it can show: the silhouette column from NARROW up; below COMPACT (three weapons and FREIGHT
+## in one row) the name line gives way to the slot number, a small silhouette and the level marks, the state words shorten and
+## the margins thin, so every word still fits at the 30 px minimum.
 func set_card_width(w: float) -> void:
-	_icon_col.visible = w >= NARROW
+	_icon_col.visible = w >= NARROW and not compact
+	var tight: bool = w < COMPACT
+	if tight == compact:
+		return
+	compact = tight
+	_icon_col.visible = w >= NARROW and not compact
+	_compact_row.visible = compact
+	name_label.visible = not compact
+	_set_margin(6 if compact else 10)
+	if not _info.is_empty():
+		show_slot(_info, active, _hint)
+
+
+func _set_margin(px: int) -> void:
+	for side: String in ["left", "right", "top", "bottom"]:
+		_body.add_theme_constant_override("margin_" + side, px)
+
+
+func _build_compact_row(col: VBoxContainer) -> void:
+	_compact_row = HBoxContainer.new()
+	_compact_row.add_theme_constant_override(&"separation", 6)
+	_compact_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_compact_row.visible = false
+	col.add_child(_compact_row)
+	_compact_num = HudStyle.make_label("-", HudStyle.FONT_SMALL, HudStyle.color(&"bone_ceramic"))
+	HudStyle.bold(_compact_num)
+	_compact_row.add_child(_compact_num)
+	_compact_icon = HudStyle.icon(&"weapon_pistol", 64.0)
+	_compact_icon.custom_minimum_size = Vector2(64.0, 34.0)
+	_compact_row.add_child(_compact_icon)
+	_compact_marks = HudLevelMarks.new()
+	_compact_marks.custom_minimum_size = Vector2(36.0, 24.0)
+	_compact_row.add_child(_compact_marks)
+
+
+## A state word: the short form on a compact card ("RELOAD"), else the full one ("RELOADING").
+func _word(key: String) -> String:
+	if compact:
+		return RunUi.opt("hud.weapon.%s.short" % key, Strings.t("hud.weapon.%s" % key))
+	return Strings.t("hud.weapon.%s" % key)
 
 
 func _restyle(hint: bool, empty: bool) -> void:
