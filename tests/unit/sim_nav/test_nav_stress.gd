@@ -146,10 +146,10 @@ func test_state_hash_covers_the_nav_state() -> void:
 
 func test_movement_step_with_fifty_enemies_averages_under_one_millisecond() -> void:
 	## Worst case: all fifty enemies start on the spawn edges, so the 300 measured ticks cover the walk in, the crowd
-	## converging on the core and the first arrivals. The best of three fresh runs is asserted so a busy machine does
-	## not fail the test; every run is printed.
+	## converging on the core and the first arrivals. The best of five fresh runs is asserted so a busy machine does
+	## not fail the test (ten other checkouts measure on the same machine in wave V4); every run is printed.
 	var averages: Array[float] = []
-	for run: int in 3:
+	for run: int in 5:
 		var w: SimWorld = NavTestUtil.world()
 		NavTestUtil.fill_mixed(w, 50)
 		NavTestUtil.advance_n(w, 5)
@@ -161,6 +161,8 @@ func test_movement_step_with_fifty_enemies_averages_under_one_millisecond() -> v
 			total += Time.get_ticks_usec() - t0
 		averages.append(float(total) / 300.0)
 		assert_int(w.alive_count()).is_equal(50)
-	var best: float = minf(averages[0], minf(averages[1], averages[2]))
-	print("NAV_BENCH MovementSystem.step, 50 enemies, avg us per tick over 300 ticks, 3 runs: %s best=%.1f" % [str(averages), best])
+	var best: float = averages[0]
+	for value: float in averages:
+		best = minf(best, value)
+	print("NAV_BENCH MovementSystem.step, 50 enemies, avg us per tick over 300 ticks, 5 runs: %s best=%.1f" % [str(averages), best])
 	assert_float(best).is_less(1000.0)

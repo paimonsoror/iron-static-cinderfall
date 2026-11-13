@@ -84,7 +84,8 @@ static func step(world: SimWorld) -> void:
 		var pz: float = ez[i]
 		prev_x[i] = px
 		prev_z[i] = pz
-		if stun[i] > 0 or (xflags[i] & EnemyExtState.F_EMERGING) != 0:
+		var xf: int = xflags[i]
+		if stun[i] > 0 or (xf & EnemyExtState.F_EMERGING) != 0:
 			continue
 		var enemy_id: int = ids[i]
 		if track_id[i] != enemy_id:
@@ -118,7 +119,7 @@ static func step(world: SimWorld) -> void:
 		var cdx: float = px - core_x
 		var cdz: float = pz - core_z
 		var core_d2: float = cdx * cdx + cdz * cdz
-		var is_mini: bool = (xflags[i] & EnemyExtState.F_MINI) != 0
+		var is_mini: bool = (xf & EnemyExtState.F_MINI) != 0
 		if is_mini and core_d2 <= t_hold2[t]:
 			es.path_dist[i] = 0.0
 			continue
