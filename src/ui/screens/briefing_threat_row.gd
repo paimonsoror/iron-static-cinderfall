@@ -37,8 +37,10 @@ func _init(enemy: EnemyDef = null, rank: int = 1, ranks: int = 4) -> void:
 	row.add_child(text)
 	name_label = UiKit.label_text(name_text, UiTheme.LABEL_HEADING, UiTheme.FONT_BODY + 6)
 	text.add_child(name_label)
-	desc_label = UiKit.label_text(Strings.t("lore.threat.%s" % String(id)), UiTheme.LABEL_CAPTION)
+	# the briefing line of the machine; a boss has its ATTACK line (approved text); a type with neither shows none (no "#key#")
+	desc_label = UiKit.label_text(RunUi.opt("lore.threat.%s" % String(id), RunUi.opt("boss.%s.attack" % String(id))), UiTheme.LABEL_CAPTION)
 	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_label.visible = desc_label.text != ""
 	text.add_child(desc_label)
 	chevrons = UiChevrons.new(rank, ranks)
 	chevrons.size_flags_vertical = Control.SIZE_SHRINK_CENTER

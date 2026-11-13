@@ -39,6 +39,7 @@ func _populate() -> void:
 	header.add_child(strip)
 	title_label = RunUi.label(Strings.t("route.header"), 44, &"body", true)
 	header.add_child(title_label)
+	var _first: RunHintLine = add_hint("hint.route")
 	quiet_label = null
 	if _both_hot():
 		quiet_label = RunUi.label(Strings.t("route.none_quiet"), RunUi.MIN_TEXT + 4, &"danger", true)

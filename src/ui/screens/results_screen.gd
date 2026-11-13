@@ -1,12 +1,18 @@
 class_name ResultsScreen
 extends Control
-## Results (GDD 10.2): VICTORY or DEFEAT, a radio or log line, waves cleared, run time, core remaining, kills by
-## type, and the Recovered Data earned (a count-up) with the new total, then RETRY and MENU. The reward was granted
-## by the run flow before this screen exists; here it is only shown (`reward_granted` false means this run was
-## already recorded, so nothing was earned now). The signals and setup() are the frozen contract (ARCH 9).
+## Results (GDD 10.2, 10.6): VICTORY or DEFEAT, a radio or log line, the act and wave reached, waves cleared, run time, core
+## remaining, kills by type, and the Recovered Data earned (a count-up) with the new total, then RETRY and MENU. A generated run
+## adds WHAT BROKE THE LINE, the build recap, the milestones it paid (`show_milestones`), the Archive hook that names what the
+## Data now buys, the run's seed with SAME SEED, and an ARCHIVE button that opens the Archive over this screen. The reward was
+## granted by the run flow before this screen exists; here it is only shown (`reward_granted` false means this run was already
+## recorded, so nothing was earned now). The signals and setup() are the frozen contract (ARCH 9).
 
 signal retry_pressed
 signal menu_pressed
+signal same_seed_pressed(run_seed: int)  ## RETRY with the seed of this run (the game layer starts it)
+signal archive_pressed
+
+const ARCHIVE_SCENE: String = "res://src/ui/screens/archive_screen.tscn"
 
 const COUNT_SECONDS: float = 1.2
 const COUNT_STEP: float = 0.05  ## the count-up redraws its number at 20 Hz, not every frame
@@ -24,6 +30,16 @@ var data_label: Label
 var total_label: Label
 var retry_button: Button
 var menu_button: Button
+var act_label: Label  ## "ACT II  WAVE 8 OF 15" (a generated run)
+var recap: ResultsRecapPanels
+var milestone_label: Label
+var hook_label: Label
+var seed_label: Label  ## "SEED 48211" under the act line (a generated run)
+var same_seed_button: Button
+var archive_button: Button
+var archive_screen: ArchiveScreen  ## the open Archive overlay, or null
+var open_archive_overlay: bool = true  ## false when the game layer opens the Archive itself on `archive_pressed`
+var _seed: int = 0
 var _frame: UiScreenFrame
 var _kills_col: VBoxContainer
 var _built: bool = false
@@ -53,12 +69,39 @@ func setup(summary: RunSummary, content: ContentSet, profile: Profile, reward_gr
 		summary.core_hp, summary.core_max_hp, UiKit.percent(float(summary.core_hp), float(summary.core_max_hp)),
 	]))
 	_fill_kills(summary, content)
+	_fill_run_extras(summary, content, profile, won)
 	_target = summary.data_reward if reward_granted else 0
 	if reward_granted:
 		total_label.text = Strings.tf("results.data_total", [UiKit.group(profile.data)])
 	else:
 		total_label.text = Strings.tf("results.data_banked", [UiKit.group(profile.data)])
 	_start_count_up()
+
+
+## The milestones this run paid, `{ "id": StringName, "data": int }` each (the game layer reads them from the reward): one
+## "MILESTONE: NODE 9 FIRST KILL  +50" line each, under the Recovered Data.
+func show_milestones(items: Array) -> void:
+	_ensure_built()
+	var lines: PackedStringArray = PackedStringArray()
+	for item: Variant in items:
+		if typeof(item) == TYPE_DICTIONARY:
+			var entry: Dictionary = item
+			lines.append(ResultsRecap.milestone_text(entry))
+	milestone_label.text = "\n".join(lines)
+	milestone_label.visible = not lines.is_empty()
+
+
+## Opens the Archive over this screen (the ARCHIVE button does it). Returns the overlay.
+func open_archive() -> ArchiveScreen:
+	if archive_screen != null and is_instance_valid(archive_screen):
+		return archive_screen
+	var packed: PackedScene = load(ARCHIVE_SCENE) as PackedScene
+	var screen: ArchiveScreen = packed.instantiate() as ArchiveScreen
+	add_child(screen)
+	screen.setup(Content.db)
+	screen.closed.connect(_on_archive_closed.bind(screen))
+	archive_screen = screen
+	return screen
 
 
 func _process(delta: float) -> void:
@@ -100,16 +143,49 @@ func _ensure_built() -> void:
 	subtitle_label = UiKit.label_text("", UiTheme.LABEL_DIM)
 	subtitle_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_frame.header.add_child(subtitle_label)
+	act_label = UiKit.label_text("", UiTheme.LABEL_ACCENT)
+	act_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	act_label.visible = false
+	_frame.header.add_child(act_label)
+	seed_label = UiKit.label_text("", UiTheme.LABEL_NUMBER, UiTheme.FONT_SMALL)
+	seed_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	seed_label.visible = false
+	_frame.header.add_child(seed_label)
+	# The Recovered Data (with its milestones and the Archive hook, the "one more run") comes before the recaps: it is what
+	# the player came to read, and the recaps and the kills below it scroll.
 	col.add_child(_lore_panel())
 	col.add_child(_stats_grid())
-	col.add_child(_kills_panel())
 	col.add_child(_data_panel())
+	recap = ResultsRecapPanels.new()
+	col.add_child(recap)
+	col.add_child(_kills_panel())
+	_build_footer()
+
+
+func _build_footer() -> void:
 	retry_button = UiKit.button_primary("results.retry")
 	retry_button.pressed.connect(func() -> void: retry_pressed.emit())
 	_frame.footer.add_child(retry_button)
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 20)
+	_frame.footer.add_child(row)
+	same_seed_button = UiKit.button("results.same_seed")
+	same_seed_button.custom_minimum_size = Vector2(UiTheme.TOUCH_MIN, UiTheme.BTN_PRIMARY_H)
+	same_seed_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	same_seed_button.visible = false
+	same_seed_button.pressed.connect(_on_same_seed)
+	row.add_child(same_seed_button)
+	archive_button = UiKit.button("results.archive")
+	archive_button.custom_minimum_size = Vector2(UiTheme.TOUCH_MIN, UiTheme.BTN_PRIMARY_H)
+	archive_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	archive_button.visible = false
+	archive_button.pressed.connect(_on_archive)
+	row.add_child(archive_button)
 	menu_button = UiKit.button_quiet("results.menu")
+	menu_button.custom_minimum_size = Vector2(UiTheme.TOUCH_MIN, UiTheme.BTN_PRIMARY_H)
+	menu_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	menu_button.pressed.connect(func() -> void: menu_pressed.emit())
-	_frame.footer.add_child(menu_button)
+	row.add_child(menu_button)
 
 
 func _lore_panel() -> PanelContainer:
@@ -166,6 +242,14 @@ func _data_panel() -> PanelContainer:
 	total_label = UiKit.label_text("", UiTheme.LABEL_DIM)
 	total_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(total_label)
+	milestone_label = UiKit.label_text("", UiTheme.LABEL_FRIENDLY, UiTheme.FONT_SMALL + 2)
+	milestone_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	milestone_label.visible = false
+	col.add_child(milestone_label)
+	hook_label = UiKit.label_text("", UiTheme.LABEL_ACCENT, UiTheme.FONT_SMALL + 2)
+	hook_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hook_label.visible = false
+	col.add_child(hook_label)
 	return panel
 
 
@@ -193,6 +277,55 @@ func _fill_kills(summary: RunSummary, content: ContentSet) -> void:
 		row.add_child(count)
 		_kills_col.add_child(row)
 	kills_cell.set_value(UiKit.group(total))
+
+
+## The additions of a generated run: act line, recap panels, Archive hook, seed row, ARCHIVE button. Hidden on legacy content.
+func _fill_run_extras(summary: RunSummary, content: ContentSet, profile: Profile, won: bool) -> void:
+	var variety: bool = content != null and content.is_variety()
+	act_label.visible = variety
+	recap.show_run(summary, content)
+	archive_button.visible = variety
+	same_seed_button.visible = variety
+	seed_label.visible = variety
+	hook_label.text = ResultsRecap.hook_text(content, profile) if variety else ""
+	hook_label.visible = hook_label.text != ""
+	milestone_label.visible = milestone_label.visible and variety
+	_seed = summary.run_seed
+	if not variety:
+		return
+	var total: int = RunRoster.wave_count(content)
+	var reached: int = clampi(summary.waves_completed + (0 if won else 1), 1, maxi(total, 1))
+	act_label.text = "%s    %s" % [
+		Strings.tf("results.act_wave", [RunUi.roman(maxi(summary.act_reached, 1)), reached, total]), UiKit.clock(summary.duration_ticks),
+	]
+	seed_label.text = Strings.tf("results.seed", [_seed])
+
+
+func _on_same_seed() -> void:
+	if same_seed_pressed.get_connections().is_empty():
+		Sfx.play(&"ui_deny")  # nobody starts runs from here (a sandbox): nothing to do
+		return
+	Sfx.play(&"ui_tap")
+	same_seed_pressed.emit(_seed)
+
+
+func _on_archive() -> void:
+	archive_pressed.emit()
+	if open_archive_overlay:
+		var _screen: ArchiveScreen = open_archive()
+
+
+## The back gesture: closes the Archive overlay when one is open. True when it did (the game layer then does nothing else).
+func close_overlay() -> bool:
+	if archive_screen != null and is_instance_valid(archive_screen):
+		archive_screen.close()
+		return true
+	return false
+
+
+func _on_archive_closed(screen: ArchiveScreen) -> void:
+	screen.queue_free()
+	archive_screen = null
 
 
 func _start_count_up() -> void:

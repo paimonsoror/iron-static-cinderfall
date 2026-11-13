@@ -38,14 +38,15 @@ static func fresh_save() -> void:
 	Save.load_profile()
 
 
-## Labels and buttons below `root` whose text is empty or is a "#key#" placeholder from Strings.
+## Labels and buttons below `root` whose text is a "#key#" placeholder from Strings, or is empty while they are on screen (a
+## hidden label waiting for its text, like the milestone line, is not a defect).
 static func bad_texts(root: Node) -> Array[String]:
 	var bad: Array[String] = []
 	for l: Label in UiKit.labels(root):
-		if _is_bad(l.text):
+		if _is_bad(l.text) and (l.text.strip_edges() != "" or l.is_visible_in_tree()):
 			bad.append("%s '%s'" % [l.get_path(), l.text])
 	for b: Button in UiKit.buttons(root):
-		if _is_bad(b.text):
+		if _is_bad(b.text) and (b.text.strip_edges() != "" or b.is_visible_in_tree()):
 			bad.append("%s '%s'" % [b.get_path(), b.text])
 	return bad
 
