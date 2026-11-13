@@ -93,8 +93,16 @@
     "by_act": [ { "two_chance": 0.0 }, { "two_chance": 0.4 }, { "two_chance": 1.0 } ]
   },
   "bosses": {
-    "siege_hulk": { "pool_act": 1, "hp": 2800, "behaviour": { "enrage_frac": 0.25, "enrage_period_mult": 0.7 },
-                    "escorts": [ { "enemy": "skitter", "share": 0.6 }, { "enemy": "mote", "share": 0.4 } ] }
+    "siege_hulk": { "pool_act": 3, "hp": 9000, "behaviour": { "enrage_frac": 0.25, "enrage_period_mult": 0.7 },
+                    "escorts": [ { "pack": "pack_everything" } ] },
+    "brood_carrier": { "pool_act": 1, "hp": 2400,
+                       "escorts": [ { "enemy": "skitter", "share": 0.6 }, { "enemy": "mote", "share": 0.4 } ] },
+    "lance_platform": { "pool_act": 1, "hp": 2000,
+                        "escorts": [ { "enemy": "hollow_warden", "share": 0.5 }, { "enemy": "rusher", "share": 0.5 } ] },
+    "aegis_array": { "pool_act": 2, "hp": 4200,
+                     "escorts": [ { "enemy": "shieldbearer", "share": 0.3 }, { "enemy": "skitter", "share": 0.7 } ] },
+    "tremor_rig": { "pool_act": 2, "hp": 5000,
+                    "escorts": [ { "enemy": "rusher", "share": 0.5 }, { "enemy": "burster", "share": 0.5 } ] }
   },
   "hulk_variants": [ "hulk_plated", "hulk_fed", "hulk_overclocked" ]
 }
