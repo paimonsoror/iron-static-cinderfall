@@ -8,8 +8,13 @@ extends RefCounted
 ##   SEGMENT   a bolt from p to v (tracer): head runs out, tail follows, width s0 -> s1
 ##   DEBRIS    a cube flying ballistically from p with velocity v, scale s0 -> s1, bouncing nowhere (lands and rests)
 ##   STREAK    a spark: ballistic like DEBRIS but stretched along its velocity, length s0 -> s1
+## V4-X modes:
+##   STRIP     a flat rectangle for lanes and edge bands: half-length `vel_or_end.x`, half-width s0 -> s1, yaw = spin
+##   BEAM      a ribbon from p to v over its WHOLE length (a beam, unlike the SEGMENT tracer that runs out), width s0 -> s1
+##   LOB       a billboard flying from p to v on an arc `spin` meters high, size s0 -> s1 (mortar shells, hornets, spitter bolts)
+##   DRIFT     a billboard that moves from p with velocity v and no gravity (embers), size s0 -> s1
 
-enum Mode { FLAT, BILLBOARD, SEGMENT, DEBRIS, STREAK }
+enum Mode { FLAT, BILLBOARD, SEGMENT, DEBRIS, STREAK, STRIP, BEAM, LOB, DRIFT }
 
 const GRAVITY: float = 9.8
 
@@ -110,6 +115,32 @@ func live_count() -> int:
 	return _count
 
 
+## Moves the two end points of a live slot (a beam that follows its shooter and target) and keeps it from aging out for `life` more seconds.
+## `size` >= 0 also sets the size (the width of a beam) for the rest of its life.
+func retarget(slot: int, pos: Vector3, vel_or_end: Vector3, life: float, size: float = -1.0) -> void:
+	if slot < 0 or slot >= capacity or _live[slot] == 0:
+		return
+	_p[slot] = pos
+	_v[slot] = vel_or_end
+	_age[slot] = 0.0
+	_life[slot] = maxf(life, 0.001)
+	if size >= 0.0:
+		_s0[slot] = size
+		_s1[slot] = size
+
+
+## Ends a live slot at once.
+func release(slot: int) -> void:
+	if slot < 0 or slot >= capacity or _live[slot] == 0:
+		return
+	_live[slot] = 0
+	_count -= 1
+
+
+func is_live(slot: int) -> bool:
+	return slot >= 0 and slot < capacity and _live[slot] == 1
+
+
 ## Limits the pool to its first `n` slots (a quality tier: VARIETY_SPEC 10.3). Nothing is allocated: the slots beyond the limit are
 ## stopped and never used again until the limit is raised. `n` is clamped to 0..capacity.
 func set_limit(n: int) -> void:
@@ -175,6 +206,16 @@ func _transform(i: int) -> Transform3D:
 			var pos: Vector3 = _ballistic(i)
 			var spin_basis: Basis = Basis(Vector3.UP, _spin[i] * _age[i]) * Basis(Vector3.RIGHT, 0.5)
 			return Transform3D(spin_basis * Basis.from_scale(Vector3.ONE * s), pos)
+		Mode.STRIP:
+			var strip: Basis = Basis(Vector3.UP, _spin[i]) * Basis.from_scale(Vector3(_v[i].x, 1.0, s))
+			return Transform3D(strip, _p[i])
+		Mode.BEAM:
+			return along(_p[i], _v[i], s)
+		Mode.LOB:
+			var fly: Vector3 = _p[i].lerp(_v[i], t01) + Vector3(0.0, _spin[i] * 4.0 * t01 * (1.0 - t01), 0.0)
+			return Transform3D(facing * Basis.from_scale(Vector3(s, 1.0, s)), fly)
+		Mode.DRIFT:
+			return Transform3D(facing * Basis.from_scale(Vector3(s, 1.0, s)), _p[i] + _v[i] * _age[i])
 		_:
 			return _streak(i, s)
 
@@ -184,7 +225,7 @@ func _segment(i: int, t01: float, width: float) -> Transform3D:
 	var b: Vector3 = _v[i]
 	var head: Vector3 = a.lerp(b, clampf(0.6 + t01 * 2.0, 0.0, 1.0))
 	var tail: Vector3 = a.lerp(b, clampf((t01 - 0.2) / 0.8, 0.0, 1.0))
-	return _along(tail, head, width)
+	return along(tail, head, width)
 
 
 func _streak(i: int, length: float) -> Transform3D:
@@ -193,7 +234,7 @@ func _streak(i: int, length: float) -> Transform3D:
 	var dir: Vector3 = vel.normalized()
 	if vel.length() < 0.01:
 		dir = Vector3.RIGHT
-	return _along(pos - dir * length * 0.5, pos + dir * length * 0.5, streak_width)
+	return along(pos - dir * length * 0.5, pos + dir * length * 0.5, streak_width)
 
 
 ## Ballistic position of slot i; rests on the ground once it lands.
@@ -212,7 +253,7 @@ func _ballistic(i: int) -> Vector3:
 
 
 ## A flat quad stretched from `a` to `b` with `width`, lying in the plane that contains the direction and +Y.
-func _along(a: Vector3, b: Vector3, width: float) -> Transform3D:
+static func along(a: Vector3, b: Vector3, width: float) -> Transform3D:
 	var d: Vector3 = b - a
 	var length: float = d.length()
 	if length < 0.001:

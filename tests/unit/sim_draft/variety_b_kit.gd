@@ -9,6 +9,14 @@ extends RefCounted
 static var _next_id: int = 1000
 
 
+## The slice pool of the variety fixture: its first 8 directives (the pool the goldens of V2-B were recorded on). The
+## full fixture holds all 60.
+static func slice_content() -> ContentSet:
+	var c: ContentSet = TestContent.variety()
+	c.directives.resize(8)
+	return c
+
+
 static func next_id() -> int:
 	_next_id += 1
 	return _next_id

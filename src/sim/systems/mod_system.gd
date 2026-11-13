@@ -14,6 +14,8 @@ extends RefCounted
 ## The `hook` value of a directive that patches the plan of the remaining waves (chorus_handshake, static_pact, open_gate).
 const HOOK_PLAN_PATCH: StringName = &"plan_patch"
 const DEFAULT_CHARGE_CAP: int = 3
+const STRIKE_EVENT: StringName = &"deadfall_strike"
+const FREIGHT_EVENT: StringName = &"freight_call"
 
 
 ## Applies the kit of the run (SimConfig.kit_index): its stat ops now and in every recompute, its grants once.
@@ -40,11 +42,14 @@ static func recompute(world: SimWorld) -> void:
 	for def: DirectiveDef in world.content.directives:
 		var held: int = world.draft.stacks_of(def.index)
 		if held > 0:
-			apply_ops(world, def.ops, held)
+			ModRules.apply_directive(world, def, held)
 	var modifiers: Array[ModifierDef] = world.content.run.modifiers
 	if m.wave_modifier >= 0 and m.wave_modifier < modifiers.size():
 		apply_ops(world, modifiers[m.wave_modifier].ops, 1)
+	ModRules.post_ops(world)
 	_sync_levels(world)
+	if m.has_flag(&"pads_disabled"):
+		_drop_turrets(world)
 	EconomySystem.sync_turrets(world, roundi(m.turrets))
 	_sync_core_max(world)
 
@@ -114,13 +119,45 @@ static func apply_reward(world: SimWorld, reward_index: int) -> void:
 	grant(world, ops)
 
 
-## Sets the modifier of the wave that starts (-1 = none) and recomputes.
+## Sets the modifier of the wave that starts (-1 = none), recomputes, and applies what a wave start brings: the
+## Deadfall and Freight charges of `strike_per_act` / `freight_per_act` at the first wave of an act, and the offline
+## time of mod_low_power (PhaseAwaits.begin_wave calls this after ACT_STARTED and before EventSystem.begin_wave).
 static func set_wave_modifier(world: SimWorld, modifier_index: int) -> void:
 	if not world.content.is_variety():
 		return
 	var valid: bool = modifier_index >= 0 and modifier_index < world.content.run.modifiers.size()
 	world.mods.wave_modifier = modifier_index if valid else -1
 	recompute(world)
+	if is_act_start(world):
+		_grant_charge(world, STRIKE_EVENT, roundi(world.mods.strike_per_act))
+		_grant_charge(world, FREIGHT_EVENT, roundi(world.mods.freight_per_act))
+	var offline: int = roundi(world.mods.turret_offline_ticks)
+	if offline > world.events_state.turret_offline_ticks:
+		world.events_state.turret_offline_ticks = offline
+
+
+## True when `world.wave` is the first wave of its act (wave 1, or the act differs from the wave before).
+static func is_act_start(world: SimWorld) -> bool:
+	var run: RunDef = world.content.run
+	var slot: WaveSlotDef = run.wave_slot(world.wave) if run != null else null
+	if slot == null:
+		return false
+	if world.wave <= 1:
+		return true
+	var before: WaveSlotDef = run.wave_slot(world.wave - 1)
+	return before != null and before.act != slot.act
+
+
+## Adds one stack of directive `def` (already counted in DraftState.stacks): its one-time reactions, the recompute, the
+## charges a per-act stat adds right away (deadfall_uplink, signal_hijack) and its GRANT ops. DraftSystem calls this.
+static func on_directive_added(world: SimWorld, def: DirectiveDef) -> void:
+	var strike_before: float = world.mods.strike_per_act
+	var freight_before: float = world.mods.freight_per_act
+	ModRules.on_picked(world, def)
+	recompute(world)
+	_grant_charge(world, STRIKE_EVENT, roundi(world.mods.strike_per_act - strike_before))
+	_grant_charge(world, FREIGHT_EVENT, roundi(world.mods.freight_per_act - freight_before))
+	grant(world, def.ops)
 
 
 ## Repairs the core by up to `amount` (never above the maximum); pushes CORE_HEALED. Returns what was repaired.
@@ -170,6 +207,8 @@ static func _sync_core_max(world: SimWorld) -> void:
 ## +n charges of the player event `event_id`, up to its charge_cap. Interim: EventState is written here until
 ## EventSystem gets an add-charge function of its own.
 static func _grant_charge(world: SimWorld, event_id: StringName, n: int) -> void:
+	if n == 0:
+		return
 	var index: int = world.content.event_index(event_id)
 	var es: EventState = world.events_state
 	if index < 0 or index >= es.charges.size():
@@ -180,6 +219,12 @@ static func _grant_charge(world: SimWorld, event_id: StringName, n: int) -> void
 		return
 	es.charges[index] = now
 	world.events.push(SimEventKind.Id.CHARGES_CHANGED, index, now)
+
+
+## single_point: every turret is removed (the pads are disabled by the flag, so none comes back).
+static func _drop_turrets(world: SimWorld) -> void:
+	for pad: int in world.turrets.active.size():
+		world.turrets.active[pad] = 0
 
 
 ## The weapon `weapon_id` into the first empty slot (ArsenalSystem does the rest); nothing when every slot is taken.

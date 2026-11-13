@@ -16,6 +16,16 @@
 			"file": "run.json",
 			"path": "packs[2].min_act",
 			"set": 2
+		},
+		{
+			"file": "run.json",
+			"path": "packs[3].min_act",
+			"set": 2
+		},
+		{
+			"file": "run.json",
+			"path": "packs[4].min_act",
+			"set": 2
 		}
 	],
 	"expect": [
