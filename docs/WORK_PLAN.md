@@ -868,6 +868,19 @@ wins and losses.
 two seeds differ in packs, offers and outcomes, kill and resume works in process and through `Game`, and the debug APK exports.
 The phone, the emulator and a real OS-process kill and relaunch are NOT RUN; the owner playtest on the phone is the gate.
 
+**Status (2026-11-13), wave V4 done.** All eleven V4 tasks are merged (`main` c5092bb, `check.ps1` green with 3,042 tests). With
+the whole content in, the `balanced` bot won **19 of 20** seeds of the 5-wave slice (the scorecard of that build: WARN, 7
+pass, 12 warn, 0 fail; the run was 171 s long because it had five waves). The owner played that build on a phone and
+approved the 15-wave integration.
+
+**Status (2026-11-13), V5-A: the 15-wave game.** `data/run.json` holds the 15 waves of CONTENT 1.1 (three acts, bosses at 5, 10
+and 15 from the act pools), `data/unlocks.json` the whole Archive (24 unlocks), the sim counts the Recovered Data table of
+CONTENT 10, and the upgrade drawer is gone. First measurement on the first-pass numbers (nothing tuned):
+`tools\sim_run.ps1 -Seed 1 -Policy balanced -Runs 20` gives 10 victories and 10 defeats (the defeats: 1 in wave 5, 3 in wave 6,
+5 in wave 10, 1 in wave 15); a win lasts 574 to 669 s in all, about 560 s of combat, which is short of the 780 to 1,020 s of
+scorecard S16. Tuning is V5-C's task (values only). The whole-run suites pin the structure with a debug build (every
+unlock, damage x4) for the victory and the `none` bot for the defeat, so they do not move when the numbers are tuned.
+
 **V3-I carry-overs.** V4-U: draft, route and corrupted hints on the choice screens; the empty band (about 140 px at 1080x2400)
 between the battlefield and the weapon bar; the combat HUD ghosting through the overlay header; a truncated weapon list on the
 draft build button; the wrapped pistol stat line in the salvage card; the boss ANSWER line may only name answers the run can have.

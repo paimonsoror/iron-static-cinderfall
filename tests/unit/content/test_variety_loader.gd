@@ -26,7 +26,17 @@ func test_run_json_acts_and_waves() -> void:
 	assert_float(run.acts[0].corrupted_chance).is_equal_approx(0.12, 0.0001)
 	assert_object(run.act(0)).is_null()
 	assert_object(run.act(4)).is_null()
-	assert_int(run.waves.size()).is_equal(5)
+	assert_int(run.waves.size()).is_equal(15)  # CONTENT 1.1: three acts of five, boss waves 5, 10 and 15
+	for wave_number: int in range(1, 16):
+		var slot: WaveSlotDef = run.wave_slot(wave_number)
+		assert_int(slot.index).is_equal(wave_number)
+		assert_int(slot.act).is_equal(1 + floori(float(wave_number - 1) / 5.0))
+		var kind: int = WaveSlotDef.Kind.BOSS if wave_number % 5 == 0 else (WaveSlotDef.Kind.OPENER if wave_number == 1 else WaveSlotDef.Kind.NORMAL)
+		assert_int(slot.kind).is_equal(kind)
+	assert_array([run.wave_slot(6).budget, run.wave_slot(10).budget, run.wave_slot(14).budget, run.wave_slot(15).budget]).is_equal([78.0, 70.0, 190.0, 120.0])
+	assert_int(run.wave_slot(15).window_ticks).is_equal(60 * 60)
+	assert_array([run.wave_slot(11).event_slots, run.wave_slot(12).event_slots, run.wave_slot(14).event_slots, run.wave_slot(15).event_slots]).is_equal([1, 2, 2, 1])
+	assert_object(run.wave_slot(16)).is_null()
 	var opener: WaveSlotDef = run.wave_slot(1)
 	assert_int(opener.kind).is_equal(WaveSlotDef.Kind.OPENER)
 	assert_int(opener.window_ticks).is_equal(22 * 60)
@@ -36,7 +46,7 @@ func test_run_json_acts_and_waves() -> void:
 	assert_int(run.wave_slot(3).fixed_pack_index).is_equal(-1)
 	assert_int(run.wave_slot(5).kind).is_equal(WaveSlotDef.Kind.BOSS)
 	assert_int(run.wave_slot(4).peak_minis).is_equal(16)
-	assert_object(run.wave_slot(6)).is_null()
+	assert_int(run.wave_slot(6).act).is_equal(2)
 
 
 func test_run_json_packs_modifiers_and_rewards() -> void:
@@ -81,7 +91,9 @@ func test_run_json_draft_salvage_caps_reward_and_mission() -> void:
 	assert_int(run.salvage_lifetime_ticks).is_equal(2400)
 	assert_int(run.salvage_bank_max).is_equal(2)
 	assert_array(Array(run.salvage_scrap_by_act)).is_equal([80, 140, 200])
-	assert_float(run.tier_weight(1, 5)).is_equal(100.0)
+	assert_float(run.tier_weight(1, 2)).is_equal(70.0)  # CONTENT 2: act I crates hold tier 2 and 3 weapons
+	assert_float(run.tier_weight(1, 3)).is_equal(30.0)
+	assert_float(run.tier_weight(1, 5)).is_equal(0.0)
 	assert_float(run.tier_weight(2, 3)).is_equal(45.0)
 	assert_float(run.tier_weight(3, 2)).is_equal(0.0)
 	assert_float(run.tier_weight(4, 2)).is_equal(0.0)
@@ -200,13 +212,22 @@ func test_enemies_json_elites_affixes_and_bosses() -> void:
 	assert_int(run.forbid_enemy[2]).is_equal(Ids.EN_RUSHER)
 	assert_int(run.forbid_enemy[0]).is_equal(-1)
 	assert_float(run.affix_two_chance[1]).is_equal_approx(0.4, 0.0001)
-	assert_int(c.bosses.size()).is_equal(1)
+	assert_int(c.bosses.size()).is_equal(5)  # CONTENT 5: two per act, then always the Siege Hulk
 	var hulk: BossDef = c.boss(&"siege_hulk")
 	assert_int(hulk.enemy_index).is_equal(Ids.EN_HULK)
-	assert_int(hulk.pool_act).is_equal(1)
+	assert_int(hulk.pool_act).is_equal(3)
+	assert_float(hulk.hp).is_equal(9000.0)
 	assert_float(hulk.beh(&"enrage_frac")).is_equal(0.25)
-	assert_array(Array(hulk.escort_enemy)).is_equal([Ids.EN_SKITTER, Ids.EN_MOTE])
+	assert_str(String(hulk.escort_pack)).is_equal("pack_everything")
+	assert_int(hulk.escort_enemy.size()).is_equal(0)
 	assert_str(hulk.name_key).is_equal("boss.siege_hulk.name")
+	var pools: Dictionary[StringName, int] = {}
+	for b: BossDef in c.bosses:
+		pools[b.id] = b.pool_act
+	assert_dict(pools).is_equal({&"siege_hulk": 3, &"brood_carrier": 1, &"lance_platform": 1, &"aegis_array": 2, &"tremor_rig": 2})
+	var brood: BossDef = c.boss(&"brood_carrier")
+	assert_float(brood.hp).is_equal(2400.0)
+	assert_array(Array(brood.escort_enemy)).is_equal([Ids.EN_SKITTER, Ids.EN_MOTE])
 	assert_int(run.hulk_variants.size()).is_equal(3)
 
 
@@ -256,7 +277,10 @@ func test_events_json() -> void:
 
 
 func test_unlocks_json() -> void:
-	assert_int(c.unlocks.size()).is_equal(17)  # 5 armory unlocks, 7 directive packs and 5 kit unlocks
+	assert_int(c.unlocks.size()).is_equal(24)  # 6 armory unlocks, 7 directive packs, 5 kit unlocks and 6 field options
+	assert_array(c.unlock(&"u_w_arc").grants).is_equal([&"arc_projector"])
+	assert_int(c.unlock(&"u_f_third_sling").branch).is_equal(UnlockDef.Branch.FIELD)
+	assert_int(c.unlock(&"u_f_third_sling").cost).is_equal(500)
 	var lmg: UnlockDef = c.unlock(&"u_w_lmg")
 	assert_int(lmg.branch).is_equal(UnlockDef.Branch.ARMORY)
 	assert_int(lmg.cost).is_equal(120)

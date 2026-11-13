@@ -4,7 +4,8 @@ extends RefCounted
 ## the resume of a run that survived a process kill (2.8), the choice overlays, and the Archive. `Game` keeps one-line
 ## delegates (its file is at the line cap); the logic lives here. `Game` has no class_name (it is an autoload), so its
 ## members are reached through get and call.
-# TODO(V4-U): the Archive overlay. TODO(V4-M): the daily seed.
+## V5-A: the Daily Run and SAME SEED starts, the milestone lines of the results screen, the back gesture on a screen's
+## own overlay.
 
 const OVERLAYS_NAME: String = "ChoiceOverlays"
 
@@ -23,16 +24,18 @@ static func set_launch(kit_id: StringName, daily: bool) -> void:
 
 
 ## Fills the variety fields of a new run's SimConfig (kit_index, unlocked, daily) from the pending launch and clears it.
-## The kit is the one asked for, else `--kit=<id>`, else the profile's; an unknown or empty kit is the standard kit
-## (index 0). The unlock list is the profile's (`--unlock=all|none|<id,id>` replaces it), sorted.
+## The kit is the one asked for, else `--kit=<id>`, else the profile's (the kit selector writes `Save.profile.kit`); an
+## unknown or empty kit is the standard kit (index 0); a Daily Run always takes GameLaunch.DAILY_KIT. The unlock list is the profile's (`--unlock=all|none|<id,id>` replaces it), sorted.
 static func apply_launch(config: SimConfig, content: ContentSet, args: DebugArgs = null) -> void:
 	var kit_id: StringName = pending_kit
 	if kit_id == &"" and args != null and args.kit != "":
 		kit_id = StringName(args.kit)
 	if kit_id == &"":
 		kit_id = Save.profile.kit
-	config.kit_index = maxi(0, content.kit_index(kit_id))
 	config.daily = pending_daily or (args != null and args.daily)
+	if config.daily:
+		kit_id = GameLaunch.DAILY_KIT  # the Daily Run is the same for everyone: one seed, one kit, the full pool
+	config.kit_index = maxi(0, content.kit_index(kit_id))
 	config.unlocked = unlocked_for(content, args.unlock if args != null else "")
 	pending_kit = &""
 	pending_daily = false
@@ -106,7 +109,66 @@ static func setup_menu(game: Node, menu: MainMenuScreen) -> void:
 	var wave: int = resumable_wave(content_o as ContentSet) if content_o != null else 0
 	menu.setup(Save.profile)
 	menu.set_resume_wave(wave)  # 0 hides RESUME RUN
+	menu.set_daily_today(GameLaunch.utc_date())  # the UI never reads the clock
 	menu.resume_pressed.connect(Callable(game, &"resume_run_from_disk"))
+	menu.daily_pressed.connect(start_daily.bind(game))
+
+
+## DAILY RUN (from the menu; VARIETY_SPEC 8.5): deploys today's run at once: the seed of the UTC date, the standard kit,
+## the full pool. False when the game is not on the menu.
+static func start_daily(game: Node) -> bool:
+	var state: int = game.call(&"state")
+	if state != GameState.Id.MENU:
+		return false
+	var entered: bool = game.call(&"_set_state", GameState.Id.BRIEFING)
+	if not entered:
+		return false
+	game.call(&"start_run", GameLaunch.daily_seed(GameLaunch.utc_date()), GameLaunch.DAILY_KIT, true)
+	return true
+
+
+## The results screen of the run that just ended: the milestones its reward paid (`Save.last_reward`, only when this
+## run was the one granted) and the SAME SEED button.
+static func setup_results(game: Node, screen: ResultsScreen) -> void:
+	var run: RunController = _run(game)
+	var reward: Dictionary = Save.last_reward
+	if run != null and run.reward_granted and str(reward.get("run_id", "")) == run.run_id:
+		var paid: Variant = reward.get("milestones", [])
+		if typeof(paid) == TYPE_ARRAY:
+			var items: Array = paid
+			screen.show_milestones(items)
+	screen.same_seed_pressed.connect(start_same_seed.bind(game))
+
+
+## SAME SEED (from the results screen): a new run with the seed and the kit of the run that ended. Never a Daily Run.
+static func start_same_seed(run_seed: int, game: Node) -> void:
+	var state: int = game.call(&"state")
+	if not GameState.is_terminal(state) or run_seed < 0:
+		return
+	var run: RunController = _run(game)
+	var kit_id: StringName = &""
+	if run != null and run.sim != null and run.sim.content.run != null:
+		var kits: Array[KitDef] = run.sim.content.kits
+		var kit_index: int = run.sim.config.kit_index
+		if kit_index >= 0 and kit_index < kits.size():
+			kit_id = kits[kit_index].id
+	set_launch(kit_id, false)
+	game.call(&"_begin_run", run_seed)
+
+
+## The back gesture on a screen that has an overlay of its own up (the Archive over the menu or the results screen):
+## closes it. True when one was closed; `Game.request_back` then does nothing else.
+static func close_screen_overlay(game: Node) -> bool:
+	var layers_o: Object = game.get(&"_layers")
+	var layers: GameLayers = layers_o as GameLayers
+	if layers == null or layers.screen_root == null:
+		return false
+	for child: Node in layers.screen_root.get_children():
+		if child is MainMenuScreen or child is ResultsScreen:
+			var closed: bool = child.call(&"close_overlay")
+			if closed:
+				return true
+	return false
 
 
 ## RESUME RUN (from the menu): rebuilds the run of the run file and continues it, paused, with the pause overlay up.
@@ -126,7 +188,7 @@ static func resume_from_disk(game: Node) -> bool:
 		RunResume.close(doc, content)
 		return false
 	if rebuilt.world.is_over():  # the process died between the end of the run and the deletion of its file
-		GameRewards.grant(rebuilt.world.summary(rebuilt.run_id))
+		GameRewards.grant(rebuilt.world.summary(rebuilt.run_id), rebuilt.config)  # with its Archive facts
 		Save.clear_run()
 		return false
 	var entered: bool = game.call(&"_set_state", GameState.Id.BRIEFING)
@@ -147,17 +209,27 @@ static func resume_from_disk(game: Node) -> bool:
 	if overlays != null:
 		overlays.sync()
 	run.api.pause()
+	Sfx.play(&"resume_link")
 	Log.info("Game", "run resumed id=%s wave=%d tick=%d" % [run.run_id, run.sim.wave, run.sim.tick])
 	return true
 
 
-## True while the run waits for a choice (BackPolicy: back on a choice overlay pauses, it never dismisses).
+## True while the run waits for a choice (a choice overlay is up; the back gesture pauses then, it never dismisses).
 static func choice_open(run: RunController) -> bool:
 	return run != null and run.api.awaiting() != RunApi.AWAIT_NONE
 
 
-## Opens the Archive as an overlay on the menu. False when it could not be shown (the stub: always).
-static func open_archive(_game: Node) -> bool:
+## Opens the Archive as an overlay on the menu (the menu's own ARCHIVE button does the same). False when the game is
+## not on the menu.
+static func open_archive(game: Node) -> bool:
+	var layers_o: Object = game.get(&"_layers") if game != null else null
+	var layers: GameLayers = layers_o as GameLayers
+	if layers == null or layers.screen_root == null:
+		return false
+	for child: Node in layers.screen_root.get_children():
+		var menu: MainMenuScreen = child as MainMenuScreen
+		if menu != null:
+			return menu.open_archive() != null
 	return false
 
 

@@ -1,6 +1,5 @@
 extends GdUnitTestSuite
-## The variety combat HUD (VARIETY_SPEC 11.4): the weapon bar, the swap tap, the swap hint and the call buttons, the hidden
-## drawer.
+## The variety combat HUD (VARIETY_SPEC 11.4): the weapon bar, the swap tap, the swap hint and the call buttons.
 
 var _api: FakeRunApi
 var _hud: CombatHud
@@ -28,13 +27,10 @@ func test_the_band_is_as_tall_as_its_rows_need_never_past_26_percent_and_holds_t
 	assert_bool(_hud.bottom.tab_button.visible).is_false()
 	assert_bool(_hud.bottom.ammo.visible).is_false()
 	assert_bool(_bar().visible).is_true()
-	assert_bool(_hud.is_drawer_open()).is_false()
-	assert_bool(_hud.drawer.visible).is_false()
 	_api.fake_phase = GameState.Id.INTERMISSION
-	Events.intermission_started.emit(2, 480)  # the legacy HUD opens the drawer here; the variety HUD never does
-	assert_bool(_hud.is_drawer_open()).is_false()
-	assert_bool(_hud.drawer.visible).is_false()
-	assert_bool(_hud.strip.visible).is_false()
+	Events.intermission_started.emit(2, 480)  # no drawer opens (there is none since V5-A): the band stays as it is
+	assert_bool(_hud.bottom.tab_button.visible).is_false()
+	assert_bool(_bar().visible).is_true()
 
 
 func test_a_near_square_screen_keeps_both_rows_in_the_band() -> void:

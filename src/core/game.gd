@@ -176,14 +176,12 @@ func open_settings() -> void:
 	screen.closed.connect(_close_settings)
 
 
-## Android back (and Escape on desktop), by BackPolicy.
+## Android back (and Escape on desktop), by BackPolicy. An overlay of the screen itself (the Archive) closes first.
 func request_back() -> void:
-	var drawer: bool = hud != null and hud.is_drawer_open()
-	match BackPolicy.decide(machine.current, drawer, _settings_overlay != null, GameRunFlow.choice_open(run)):
+	var overlay: bool = _settings_overlay != null or GameRunFlow.close_screen_overlay(self)
+	match BackPolicy.decide(machine.current, overlay):
 		BackPolicy.Action.CLOSE_OVERLAY:
 			_close_settings()
-		BackPolicy.Action.CLOSE_DRAWER:
-			hud.close_drawer()
 		BackPolicy.Action.PAUSE:
 			pause_run()
 		BackPolicy.Action.RESUME:
@@ -325,6 +323,7 @@ func _show_results(run_id: String) -> void:
 	hud = null
 	var screen: ResultsScreen = _layers.swap_screen(SCREEN_RESULTS) as ResultsScreen
 	screen.setup(last_summary, content, Save.profile, run.reward_granted)
+	GameRunFlow.setup_results(self, screen)
 	screen.retry_pressed.connect(restart_run)
 	screen.menu_pressed.connect(goto_menu)
 	Log.info("Game", "results shown")

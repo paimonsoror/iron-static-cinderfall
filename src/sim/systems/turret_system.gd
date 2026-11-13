@@ -10,7 +10,8 @@ extends RefCounted
 ## sentry_link, last_stand_protocol, od_turrets, a jammer aura), the damage is multiplied by ModState.t_dmg_mul and gets the
 ## damage level sentry_link gives, the range is multiplied by ModState.range_mul, overwatch picks elites and specialists
 ## first (+40% to them) and mine_layer lays mines (TurretRules). With the neutral values of the legacy content every number
-## is the base one.
+## is the base one. A pad may hold another turret type (the field options of the Archive): TurretTypes says which, fires
+## the arc turret's chain and steps the mortar turret.
 
 const MILLI_PER_SHOT: int = 60000
 
@@ -30,11 +31,16 @@ static func step(world: SimWorld) -> void:
 static func _step_pad(world: SimWorld, def: UpgradeDef, pad: int, overwatch: bool) -> void:
 	var t: TurretStore = world.turrets
 	var rate: int = EventRates.turret_rate_milli(world, pad)
+	var special: TurretTypeDef = TurretTypes.special_of(world, pad)
+	if special != null and special.id == TurretTypes.MORTAR:
+		TurretTypes.step_mortar(world, special, pad, rate)
+		return
+	var sps: int = special.sps_milli if special != null else def.turret_sps_milli
 	if rate == EventRates.RATE_ONE:
-		t.fire_acc_milli[pad] += def.turret_sps_milli
+		t.fire_acc_milli[pad] += sps
 	else:
-		t.fire_acc_milli[pad] += roundi(float(def.turret_sps_milli) * float(rate) / 1000.0)
-	var range_m: float = TurretRules.range_of(world, def)
+		t.fire_acc_milli[pad] += roundi(float(sps) * float(rate) / 1000.0)
+	var range_m: float = TurretTypes.range_of(world, special) if special != null else TurretRules.range_of(world, def)
 	var lock: PackedInt32Array = Targeting.refresh_lock(
 		world, t.target_id[pad], t.lock_ticks_left[pad], t.x[pad], t.z[pad], range_m, def.turret_lock_ticks
 	)
@@ -44,7 +50,7 @@ static func _step_pad(world: SimWorld, def: UpgradeDef, pad: int, overwatch: boo
 		_overwatch(world, def, pad, range_m)
 	_aim(world, t, pad)
 	while t.fire_acc_milli[pad] >= MILLI_PER_SHOT and t.target_id[pad] != 0:
-		_fire(world, def, pad, overwatch)
+		_fire(world, def, pad, overwatch, special, range_m)
 	if t.fire_acc_milli[pad] > MILLI_PER_SHOT:
 		t.fire_acc_milli[pad] = MILLI_PER_SHOT
 
@@ -52,7 +58,10 @@ static func _step_pad(world: SimWorld, def: UpgradeDef, pad: int, overwatch: boo
 ## One shot at the pad's target. The shot hook (arc_pylons) runs once the shot is tallied, the hit hook (flak_heads) once
 ## the target took the hit, before the pad looks for a new target, so the splash lands where the target stood. Re-picks at
 ## once when the shot killed it.
-static func _fire(world: SimWorld, def: UpgradeDef, pad: int, overwatch: bool) -> void:
+## `special` is the pad's turret type when it is not the plain gun (TurretTypes: the arc turret hits and chains).
+static func _fire(
+	world: SimWorld, def: UpgradeDef, pad: int, overwatch: bool, special: TurretTypeDef, range_m: float
+) -> void:
 	var t: TurretStore = world.turrets
 	var source: int = DamageSource.Id.TURRET_0 + pad
 	var target_id: int = t.target_id[pad]
@@ -61,12 +70,16 @@ static func _fire(world: SimWorld, def: UpgradeDef, pad: int, overwatch: bool) -
 	world.combat.shots_by_source[source] += 1
 	ShotHooks.on_turret_shot(world, pad, world.enemies.index_of(target_id))
 	var hit_index: int = world.enemies.index_of(target_id)
-	var amount: float = def.turret_damage * world.mods.t_dmg_mul * TurretRules.damage_mul_vs(world, hit_index, overwatch)
-	var dealt: float = DamageResolver.hit(world, hit_index, amount, TurretRules.damage_level(world), source)
+	var dealt: float = 0.0
+	if special != null:
+		dealt = TurretTypes.fire_arc(world, special, pad, overwatch)
+	else:
+		var amount: float = def.turret_damage * world.mods.t_dmg_mul * TurretRules.damage_mul_vs(world, hit_index, overwatch)
+		dealt = DamageResolver.hit(world, hit_index, amount, TurretRules.damage_level(world), source)
 	if hit_index >= 0:
 		ShotHooks.on_turret_hit(world, pad, hit_index, dealt)
 	if world.enemies.index_of(target_id) < 0:
-		var picked: int = Targeting.pick(world, t.x[pad], t.z[pad], TurretRules.range_of(world, def))
+		var picked: int = Targeting.pick(world, t.x[pad], t.z[pad], range_m)
 		t.target_id[pad] = picked
 		t.lock_ticks_left[pad] = def.turret_lock_ticks if picked != 0 else 0
 		_aim(world, t, pad)

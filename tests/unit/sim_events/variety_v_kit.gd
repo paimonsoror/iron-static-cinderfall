@@ -134,9 +134,11 @@ static func directive_world(held: Dictionary[StringName, int]) -> SimWorld:
 	return w
 
 
-## The slice content stretched to 15 waves and three acts (acts II and III with two event slots per wave), for plan rules.
+## Act I of the fixture with its own acts II and III behind it (waves 6 to 15 with a flat budget and two event slots per
+## wave), for the plan rules of the events. The fixture itself has 15 waves since V5-A: its act I is kept, the rest replaced.
 static func long_content() -> ContentSet:
 	var c: ContentSet = TestContent.variety()
+	c.run.waves.resize(5)
 	for n: int in range(6, 16):
 		var s: WaveSlotDef = WaveSlotDef.new()
 		s.index = n

@@ -81,6 +81,7 @@ func wiring() -> Dictionary[StringName, Callable]:
 		&"chain_arc": on_chain_arc,
 		&"delayed_hit": on_delayed_hit,
 		&"burster_armed": on_burster_armed,
+		&"weapon_charging": on_weapon_charging,
 	}
 	var more: Dictionary[StringName, Callable] = threat.wiring()
 	for sig: StringName in more:

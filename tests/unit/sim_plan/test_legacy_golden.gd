@@ -7,6 +7,8 @@ extends GdUnitTestSuite
 ## ticks and the wave counts below still do). They are identical at cce18ae and with the V3-I changes.
 ## Re-recorded again on the merge of wave V4 (V4-V added hashed EventState fields): the event hashes, ticks and wave counts
 ## are unchanged, so the legacy runs themselves still play exactly as before.
+## And once more by V5-A (ArsenalState gained the hashed kill_chain_stacks and kill_chain_ticks, which every world hashes):
+## again only the three state hashes moved; the event hashes, ticks and wave counts are the ones of fb7d6de.
 
 
 func _greedy(run_seed: int) -> SimWorld:
@@ -21,14 +23,14 @@ func _greedy(run_seed: int) -> SimWorld:
 
 func test_a_greedy_run_of_seed_1_is_unchanged() -> void:
 	var w: SimWorld = _greedy(1)
-	assert_str(w.state_hash()).is_equal("a7d1dda26569bcdffbd8d10ddcc887dfc00ccba2bf8a38af00818045e738661d")
+	assert_str(w.state_hash()).is_equal("a09c2af72b69cbc711e7a688e8ed1b70b6dc92f8502efb5f68447a601e48129b")
 	assert_int(w.events.event_hash).is_equal(-7709519793995010461)
 	assert_int(w.waves_completed).is_equal(2)
 
 
 func test_a_greedy_run_of_seed_7_is_unchanged() -> void:
 	var w: SimWorld = _greedy(7)
-	assert_str(w.state_hash()).is_equal("a1bbc7e8d5071d5083771515a959007eb449fe4514f36a443aba775fbb75a6af")
+	assert_str(w.state_hash()).is_equal("735c9ae7564c03a9a97792c1316af6ebd70c0c71f485236775d98f238de60c73")
 	assert_int(w.events.event_hash).is_equal(7106969127358763225)
 
 
@@ -43,5 +45,5 @@ func test_a_full_legacy_run_is_unchanged() -> void:
 		w.step()
 	assert_int(w.tick).is_equal(2106)
 	assert_int(w.phase).is_equal(GameState.Id.VICTORY)
-	assert_str(w.state_hash()).is_equal("9626e441a00284acb729198a62b226edd155dcfbfed63ddf13e46dd20cabe908")
+	assert_str(w.state_hash()).is_equal("f4644ea18337e718a45f3eaaa0cbfb36826abbc6593f2fe497f6795a44355674")
 	assert_int(w.events.event_hash).is_equal(-704475404466376443)

@@ -23,6 +23,12 @@ static func boost(config: SimConfig) -> void:
 	config.debug_invulnerable_core = true
 
 
+## `sim_config_hook`: the debug build of the full-run tests (WORK_PLAN card V5-A): damage x4. With `--unlock=all` and
+## the balanced bot it wins the 15 waves fast and for certain, whatever the balance of the day is.
+static func boost_x4(config: SimConfig) -> void:
+	config.debug_damage_mult = 4.0
+
+
 ## `sim_config_hook`: enough Scrap to buy the whole tree at once.
 static func rich(config: SimConfig) -> void:
 	config.debug_start_scrap = 20000

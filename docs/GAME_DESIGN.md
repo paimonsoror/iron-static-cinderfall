@@ -1330,8 +1330,9 @@ second weapon ("TAP THE HOLSTERED WEAPON TO SWAP"), first event warning ("WATCH 
 DIRECTIVES COST SOMETHING FOR GOOD"), and the handoff's first core hit ("SHIELD ABSORBS CORE DAMAGE"). The two hints tied to
 the old drawer ("TAP UPGRADES", "SAFE TO UPGRADE. CONTINUE WHEN READY") go with it. In a generated run the hint line shows
 `hint.crate`, `hint.event`, `hint.swap` and `hint.core_hit`, never `hint.tap_upgrades` or `hint.intermission`, and the wave banner
-names the pack and the modifier ("POWDER TRAIN // VOLATILE SWARM"). The draft, route and corrupted hints are not shown yet,
-because the choice screens cover the hint banner (V4-U). **[POST-SLICE]** a real FTUE.
+names the pack and the modifier ("POWDER TRAIN // VOLATILE SWARM"). The draft, route and corrupted hints are shown too, as a
+line of the choice screen itself (V4-U; the hint banner of the HUD is covered while a choice is up). **[POST-SLICE]** a real
+FTUE.
 
 ### 10.5 Choice screens (over the frozen battlefield, dimmed)
 
@@ -1422,13 +1423,16 @@ CONTESTED`. No tap on the battlefield.
 | ACT II  WAVE 8 OF 15      RUN TIME 9:42        |
 | WHAT BROKE THE LINE: SLAG BATTERY + RAIN SQUALL|
 |   spitter bolts 412   hollow wardens 260  ...  |
-| YOUR BUILD: [ARC x4] [TEMPO x2]  ARC PROJ LV2, SMG LV1 |
-|   directives: (12 icons, tap for the list)     |
 | RECOVERED DATA +72   MILESTONE: NODE 5 FIRST KILL +50 |
+| YOUR BUILD: [ARC x4] [TEMPO x2]  ARC PROJ, SMG |
+|   directives: (12 icons, tap for the list)     |
 | ARCHIVE: YOU CAN AFFORD  SLAG MORTAR (160)     |  the "one more run" hook
 | SEED 48211 [ SAME SEED ]                       |
 | [ RETRY ]   [ ARCHIVE ]   [ MENU ]             |
 ```
+
+The Recovered Data and the milestones stand before the build recap, and the recap names the weapons without their levels
+(V4-U, as built). SAME SEED starts a new run with the seed and the kit of the run that ended; it is never a Daily Run.
 
 ### 10.7 Archive screen
 

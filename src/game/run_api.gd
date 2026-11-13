@@ -366,3 +366,24 @@ func crate_status() -> Dictionary:
 ## on the legacy content; a boss wave has no pack ("name_key" is empty).
 func wave_route() -> Dictionary:
 	return {}
+
+
+# --- 15-wave integration (V5-A; append only) ---
+
+
+## True when the run counts the Archive unlock `id` (the unlocks the run started with; every one in a Daily Run). The
+## field options read it: `u_f_boss_intel` (show act_boss() at the act start), `u_f_preview` (show route_preview()).
+func has_unlock(id: StringName) -> bool:
+	return false
+
+
+## The boss of the act the player is in (between waves: of the next wave's act), in the shape of boss_brief(). Empty
+## when the act has no boss and on the legacy content.
+func act_boss() -> Dictionary:
+	return {}
+
+
+## Option `i` of the wave after next, in the shape of route_option(). Empty when that wave is a boss wave, does not
+## exist or has no such option.
+func route_preview(i: int) -> Dictionary:
+	return {}

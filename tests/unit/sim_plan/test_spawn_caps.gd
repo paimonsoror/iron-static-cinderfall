@@ -35,7 +35,7 @@ func test_begin_wave_schedules_the_option_that_was_chosen() -> void:
 
 func test_begin_wave_ignores_a_wave_the_plan_does_not_have() -> void:
 	var w: SimWorld = VarietyAKit.world()
-	SpawnSystem.begin_wave(w, 6)
+	SpawnSystem.begin_wave(w, PhaseSystem.wave_count(w) + 1)
 	SpawnSystem.begin_wave(w, 0)
 	assert_int(w.nav.wave_begun).is_equal(0)
 	assert_int(w.nav.sched_due.size()).is_equal(0)

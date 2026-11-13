@@ -5,6 +5,8 @@ extends GdUnitTestSuite
 ## arc projector alone (tier 5; the rail lance is behind an unlock).
 
 const DROP_X: float = 2.0
+## What crate 1 of seed 1 holds on a new profile: act I crates hold tier 2 and 3 weapons (the arc projector is an unlock).
+const CRATE_ONE: int = Ids.WP_SMG
 const DROP_Z: float = -3.0
 
 
@@ -52,7 +54,7 @@ func test_720_uncontested_ticks_secure_and_bank_the_crate() -> void:
 	assert_int(w.salvage.crates_secured).is_equal(1)
 	assert_int(w.stats.crates_secured).is_equal(1)
 	assert_array(Array(w.salvage.banked)).is_equal([0])
-	assert_array(Array(w.salvage.banked_items)).is_equal([Ids.WP_ARC_PROJECTOR, -1, -1, -1])
+	assert_array(Array(w.salvage.banked_items)).is_equal([CRATE_ONE, -1, -1, -1])
 	var secured: Array[SimEvent] = VarietyCKit.events_of(w, SimEventKind.Id.CRATE_SECURED)
 	assert_int(secured.size()).is_equal(1)
 	assert_int(secured[0].tick).is_equal(720)
@@ -146,7 +148,7 @@ func test_open_next_grants_the_guaranteed_crate_after_wave_2_once() -> void:
 	assert_bool(SalvageSystem.open_next(w)).is_false()
 	w.waves_completed = 2
 	assert_bool(SalvageSystem.open_next(w)).is_true()
-	assert_array(Array(w.salvage.offer)).is_equal([Ids.WP_ARC_PROJECTOR])
+	assert_array(Array(w.salvage.offer)).is_equal([CRATE_ONE])
 	assert_bool(w.salvage.offer_boss).is_false()
 	assert_int(w.salvage.banked.size()).is_equal(0)
 	assert_int(w.salvage.crates_secured).is_equal(1)
@@ -169,7 +171,7 @@ func test_open_next_secures_a_crate_left_on_a_cleared_field() -> void:
 	w.kill_enemy(last, DamageSource.Id.WARDEN)
 	assert_bool(SalvageSystem.open_next(w)).is_true()
 	assert_bool(w.salvage.crate_active).is_false()
-	assert_array(Array(w.salvage.offer)).is_equal([Ids.WP_ARC_PROJECTOR])
+	assert_array(Array(w.salvage.offer)).is_equal([CRATE_ONE])
 
 
 func test_take_in_the_empty_slot() -> void:
@@ -177,7 +179,7 @@ func test_take_in_the_empty_slot() -> void:
 	SalvageSystem.grant_crate(w, false)
 	_awaiting_offer(w)
 	assert_int(_salvage(w, 1, 0, SalvageSystem.ACTION_SLOT_1)).is_equal(Reason.Id.OK)
-	assert_int(w.arsenal.slot_weapon[1]).is_equal(Ids.WP_ARC_PROJECTOR)
+	assert_int(w.arsenal.slot_weapon[1]).is_equal(CRATE_ONE)
 	assert_int(w.arsenal.slot_weapon[0]).is_equal(Ids.WP_PISTOL)
 	assert_int(w.scrap).is_equal(0)  # nothing was replaced
 	assert_int(w.salvage.offer.size()).is_equal(0)
@@ -195,8 +197,8 @@ func test_take_in_slot_0_scraps_the_pistol_for_half_the_crate_value() -> void:
 	SalvageSystem.grant_crate(w, false)
 	_awaiting_offer(w)
 	assert_int(_salvage(w, 1, 0, SalvageSystem.ACTION_SLOT_0)).is_equal(Reason.Id.OK)
-	assert_int(w.arsenal.slot_weapon[0]).is_equal(Ids.WP_ARC_PROJECTOR)
-	assert_int(w.warden.weapon_index).is_equal(Ids.WP_ARC_PROJECTOR)
+	assert_int(w.arsenal.slot_weapon[0]).is_equal(CRATE_ONE)
+	assert_int(w.warden.weapon_index).is_equal(CRATE_ONE)
 	assert_int(w.scrap).is_equal(40)
 	assert_int(VarietyCKit.count(w, SimEventKind.Id.WEAPON_CHANGED)).is_equal(1)
 
@@ -275,7 +277,9 @@ func test_crate_contents_come_from_the_crate_stream_and_respect_the_pool() -> vo
 	assert_int(SalvageSystem.roll_contents(a, 60, false).size()).is_equal(2)
 	var base: SimWorld = TestContent.variety_world(5)
 	assert_bool(SalvageSystem.in_pool(base, base.content.weapons[Ids.WP_RAIL_LANCE])).is_false()  # locked
-	assert_bool(SalvageSystem.in_pool(base, base.content.weapons[Ids.WP_ARC_PROJECTOR])).is_true()
+	assert_bool(SalvageSystem.in_pool(base, base.content.weapons[Ids.WP_ARC_PROJECTOR])).is_false()  # u_w_arc (V5-A)
+	for open_id: int in [Ids.WP_SMG, Ids.WP_SCATTERGUN, Ids.WP_ASSAULT_RIFLE]:
+		assert_bool(SalvageSystem.in_pool(base, base.content.weapons[open_id])).is_true()  # a new profile's pool
 	assert_bool(SalvageSystem.in_pool(base, base.content.weapons[Ids.WP_PISTOL])).is_false()
 
 

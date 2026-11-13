@@ -16,14 +16,21 @@ const HOOK_PLAN_PATCH: StringName = &"plan_patch"
 const DEFAULT_CHARGE_CAP: int = 3
 const STRIKE_EVENT: StringName = &"deadfall_strike"
 const FREIGHT_EVENT: StringName = &"freight_call"
+const UNLOCK_THIRD_SLING: String = "u_f_third_sling"
+const UNLOCK_REROLL: String = "u_f_reroll"
 
 
-## Applies the kit of the run (SimConfig.kit_index): its stat ops now and in every recompute, its grants once.
-## Called once by SimWorld._init.
+## Applies the kit of the run (SimConfig.kit_index): its stat ops now and in every recompute, its grants once. Before
+## the kit's grants, the field options of the Archive that a run starts with (CONTENT 12): the third weapon slot and one
+## free reroll. Called once by SimWorld._init.
 static func init_world(world: SimWorld) -> void:
 	if not world.content.is_variety():
 		return
 	recompute(world)
+	if world.config.has_unlock(UNLOCK_THIRD_SLING):
+		ArsenalSystem.open_slots(world, ArsenalState.MAX_SLOTS)
+	if world.config.has_unlock(UNLOCK_REROLL):
+		DraftSystem.add_free_rerolls(world, 1)
 	var kit: KitDef = _kit(world)
 	if kit != null:
 		grant(world, kit.ops)
@@ -91,6 +98,8 @@ static func grant(world: SimWorld, ops: Array[OpDef]) -> void:
 				_grant_charge(world, op.arg, roundi(n))
 			&"weapon":
 				_grant_weapon(world, op.arg)
+			&"data":
+				world.stats.add_data(roundi(n))
 			&"directive":
 				for _i: int in maxi(1, roundi(n)):
 					var _granted: bool = DraftSystem.grant_stack(world, world.content.directive_index(op.arg))
@@ -98,7 +107,7 @@ static func grant(world: SimWorld, ops: Array[OpDef]) -> void:
 				for _i: int in maxi(1, roundi(n)):
 					_grant_random_directive(world, op.arg)
 			_:
-				pass  # turret: a stat (apply_ops); crate and data: the salvage and reward systems
+				pass  # turret: a stat (apply_ops); crate: the salvage system (PhaseAwaits drops it during the wave)
 
 
 ## A route reward (RewardDef index) at wave clear: its flags, then its grants. rw_rare_draft and rw_double_pick arm the
@@ -131,9 +140,7 @@ static func set_wave_modifier(world: SimWorld, modifier_index: int) -> void:
 	if is_act_start(world):
 		_grant_charge(world, STRIKE_EVENT, roundi(world.mods.strike_per_act))
 		_grant_charge(world, FREIGHT_EVENT, roundi(world.mods.freight_per_act))
-	var offline: int = roundi(world.mods.turret_offline_ticks)
-	if offline > world.events_state.turret_offline_ticks:
-		world.events_state.turret_offline_ticks = offline
+	EventSystem.take_turrets_offline(world, roundi(world.mods.turret_offline_ticks))
 
 
 ## True when `world.wave` is the first wave of its act (wave 1, or the act differs from the wave before).
@@ -221,10 +228,13 @@ static func _grant_charge(world: SimWorld, event_id: StringName, n: int) -> void
 	world.events.push(SimEventKind.Id.CHARGES_CHANGED, index, now)
 
 
-## single_point: every turret is removed (the pads are disabled by the flag, so none comes back).
+## single_point: every turret is removed (the pads are disabled by the flag, so none comes back). Pushes
+## TURRET_REMOVED(pad) for each turret that stood.
 static func _drop_turrets(world: SimWorld) -> void:
 	for pad: int in world.turrets.active.size():
-		world.turrets.active[pad] = 0
+		if world.turrets.active[pad] != 0:
+			world.turrets.active[pad] = 0
+			world.events.push(SimEventKind.Id.TURRET_REMOVED, pad)
 
 
 ## The weapon `weapon_id` into the first empty slot (ArsenalSystem does the rest); nothing when every slot is taken.

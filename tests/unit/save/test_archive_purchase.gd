@@ -242,7 +242,11 @@ func test_the_kit_unlock_and_the_kit_cost_agree() -> void:
 
 func test_the_daily_run_opens_with_the_first_act_one_boss_kill() -> void:
 	assert_bool(ArchiveRules.daily_open(Save.profile, cs)).is_false()
-	Save.profile.boss_kills["siege_hulk"] = 1
+	Save.profile.boss_kills["brood_carrier"] = 1  # an act I boss
 	assert_bool(ArchiveRules.daily_open(Save.profile, cs)).is_true()
-	Save.profile.boss_kills = {"brood_carrier": 3}  # not a boss of this content
+	Save.profile.boss_kills = {"siege_hulk": 2}  # a profile of the slice build (the Hulk was its act I boss): still open
+	assert_bool(ArchiveRules.daily_open(Save.profile, cs)).is_true()
+	Save.profile.boss_kills = {"node_zero": 3}  # not a boss of this content
+	assert_bool(ArchiveRules.daily_open(Save.profile, cs)).is_false()
+	Save.profile.boss_kills = {"lance_platform": 0}
 	assert_bool(ArchiveRules.daily_open(Save.profile, cs)).is_false()

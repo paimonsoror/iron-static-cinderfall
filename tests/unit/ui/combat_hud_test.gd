@@ -1,5 +1,6 @@
 extends GdUnitTestSuite
-## CombatHud state: top bar, boss bar, banners, hints, low-core warning, drawer strip, intermission, readout.
+## CombatHud state: top bar, boss bar, banners, hints, low-core warning, intermission, readout. (The tests of the
+## upgrade drawer and its "combat continues" strip went with the drawer in V5-A.)
 
 var _api: FakeRunApi
 var _hud: CombatHud
@@ -96,35 +97,16 @@ func test_the_deploy_countdown_shows_before_wave_one() -> void:
 	assert_bool(_hud.banners.banner_box.visible).is_false()
 
 
-func test_the_strip_is_visible_only_when_the_drawer_is_open_in_spawning_or_clearing() -> void:
-	var cases: Dictionary = {
-		GameState.Id.PREPARING: false, GameState.Id.SPAWNING: true, GameState.Id.CLEARING: true,
-		GameState.Id.INTERMISSION: false, GameState.Id.VICTORY: false, GameState.Id.DEFEAT: false,
-	}
-	for phase: int in cases.keys():
-		var want: bool = cases[phase]
-		_api.fake_phase = phase
-		_hud.close_drawer()
-		_hud.refresh()
-		assert_bool(_hud.strip.visible).is_false()  # drawer closed: never
-		_hud.open_drawer()
-		_hud.refresh()
-		assert_bool(_hud.strip.visible).is_equal(want)
-		assert_str(_hud.strip.label.text).is_equal(Strings.t("hud.strip"))
-		_hud.close_drawer()
-
-
-func test_the_tab_toggles_the_drawer_and_close_drawer_closes_it() -> void:
-	assert_bool(_hud.is_drawer_open()).is_false()
+func test_the_hud_has_no_upgrade_drawer_and_the_tab_opens_nothing() -> void:
+	# V5-A: the drawer of the 5-wave shop is gone. The tab of the legacy bottom band is still drawn (its owner removes it
+	# with the legacy band); a tap on it is not a command and opens nothing.
+	var before: int = _hud.get_child_count()
 	_hud.bottom.tab_button.pressed.emit()
-	assert_bool(_hud.is_drawer_open()).is_true()
-	assert_bool(_hud.drawer.visible).is_true()
-	_hud.close_drawer()
-	assert_bool(_hud.is_drawer_open()).is_false()
-	_hud.bottom.tab_button.pressed.emit()
-	_hud.bottom.tab_button.pressed.emit()
-	assert_bool(_hud.is_drawer_open()).is_false()
-	assert_int(_api.calls.size()).is_equal(0)  # opening a drawer is not a command
+	_hud.refresh()
+	assert_int(_hud.get_child_count()).is_equal(before)
+	assert_int(_api.calls.size()).is_equal(0)
+	for child: Node in _hud.get_children():
+		assert_bool(String(child.name).to_lower().contains("drawer")).is_false()
 
 
 func test_the_intermission_panel_opens_on_intermission_started() -> void:
@@ -133,13 +115,11 @@ func test_the_intermission_panel_opens_on_intermission_started() -> void:
 	_api.fake_phase_ticks_left = 480
 	Events.intermission_started.emit(2, 480)
 	assert_bool(_hud.intermission.visible).is_true()
-	assert_bool(_hud.is_drawer_open()).is_true()  # the drawer opens by itself
 	assert_str(_hud.intermission.title_label.text).is_equal(Strings.tf("hud.intermission.cleared", [2]))
 	assert_str(_hud.intermission.countdown_label.text).is_equal(Strings.tf("hud.intermission.next", [8]))
 	_api.fake_phase_ticks_left = 130
 	_hud.refresh()
 	assert_str(_hud.intermission.countdown_label.text).is_equal(Strings.tf("hud.intermission.next", [3]))
-	assert_bool(_hud.strip.visible).is_false()  # no "combat continues" in a quiet moment
 
 
 func test_continue_calls_skip_intermission_once() -> void:
@@ -150,18 +130,6 @@ func test_continue_calls_skip_intermission_once() -> void:
 	var skips: Array[Dictionary] = CombatHudTestKit.calls_of(_api, "skip_intermission")
 	assert_int(skips.size()).is_equal(1)
 	assert_int(_api.calls.size()).is_equal(1)
-
-
-func test_the_drawer_that_opened_itself_closes_at_the_next_wave_but_a_chosen_one_stays() -> void:
-	_api.fake_phase = GameState.Id.INTERMISSION
-	Events.intermission_started.emit(1, 480)
-	assert_bool(_hud.is_drawer_open()).is_true()
-	_api.fake_phase = GameState.Id.SPAWNING
-	Events.wave_started.emit(2)
-	assert_bool(_hud.is_drawer_open()).is_false()
-	_hud.open_drawer()  # the player chose this one
-	Events.wave_started.emit(3)
-	assert_bool(_hud.is_drawer_open()).is_true()
 
 
 func test_the_readout_shows_the_magazine_ready_empty_and_reloading() -> void:

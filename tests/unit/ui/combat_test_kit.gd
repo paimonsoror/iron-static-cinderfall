@@ -30,7 +30,7 @@ static func settle(tree: SceneTree, frames: int = 3) -> void:
 		await tree.process_frame
 
 
-## Waits real time, e.g. for the 0.18 s drawer slide to finish.
+## Waits real time, e.g. for a banner to settle.
 static func wait(tree: SceneTree, seconds: float) -> void:
 	await tree.create_timer(seconds).timeout
 
@@ -56,12 +56,13 @@ static func empty_visible_labels(root: Node) -> Array[String]:
 	return bad
 
 
-## Puts the HUD into state `n` (0 = untouched .. 5): drawer, max and locked cards, boss and low core with
-## abilities and reload, intermission, deploying. Cumulative, so call 0..5 in order.
+## Puts the HUD into state `n` (0 = untouched .. 5): a refresh, max and locked upgrade numbers, boss and low core with
+## abilities and reload, intermission, deploying. Cumulative, so call 0..5 in order. (State 1 opened the upgrade drawer
+## until V5-A removed it.)
 static func drive(hud: CombatHud, api: FakeRunApi, n: int) -> void:
 	match n:
 		1:
-			hud.open_drawer()
+			hud.refresh()
 		2:
 			api.fake_upgrade_level[&"fire_rate"] = 5
 			api.fake_upgrade_cost[&"fire_rate"] = -1

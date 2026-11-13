@@ -50,7 +50,7 @@ func test_the_legacy_content_gets_the_defaults() -> void:
 func test_the_wave_count_is_the_plan_s() -> void:
 	var rc: RunController = _rc()
 	assert_int(rc.api.wave_count()).is_equal(rc.sim.plan.wave_count())
-	assert_int(rc.api.wave_count()).is_equal(5)
+	assert_int(rc.api.wave_count()).is_equal(15)
 	rc.sim.plan.waves.resize(3)  # a debug write: the HUD shows what the plan holds, not the scripted wave list
 	assert_int(rc.api.wave_count()).is_equal(3)
 	assert_int(rc.sim.content.waves.size()).is_equal(5)
@@ -140,14 +140,69 @@ func test_the_boss_briefing_uses_the_key_convention_of_the_overlay_and_the_prese
 	assert_bool(rc.api.boss_brief().is_empty()).is_true()  # the next wave is not a boss wave
 	w.wave = 4  # a debug write: the briefing describes the wave after the current one
 	var brief: Dictionary = rc.api.boss_brief()
-	var preset: FakeRunApi = FakeRunApi.new()
-	FakeRunPresets.boss_brief(preset)
-	assert_dict(brief).is_equal(preset.fake_boss_brief)
-	assert_str(str(brief["id"])).is_equal("siege_hulk")
+	var first_id: String = str(brief["id"])
+	assert_bool(first_id == "brood_carrier" or first_id == "lance_platform").is_true()  # the act I pool (CONTENT 5)
+	assert_int(Ids.enemy_index(StringName(first_id))).is_equal(w.plan.boss_ids[0])
+	assert_str(str(brief["name_key"])).is_equal("boss.%s.name" % first_id)
+	assert_str(str(brief["banner_key"])).is_equal("boss.%s.banner" % first_id)
+	assert_str(str(brief["variant"])).is_equal("")  # only Node 9 has variants
 	assert_bool(c.strings.has(brief["name_key"])).is_true()
 	assert_bool(c.strings.has(brief["banner_key"])).is_true()
-	assert_bool(c.strings.has(brief["attack_key"])).is_true()  # approved lore: lore.threat.siege_hulk
 	assert_bool(c.strings.has("boss.%s.answer" % brief["id"])).is_true()  # the overlay's fallback for the ANSWER line
+	assert_dict(rc.api.act_boss()).is_equal(brief)  # u_f_boss_intel: the boss of the act, at any time in the act
+	w.wave = 1
+	assert_bool(rc.api.boss_brief().is_empty()).is_true()
+	assert_dict(rc.api.act_boss()).is_equal(brief)  # known from the first intermission of the act
+	w.wave = 9
+	var second_id: StringName = rc.api.boss_brief()["id"]
+	assert_int(Ids.enemy_index(second_id)).is_equal(w.plan.boss_ids[1])  # the act II pool
+	# the last boss is always the Siege Hulk, with the variant the plan drew: the key convention of the overlay and the preset
+	w.wave = 14
+	var last: Dictionary = rc.api.boss_brief()
+	var preset: FakeRunApi = FakeRunApi.new()
+	FakeRunPresets.boss_brief(preset)
+	var expected: Dictionary = preset.fake_boss_brief.duplicate()
+	expected["variant"] = c.run.hulk_variants[w.plan.boss_variant]
+	assert_dict(last).is_equal(expected)
+	assert_str(str(last["id"])).is_equal("siege_hulk")
+	assert_bool(c.strings.has(last["attack_key"])).is_true()  # approved lore: lore.threat.siege_hulk
+	assert_bool(c.strings.has("boss.%s.answer" % str(expected["variant"]))).is_true()
+	assert_dict(rc.api.act_boss()).is_equal(last)
+	w.wave = 15
+	assert_bool(rc.api.boss_brief().is_empty()).is_true()  # nothing after the last wave
+
+
+func test_the_field_options_are_asked_through_the_run_api() -> void:
+	var rc: RunController = _rc(3)
+	var w: SimWorld = rc.sim
+	assert_bool(rc.api.has_unlock(&"u_f_preview")).is_false()  # a new profile
+	w.config.unlocked = PackedStringArray(["u_f_preview"])
+	assert_bool(rc.api.has_unlock(&"u_f_preview")).is_true()
+	assert_bool(rc.api.has_unlock(&"u_f_boss_intel")).is_false()
+	w.config.unlocked = PackedStringArray()
+	w.config.daily = true  # the Daily Run has everything
+	assert_bool(rc.api.has_unlock(&"u_f_boss_intel")).is_true()
+	# route_preview: the options of the wave after next, in the shape of route_option()
+	w.wave = 1
+	var next: Dictionary = rc.api.route_option(0)
+	var after: Dictionary = rc.api.route_preview(0)
+	assert_array(after.keys()).is_equal(next.keys())
+	var wave_three: RouteOption = w.plan.wave(3).options[1]
+	assert_str(str(rc.api.route_preview(1)["pack"])).is_equal(String(c.run.packs[wave_three.pack_index].id))
+	assert_bool(rc.api.route_preview(2).is_empty()).is_true()
+	w.wave = 3  # the wave after next is the boss wave: nothing to preview
+	assert_bool(rc.api.route_preview(0).is_empty()).is_true()
+	w.wave = 14
+	assert_bool(rc.api.route_preview(0).is_empty()).is_true()  # past the end
+	# the base class and the legacy content answer with the defaults
+	var base: RunApi = RunApi.new()
+	assert_bool(base.has_unlock(&"u_f_preview")).is_false()
+	assert_bool(base.act_boss().is_empty()).is_true()
+	assert_bool(base.route_preview(0).is_empty()).is_true()
+	var legacy: RunController = GameRunKit.controller(self, GameRunKit.config(1), null, "legacy-field")
+	assert_bool(legacy.api.has_unlock(&"u_f_preview")).is_false()
+	assert_bool(legacy.api.act_boss().is_empty()).is_true()
+	assert_bool(legacy.api.route_preview(0).is_empty()).is_true()
 
 
 func test_autoplay_takes_every_policy_name_and_an_unknown_name_does_nothing() -> void:

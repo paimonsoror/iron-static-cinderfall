@@ -18,10 +18,6 @@ static func open(world: SimWorld) -> void:
 	if world.content.run == null:
 		return
 	var d: DraftState = world.draft
-	# Interim call point of CoreHooks.on_wave_cleared: the wave-clear effects of directives (field_weld, compound_interest,
-	# borrowed_time) run once per intermission, here, because PhaseAwaits.begin_intermission is not this task's file.
-	# TODO(needs owner): call it from PhaseAwaits.begin_intermission and delete this line.
-	CoreHooks.on_wave_cleared(world)
 	var ordinal: int = d.offer_ordinal
 	d.open = true
 	d.bought_out = false

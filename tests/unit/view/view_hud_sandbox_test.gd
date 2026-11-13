@@ -19,14 +19,13 @@ func test_every_state_applies_without_errors_and_changes_the_hud() -> void:
 	var hud: CombatHud = sb.hud()
 	var api: FakeRunApi = sb.api()
 	assert_int(api.scrap()).is_equal(120)
-	assert_bool(hud.is_drawer_open()).is_false()
+	assert_object(hud).is_not_null()
 	sb.apply_step(1)
-	assert_bool(hud.is_drawer_open()).is_true()
+	assert_int(api.scrap()).is_equal(380)  # the upgrade drawer that step 1 opened is gone (V5-A); the numbers stay
 	assert_int(api.upgrade_cost(&"fire_rate")).is_equal(-1)  # a maxed card
 	assert_int(api.purchase_block_reason(&"smg_unlock")).is_equal(Reason.Id.PREREQ_NOT_MET)  # a locked card
 	assert_int(api.purchase_block_reason(&"armor_piercing")).is_equal(Reason.Id.INSUFFICIENT_SCRAP)  # too expensive
 	sb.apply_step(2)
-	assert_bool(hud.is_drawer_open()).is_false()
 	assert_int(api.ability_active_left(&"shield")).is_greater(0)
 	assert_int(api.ability_cooldown_left(&"emp")).is_greater(0)
 	assert_float(api.shield_hp()).is_greater(0.0)

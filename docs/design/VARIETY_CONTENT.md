@@ -157,6 +157,9 @@ crates do not exist: the run ends).
 | II | 20 | 45 | 30 | 5 |
 | III | 0 | 25 | 45 | 30 |
 
+(Shipped as written since V5-A. The slice had the act I row at 0 / 0 / 0 / 100 so that its one crate held the arc projector;
+with `u_w_arc` in the Archive a new profile's crates hold `smg`, `scattergun` and `assault_rifle`.)
+
 Normal crate: 1 weapon. Boss crate: choose 1 of 2. 35% of a crate's rolls are forced to a weapon the Warden already carries
 when that weapon is below level 3 (level-up chance). Scrapping a crate pays 80 / 140 / 200 Scrap by act.
 Guaranteed crate: at the wave 2 clear if none was secured yet.
@@ -342,7 +345,9 @@ minis, bosses, `ward_pylon`, `burster` (its blast would be unfair), `reclaimer` 
 
 Combination rules: act I one affix; act II one, 40% two; act III two. Forbidden pairs: `aff_magnetic` + `aff_shroud`,
 `aff_warded` + `aff_regen` (allowed only in act III), `aff_swift` + `aff_volatile` on a `rusher`. Affixes are rolled without
-replacement from the `plan.elite:<wave>` stream.
+replacement from the `plan.elite:<wave>` stream. **`aff_shroud` is never rolled on a standoff enemy** (`spitter`, `reclaimer`;
+V5-A, `PlanElites.SHROUD_AFFIX`): it parks about 14 m from the Warden, beyond the 12 m of the shroud, so a build with no
+turret in reach, no area weapon and no strike could never kill it and its wave would never end.
 
 ---
 
@@ -541,5 +546,11 @@ The Daily Run is not an unlock: it appears on the menu after the first act I bos
 | `hoarder` | weapon directives first; rerolls when no weapon directive is offered and Scrap is 200 or more | the option with `rw_crate`, else hot | keeps the two highest tiers; swaps to the higher tier when its magazine is ready | as `greedy` |
 | `spammer` | ability directives first | option A | as `greedy` | every ability the tick it is ready; Deadfall and Vent the tick they are legal |
 | `turret_rush` | turret directives first, then core | standard option | as `greedy` | as `greedy` |
-| `balanced` | scores each directive: +3 shares a tag with 2 or more held, +2 fills a gap (no area source by wave 4, no armor answer by wave 6, no turret by wave 3, core below 60% and a core directive offered), +1 per rarity step, -4 corrupted while core below 50%; rerolls below score 2 with 150 Scrap or more | hot when core is at or above 70% and the hot reward is crate, double pick or rare draft; else standard | best tier per role (one area or chain weapon, one single-target weapon); swaps to the area weapon at 12 or more enemies within 10 m of the core, back at 5 | EMP at 10 attackers or to interrupt a telegraphed boss attack; Shield on the hit that crosses 60% or before a lance beam; Overdrive on a boss in range or 20 or more alive; Deadfall on a cluster of 10 or more or on an elite pair; Vent at 12 attackers and core above 40% |
+| `balanced` | scores each directive: +3 shares a tag with 2 or more held, +2 fills a gap (no area source by wave 4, no armor answer by wave 6, no turret by wave 3, core below 60% and a core directive offered), +1 per rarity step, -4 corrupted while core below 50%; rerolls below score 2 with 150 Scrap or more (at most 3 times a draft); patches the core once a draft below 60% when 150 Scrap stay after paying | hot when core is at or above 70% and the hot reward is crate, double pick or rare draft; else standard | best tier per role (one area or chain weapon, one single-target weapon), a duplicate levels up, else scrap; swaps to the area weapon at 12 or more enemies **within the reach of that weapon around the Warden (never less than 10 m)**, back at 5; bridges a reload or vent of 1 s or more with the other slot | EMP at 10 attackers or to interrupt a telegraphed boss attack; Shield on the hit that crosses 60% or before a lance beam, **and against a boss that stands at the cage while the core is below 95%**; Overdrive on a boss in range or 20 or more alive; Deadfall on a cluster of 10 or more within 4 m or on an elite pair; Vent at 12 attackers and core above 40% |
 | `risk` | takes every corrupted directive offered, else as `balanced` | always hot | as `balanced` | as `balanced` |
+
+As built (V4-T): the `balanced` row above is what `PolicyScoring`, `PolicyLoadout` and `PolicyAbilities` do. The two bold
+clauses are the changes the first measurements forced: a bot that counted only the enemies within 10 m of the **core** met 12
+of them in about 3% of the combat ticks, so its second weapon never left the holster; and a boss at the cage is answered with
+EMP and Shield. On the 5-wave slice this bot won 19 of 20 seeds; the numbers of the 15-wave game are in the V5-A report and
+V5-C tunes the data, not the bot, until the scorecard passes.

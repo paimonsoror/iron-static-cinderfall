@@ -199,7 +199,8 @@ func _hulk() -> Dictionary:
 
 
 func test_the_approved_answer_stays_while_its_weapon_is_not_gated_by_the_archive() -> void:
-	var slice: ContentSet = TestContent.variety()  # the slice: the Arc Projector is in the crate pool of every run
+	var slice: ContentSet = TestContent.variety()
+	Save.profile.unlocks.append("u_w_arc")  # V5-A ships u_w_arc: a profile that owns it fields the Arc Projector
 	assert_str(BossBriefLines.line(_hulk(), "answer", slice)).is_equal(Strings.t("boss.siege_hulk.answer"))
 	assert_str(BossBriefLines.line(_hulk(), "answer", slice)).contains("Arc Projector")
 

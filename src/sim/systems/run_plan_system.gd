@@ -65,6 +65,18 @@ static func patch(world: SimWorld, directive_index: int) -> void:
 	PlanPatch.apply(world, directive_index)
 
 
+## Debug (DebugStart, `--scenario=boss:<id>`): makes `boss_enemy_index` the boss of the act of the boss wave `slot` and
+## rebuilds the groups of that wave with the usual stream. Never called in a normal run.
+static func set_boss(world: SimWorld, slot: WaveSlotDef, boss_enemy_index: int) -> void:
+	var plan: RunPlan = world.plan
+	var pw: PlannedWave = plan.wave(slot.index) if plan != null else null
+	if pw == null or slot.act < 1 or slot.act > plan.boss_ids.size():
+		return
+	plan.boss_ids[slot.act - 1] = boss_enemy_index
+	pw.options.clear()
+	pw.options.append(_boss_option(world.content, slot, plan, world.config.run_seed))
+
+
 ## The boss of every act (an enemy index, -1 when the act has no boss pool) from `plan.boss`, then the Node 9 variant.
 static func _bosses(plan: RunPlan, content: ContentSet, run_seed: int) -> void:
 	var stream: RandomNumberGenerator = PlanRng.stream(run_seed, &"plan.boss")

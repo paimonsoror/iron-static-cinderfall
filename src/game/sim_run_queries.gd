@@ -11,15 +11,25 @@ static func next_wave(w: SimWorld) -> PlannedWave:
 
 
 ## Options the player chooses between before the next wave; 0 when it is a boss wave or the run has no further wave.
+## Like every query below, a null world (no run, or the legacy content) gives the base default of RunApi.
 static func route_option_count(w: SimWorld) -> int:
-	var pw: PlannedWave = next_wave(w)
+	var pw: PlannedWave = next_wave(w) if w != null else null
 	if pw == null or pw.is_boss:
 		return 0
 	return pw.options.size()
 
 
 static func route_option(w: SimWorld, i: int) -> Dictionary:
-	var pw: PlannedWave = next_wave(w)
+	var pw: PlannedWave = next_wave(w) if w != null else null
+	if pw == null or pw.is_boss or i < 0 or i >= pw.options.size():
+		return {}
+	return describe_option(w, pw.options[i], pw.act)
+
+
+## RunApi.route_preview (the field option u_f_preview): option `i` of the wave after next; {} when that wave is a boss
+## wave, has no such option or does not exist.
+static func route_preview(w: SimWorld, i: int) -> Dictionary:
+	var pw: PlannedWave = w.plan.wave(w.wave + 2) if w != null and w.plan != null else null
 	if pw == null or pw.is_boss or i < 0 or i >= pw.options.size():
 		return {}
 	return describe_option(w, pw.options[i], pw.act)
@@ -76,12 +86,26 @@ static func _reward_amount(reward: RewardDef, act_number: int) -> int:
 
 
 static func boss_brief(w: SimWorld) -> Dictionary:
-	var pw: PlannedWave = next_wave(w)
+	var pw: PlannedWave = next_wave(w) if w != null else null
 	if pw == null or not pw.is_boss:
 		return {}
+	return boss_of_act(w, pw.act)
+
+
+## RunApi.act_boss (the field option u_f_boss_intel): the boss of the act the player is in, in the shape of boss_brief().
+## Between waves that is the act of the next wave, so the first intermission of an act already names its boss.
+static func act_boss(w: SimWorld) -> Dictionary:
+	if w == null or w.plan == null:
+		return {}
+	var pw: PlannedWave = w.plan.wave(w.wave if GameState.is_combat(w.phase) else w.wave + 1)
+	return boss_of_act(w, pw.act) if pw != null else {}
+
+
+## The boss the plan picked for act `act_number`, in the shape of RunApi.boss_brief(); {} when the act has none.
+static func boss_of_act(w: SimWorld, act_number: int) -> Dictionary:
 	var content: ContentSet = w.content
 	var boss: BossDef = null
-	var act_slot: int = pw.act - 1
+	var act_slot: int = act_number - 1
 	if act_slot >= 0 and act_slot < w.plan.boss_ids.size():
 		for b: BossDef in content.bosses:
 			if b.enemy_index == w.plan.boss_ids[act_slot]:
@@ -89,7 +113,7 @@ static func boss_brief(w: SimWorld) -> Dictionary:
 	if boss == null:
 		return {}
 	var variant: StringName = &""
-	var last_act: bool = content.run != null and pw.act >= content.run.acts.size() and content.run.acts.size() > 1
+	var last_act: bool = content.run != null and act_number >= content.run.acts.size() and content.run.acts.size() > 1
 	if last_act and boss.id == &"siege_hulk" and w.plan.boss_variant >= 0 and w.plan.boss_variant < content.run.hulk_variants.size():
 		variant = content.run.hulk_variants[w.plan.boss_variant]
 	var attack_key: String = "lore.threat.%s" % boss.id
@@ -100,9 +124,9 @@ static func boss_brief(w: SimWorld) -> Dictionary:
 
 
 static func salvage_offer(w: SimWorld) -> Dictionary:
-	var s: SalvageState = w.salvage
-	if s.offer.is_empty():
+	if w == null or w.salvage.offer.is_empty():
 		return {}
+	var s: SalvageState = w.salvage
 	var weapons: Array[StringName] = []
 	var tiers: Array[int] = []
 	var level_up: Array[int] = []
@@ -125,9 +149,9 @@ static func salvage_offer(w: SimWorld) -> Dictionary:
 
 ## The active slot reads the WardenState mirror (weapon, magazine, reload), the holstered ones the ArsenalState.
 static func weapon_slot(w: SimWorld, i: int) -> Dictionary:
-	var a: ArsenalState = w.arsenal
-	if i < 0 or i >= a.slot_count:
+	if w == null or i < 0 or i >= w.arsenal.slot_count:
 		return {}
+	var a: ArsenalState = w.arsenal
 	var active: bool = i == a.active
 	var holds: bool = active or a.slot_weapon[i] >= 0
 	var def: WeaponDef = w.content.weapons[w.warden.weapon_index] if active else ArsenalSystem.weapon_of(w, i)
@@ -154,6 +178,8 @@ static func weapon_slot(w: SimWorld, i: int) -> Dictionary:
 
 static func active_events(w: SimWorld) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
+	if w == null:
+		return out
 	var es: EventState = w.events_state
 	for k: int in es.a_event.size():
 		var index: int = es.a_event[k]
@@ -192,6 +218,8 @@ static func crate_status(w: SimWorld) -> Dictionary:
 
 static func build_tags(w: SimWorld) -> Dictionary:
 	var out: Dictionary = {}
+	if w == null:
+		return out
 	var tags: Dictionary[StringName, int] = DraftSystem.build_tags(w)
 	for tag: StringName in tags:
 		out[tag] = tags[tag]

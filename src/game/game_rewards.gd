@@ -13,10 +13,12 @@ static var flush_pending: bool = false
 ## Grants `summary` once. True only for the call that actually granted (a second call, a replayed results screen or a
 ## second finish returns false and changes nothing, except that it retries a write that failed earlier). A real grant
 ## is written exactly once (by `Save`), so the previous profile file becomes the `.bak` and stays a useful backup.
-static func grant(summary: RunSummary) -> bool:
+## `config` is the SimConfig of a run that is not live any more (a finished run found by RESUME RUN): its Archive facts
+## are recorded as for a live run.
+static func grant(summary: RunSummary, config: SimConfig = null) -> bool:
 	if summary.result != RunResult.Id.VICTORY and summary.result != RunResult.Id.DEFEAT:
 		return false
-	var launch: Dictionary = launch_of(summary)
+	var launch: Dictionary = launch_from(config) if config != null else launch_of(summary)
 	var extras: Dictionary = {}
 	if not launch.is_empty():
 		extras = extras_of(summary, Save.content_set(), launch)
@@ -32,14 +34,18 @@ static func grant(summary: RunSummary) -> bool:
 ## How the run of `summary` was started: { "kit": StringName, "daily": bool }, known only to the live generated run
 ## (`Game.run` with this run id). {} for anything else (a stale run file closed at launch, a run of the legacy five-wave
 ## content, a controller driven without `Game`) and for a run with a debug switch on (invulnerable core, damage
-## multiplier, starting Scrap): such a run is paid its Data and nothing of the Archive layer (milestones, records,
+## multiplier, starting Scrap, a debug start wave or boss: SimConfig.is_debug): such a run is paid its Data and nothing of the Archive layer (milestones, records,
 ## Daily Run) is recorded for it, so a debug build cannot fill the Archive.
 static func launch_of(summary: RunSummary) -> Dictionary:
 	var live: RunController = Game.run
 	if live == null or live.run_id != summary.run_id or live.sim == null or not live.sim.content.is_variety():
 		return {}
-	var config: SimConfig = live.sim.config
-	if config.debug_invulnerable_core or config.debug_damage_mult != 1.0 or config.debug_start_scrap != 0:
+	return launch_from(live.sim.config)
+
+
+## `launch_of` for a known SimConfig: {} for the legacy content and for a debug run.
+static func launch_from(config: SimConfig) -> Dictionary:
+	if config == null or config.content == null or not config.content.is_variety() or config.is_debug():
 		return {}
 	var kit_id: StringName = Profile.DEFAULT_KIT
 	if config.kit_index >= 0 and config.kit_index < config.content.kits.size():

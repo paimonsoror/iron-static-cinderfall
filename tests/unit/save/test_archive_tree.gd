@@ -121,7 +121,8 @@ func test_the_shipped_file_and_its_fixture_copy_are_byte_identical() -> void:
 
 func test_every_shipped_row_is_a_row_of_the_complete_tree() -> void:
 	var shipped: ContentSet = TestContent.variety()
-	assert_int(shipped.unlocks.size()).is_equal(17)  # all but u_w_arc and the six field options (see the note of the file)
+	assert_int(shipped.unlocks.size()).is_equal(24)  # the whole tree ships since V5-A (u_w_arc and the six field options too)
+	assert_int(shipped.unlocks.size()).is_equal(cs.unlocks.size())
 	for u: UnlockDef in shipped.unlocks:
 		assert_str(_row(shipped, u.id)).is_equal(_row(cs, u.id))
 	assert_array(Array(shipped.run.tier_gates)).is_equal(Array(cs.run.tier_gates))
@@ -137,9 +138,11 @@ func test_every_shipped_row_is_a_row_of_the_complete_tree() -> void:
 
 func test_the_shipped_unlocks_validate_on_their_own() -> void:
 	var shipped: ContentSet = TestContent.variety()
+	var field: int = 0
 	for u: UnlockDef in shipped.unlocks:
-		assert_bool(u.branch != UnlockDef.Branch.FIELD).is_true()  # nothing reads the field options yet
-	assert_bool(shipped.unlock(&"u_w_arc") == null).is_true()  # it would take arc_projector out of a new profile's crates
+		field += 1 if u.branch == UnlockDef.Branch.FIELD else 0
+	assert_int(field).is_equal(6)  # the sim and the UI read them through has_unlock (V5-A)
+	assert_array(shipped.unlock(&"u_w_arc").grants).is_equal([&"arc_projector"])  # a new profile's crates hold tier 2 and 3
 	assert_str("\n".join(ContentValidator.validate(shipped))).is_empty()
 	for k: KitDef in shipped.kits:
 		assert_bool(shipped.strings.has(k.name_key)).is_true()  # the kit names V4-U wrote

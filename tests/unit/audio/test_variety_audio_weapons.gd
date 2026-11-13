@@ -118,9 +118,9 @@ func test_missiles_pop_and_shells_land_with_a_blast() -> void:
 	assert_int(AudioCatalog.voice_class(&"hornet_pop")).is_equal(AudioCatalog.CLASS_WEAPON)
 
 
-func test_the_rail_wind_up_has_a_handler_but_no_signal_yet() -> void:
-	assert_bool(_dir.router.signal_names().has(&"weapon_charging")).is_false()
-	assert_bool(Events.has_signal(&"weapon_charging")).is_false()  # the day it exists, wire on_weapon_charging in wiring()
+func test_the_rail_wind_up_plays_when_a_weapon_starts_charging() -> void:
+	assert_bool(_dir.router.signal_names().has(&"weapon_charging")).is_true()  # wired by V5-A
+	assert_bool(Events.has_signal(&"weapon_charging")).is_true()
 	_dir.router.variety.on_weapon_charging(0)
 	assert_that(_last()).is_equal(&"rail_charge")
 

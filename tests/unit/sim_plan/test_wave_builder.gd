@@ -145,7 +145,9 @@ func test_boss_waves_schedule_nothing_for_four_seconds_after_the_boss() -> void:
 
 func test_a_boss_escort_pack_replaces_the_share_list() -> void:
 	var c: ContentSet = VarietyAKit.long_content()
-	c.bosses[0].escort_pack = &"pack_powder"
+	for b: BossDef in c.bosses:
+		if b.pool_act == 1:
+			b.escort_pack = &"pack_powder"  # whichever act I boss the seed picks
 	var plan: RunPlan = RunPlanSystem.build_for(c, 2)
 	var types: Array[int] = _types(plan.wave(5).options[0].groups)
 	assert_bool(types.has(Ids.EN_BURSTER)).is_true()

@@ -64,4 +64,7 @@ enum Id {
 	CORE_HEALED,  ## f amount, g core hp after
 	CHARGES_CHANGED,  ## a event index, b charges held
 	COMMAND_REJECTED,  ## a command id, b Reason.Id
+	# --- 15-wave integration (V5-A; append only) ---
+	WEAPON_CHARGING,  ## a slot, b ticks of the wind-up (the rail lance), f and g the far end of the line
+	TURRET_REMOVED,  ## a pad (single_point takes every turret away)
 }

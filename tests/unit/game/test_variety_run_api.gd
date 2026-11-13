@@ -281,12 +281,9 @@ func test_the_launch_takes_the_kit_the_unlocks_and_the_daily_flag_from_the_profi
 
 func test_back_on_a_choice_pauses_and_never_dismisses() -> void:
 	for state: int in [GameState.Id.PREPARING, GameState.Id.SPAWNING, GameState.Id.CLEARING, GameState.Id.INTERMISSION]:
-		assert_int(BackPolicy.decide(state, false, false, true)).is_equal(BackPolicy.Action.PAUSE)
-		assert_int(BackPolicy.decide(state, true, false, true)).is_equal(BackPolicy.Action.PAUSE)  # not CLOSE_DRAWER
-		assert_int(BackPolicy.decide(state, true, false, false)).is_equal(BackPolicy.Action.CLOSE_DRAWER)
-		assert_int(BackPolicy.decide(state, true, false)).is_equal(BackPolicy.Action.CLOSE_DRAWER)  # the old call
-	assert_int(BackPolicy.decide(GameState.Id.PAUSED, false, false, true)).is_equal(BackPolicy.Action.RESUME)
-	assert_int(BackPolicy.decide(GameState.Id.INTERMISSION, false, true, true)).is_equal(BackPolicy.Action.CLOSE_OVERLAY)
+		assert_int(BackPolicy.decide(state, false)).is_equal(BackPolicy.Action.PAUSE)  # a choice is up or not: back pauses
+	assert_int(BackPolicy.decide(GameState.Id.PAUSED, false)).is_equal(BackPolicy.Action.RESUME)
+	assert_int(BackPolicy.decide(GameState.Id.INTERMISSION, true)).is_equal(BackPolicy.Action.CLOSE_OVERLAY)
 	var rc: RunController = _rc()
 	assert_bool(GameRunFlow.choice_open(rc)).is_false()
 	assert_bool(GameRunFlow.choice_open(null)).is_false()

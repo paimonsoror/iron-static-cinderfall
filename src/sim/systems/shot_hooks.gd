@@ -15,8 +15,8 @@ extends RefCounted
 ## The off-hand fire of twin_link is ArsenalFire's. mine_layer is no shot hook (a timer of the turret, HazardSystem's mines).
 ## Hits of these hooks are area hits (DamageResolver.F_AREA): they run no hooks themselves, so nothing recurses.
 ##
-## State: kill_chain keeps its stack count and its timer in the upper bits of ArsenalState.shots_since_proc (bits 4..7
-## and 8..15); the low 4 bits count the shots of the pistol's level-3 perk. ArsenalState has no field of its own for it.
+## State: kill_chain keeps its stack count and its timer in ArsenalState.kill_chain_stacks and kill_chain_ticks;
+## ArsenalState.shots_since_proc counts the shots of the pistol's level-3 perk.
 
 const D_SHOCK_ROUNDS: StringName = &"shock_rounds"
 const D_RICOCHET: StringName = &"ricochet"
@@ -49,9 +49,7 @@ const FLAK_FRAC: float = 0.4
 const FLAK_FRAC_STEP: float = 0.2
 const FLAK_MAX_STACKS: int = 2
 
-const PISTOL_BITS: int = 15  ## mask of the pistol's shot counter
-const KILL_STACK_SHIFT: int = 4
-const KILL_TICKS_SHIFT: int = 8
+const PISTOL_EVERY_MAX: int = 15  ## the largest `crit_every` the pistol's perk accepts
 
 ## The slot whose weapon is firing, set by ArsenalFire around a shot; -1 outside a shot (the active slot then counts).
 static var shooter_slot: int = -1
@@ -150,15 +148,15 @@ static func reload_jam_ticks(world: SimWorld) -> int:
 	return 0
 
 
-# --- kill_chain and the pistol counter (see the header for the layout of ArsenalState.shots_since_proc) ---
+# --- kill_chain and the pistol counter ---
 
 
 static func kill_chain_stacks(a: ArsenalState) -> int:
-	return (a.shots_since_proc >> KILL_STACK_SHIFT) & 15
+	return a.kill_chain_stacks
 
 
 static func kill_chain_ticks(a: ArsenalState) -> int:
-	return (a.shots_since_proc >> KILL_TICKS_SHIFT) & 255
+	return a.kill_chain_ticks
 
 
 ## The fire rate multiplier of the kill chain in thousandths (1000 = none).
@@ -177,18 +175,19 @@ static func kill_chain_tick(a: ArsenalState) -> void:
 
 ## True on every `every`-th call: the pistol's level-3 perk (a guaranteed x3 hit on every 6th shot).
 static func pistol_crit_due(a: ArsenalState, every: int) -> bool:
-	if every <= 0 or every > PISTOL_BITS:
+	if every <= 0 or every > PISTOL_EVERY_MAX:
 		return false
-	var n: int = (a.shots_since_proc & PISTOL_BITS) + 1
+	var n: int = a.shots_since_proc + 1
 	if n >= every:
-		a.shots_since_proc &= ~PISTOL_BITS
+		a.shots_since_proc = 0
 		return true
-	a.shots_since_proc = (a.shots_since_proc & ~PISTOL_BITS) | n
+	a.shots_since_proc = n
 	return false
 
 
 static func _set_kill_chain(a: ArsenalState, stack_count: int, ticks: int) -> void:
-	a.shots_since_proc = (a.shots_since_proc & PISTOL_BITS) | (stack_count << KILL_STACK_SHIFT) | (ticks << KILL_TICKS_SHIFT)
+	a.kill_chain_stacks = stack_count
+	a.kill_chain_ticks = ticks
 
 
 ## ricochet: the killing hitscan shot goes on to the nearest enemies within 3 m, each hit for 60% of that shot.

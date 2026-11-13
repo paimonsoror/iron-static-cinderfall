@@ -11,7 +11,7 @@ extends RefCounted
 const ARMED: int = -1  ## ArsenalState.charge_left while a finished charge waits for the cadence
 
 
-## Starts the wind-up on the Warden's locked target. False when there is none.
+## Starts the wind-up on the Warden's locked target (WEAPON_CHARGING). False when there is none.
 static func begin(world: SimWorld, def: WeaponDef) -> bool:
 	var w: WardenState = world.warden
 	var store: EnemyStore = world.enemies
@@ -30,6 +30,7 @@ static func begin(world: SimWorld, def: WeaponDef) -> bool:
 	a.charge_x = w.x + dx / len_m * reach
 	a.charge_z = w.z + dz / len_m * reach
 	a.charge_left = maxi(1, def.charge_ticks)
+	world.events.push(SimEventKind.Id.WEAPON_CHARGING, a.active, a.charge_left, a.charge_x, a.charge_z)
 	return true
 
 

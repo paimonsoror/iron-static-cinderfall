@@ -52,21 +52,10 @@ func after_step(world: SimWorld, events: Array[SimEvent]) -> void:
 		_sample_peaks(world)
 
 
-## The Recovered Data the run would bank: the result formula (Formulas.data_reward), the Data of the `rw_data` route
-## rewards on waves that were cleared, and the `data_per_wave` stat of the directives. An estimate for the scorecard's
-## S14 comparison; the profile's own grant stays the business of the game layer.
+## The Recovered Data the run banks (SimWorld.data_reward: the table of CONTENT 10, counted by the sim since V5-A), for
+## the scorecard's S14 comparison. The profile's own grant stays the business of the game layer.
 static func data_of(world: SimWorld) -> int:
-	var total: float = float(Formulas.data_reward(world.result(), world.waves_completed, world.core_hp, world.content.mission))
-	total += world.mods.data_per_wave * float(world.waves_completed)
-	if world.plan != null and world.content.run != null:
-		for wave_number: int in mini(world.waves_completed, world.stats.route_choices.size() - 1):
-			var picked: RouteOption = _picked_option(world, wave_number + 1)
-			if picked == null or picked.reward_index < 0 or picked.reward_index >= world.content.run.route_rewards.size():
-				continue
-			for op: OpDef in world.content.run.route_rewards[picked.reward_index].ops:
-				if op.kind == OpDef.Kind.GRANT and op.target == &"data":
-					total += op.amount(world.plan.wave(wave_number + 1).act)
-	return roundi(total)
+	return world.data_reward()
 
 
 ## Directive indices ever offered, ascending.
@@ -76,14 +65,6 @@ func offered_indices() -> PackedInt32Array:
 		out.append(index)
 	out.sort()
 	return out
-
-
-static func _picked_option(world: SimWorld, wave_number: int) -> RouteOption:
-	var planned: PlannedWave = world.plan.wave(wave_number)
-	var choice: int = world.stats.route_choices[wave_number] if wave_number < world.stats.route_choices.size() else -1
-	if planned == null or choice < 0 or choice >= planned.options.size():
-		return null
-	return planned.options[choice]
 
 
 func _note_offer(world: SimWorld) -> void:

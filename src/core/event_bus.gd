@@ -64,4 +64,7 @@ signal command_rejected(command_id: int, reason: int)
 signal unlock_purchased(id: StringName)
 # --- slice integration (V3-I; append only) ---
 signal burster_armed(id: int)  ## an enemy with a fuse reached its slot: it goes off when the fuse (1.2 s) ends
+# --- 15-wave integration (V5-A; append only) ---
+signal weapon_charging(slot: int)  ## the weapon in `slot` began a wind-up (the rail lance's charge)
+signal turret_removed(pad: int)  ## the turret on `pad` is gone (the single_point directive)
 @warning_ignore_restore("unused_signal")

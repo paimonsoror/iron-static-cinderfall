@@ -2,10 +2,9 @@ class_name CoreHooks
 extends RefCounted
 ## The core-side hook points of directives (CONTENT 3.3, 3.4, 3.5): one function per hook. The callers are the systems
 ## that own the moment (CoreAttackSystem, AbilitySystem, PhaseSystem); each call point is added by the owner of that
-## system in its own wave. Call points that exist today: `on_core_hit` (CoreAttackSystem._hit_core) and, as an interim,
-## `on_wave_cleared` (DraftSystem.open). The others are listed under "needs owner" in the V4-C report:
-##   on_core_changed  callers of SimWorld.set_core_hp (CoreAttackSystem.damage_core)   allow_defeat  PhaseSystem.post_step
-##   on_ability, on_emp, on_shield_end  AbilitySystem.activate / _apply_emp / _end   step  once per combat tick
+## system. The call points: `on_core_hit` and `on_core_changed` (CoreAttackSystem), `allow_defeat` (PhaseSystem.post_step
+## and, for an enemy hit, on_core_hit), `on_wave_cleared` (PhaseAwaits.begin_intermission), `on_ability`, `on_emp` and
+## `on_shield_end` (AbilitySystem), `step` (CoreAttackSystem.step, once per combat tick).
 ## Every function does nothing on the legacy content. Blasts and bolts of the core are DamageSource.CORE; their kills
 ## queue their own chain blasts through DeathHooks, never recursion.
 

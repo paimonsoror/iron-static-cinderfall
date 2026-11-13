@@ -44,12 +44,12 @@ static func pre_step(world: SimWorld) -> void:
 		_start_next_wave(world)
 
 
-## Tick step 10: DEFEAT first, then SPAWNING -> CLEARING, then CLEARING -> INTERMISSION or VICTORY.
+## Tick step 10: DEFEAT first (unless CoreHooks.allow_defeat saves the core: the wave then goes on), then SPAWNING -> CLEARING, then CLEARING -> INTERMISSION or VICTORY.
 static func post_step(world: SimWorld) -> void:
 	var phase: int = world.phase
 	if phase != GameState.Id.SPAWNING and phase != GameState.Id.CLEARING:
 		return
-	if world.core_hp <= 0.0:
+	if world.core_hp <= 0.0 and CoreHooks.allow_defeat(world):  # dead_mans_switch may save the core, once per run
 		world.set_phase(GameState.Id.DEFEAT)
 		_finish_run(world)
 	elif phase == GameState.Id.SPAWNING:
@@ -128,6 +128,8 @@ static func _clear_wave(world: SimWorld) -> void:
 	if world.wave < world.stats.wave_clear_tick.size():
 		world.stats.wave_clear_tick[world.wave] = world.tick
 	world.events.push(SimEventKind.Id.WAVE_CLEARED, world.wave)
+	if world.plan != null:
+		PhaseAwaits.bank_wave_data(world)
 	if world.wave >= wave_count(world):
 		world.set_phase(GameState.Id.VICTORY)
 		_finish_run(world)

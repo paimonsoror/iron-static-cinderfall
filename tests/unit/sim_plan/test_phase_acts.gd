@@ -8,7 +8,7 @@ func _count(w: SimWorld, kind: int) -> int:
 
 
 func test_a_slice_run_ends_in_victory_after_the_fifth_wave_without_an_intermission() -> void:
-	var w: SimWorld = VarietyAKit.world(5)
+	var w: SimWorld = VarietyAKit.world(5, VarietyAKit.act_one_content())
 	var answered: int = VarietyAKit.play(w, 0)
 	assert_int(answered).is_equal(4)  # three routes and one boss briefing
 	assert_int(w.phase).is_equal(GameState.Id.VICTORY)
@@ -79,8 +79,8 @@ func test_the_act_changes_when_the_first_wave_of_the_act_starts_not_before() -> 
 
 
 func test_thinking_time_does_not_change_the_hash() -> void:
-	var quick: SimWorld = VarietyAKit.world(11)
-	var slow: SimWorld = VarietyAKit.world(11)
+	var quick: SimWorld = VarietyAKit.world(11, VarietyAKit.act_one_content())
+	var slow: SimWorld = VarietyAKit.world(11, VarietyAKit.act_one_content())
 	assert_int(VarietyAKit.play(quick, 0)).is_equal(4)
 	assert_int(VarietyAKit.play(slow, 600)).is_equal(4)
 	assert_int(quick.tick).is_equal(slow.tick)
@@ -124,7 +124,8 @@ func test_the_same_seed_and_choices_give_the_same_run_and_other_choices_another(
 
 
 func test_the_wave_count_comes_from_the_plan() -> void:
-	assert_int(PhaseSystem.wave_count(VarietyAKit.world())).is_equal(5)
+	assert_int(PhaseSystem.wave_count(VarietyAKit.world())).is_equal(15)
+	assert_int(PhaseSystem.wave_count(VarietyAKit.world(1, VarietyAKit.act_one_content()))).is_equal(5)
 	assert_int(PhaseSystem.wave_count(VarietyAKit.world(1, VarietyAKit.long_content()))).is_equal(15)
 	assert_int(PhaseSystem.wave_count(TestContent.world())).is_equal(5)
 

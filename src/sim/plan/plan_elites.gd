@@ -9,6 +9,10 @@ const FIRST_ELITE_WAVE: int = 3
 const NEVER_ELITE: PackedInt32Array = [Ids.EN_BURSTER, Ids.EN_WARD_PYLON]
 ## A reclaimer is elite from this act on.
 const RECLAIMER_ACT: int = 3
+## SHROUDED (no target from more than 12 m) is never rolled on an enemy that parks at a standoff point: a shrouded spitter
+## stands about 14 m from the Warden for good, so a build with no turret in reach, no area weapon and no strike could
+## never kill it and the wave would never end (found by the 15-wave integration, V5-A).
+const SHROUD_AFFIX: StringName = &"aff_shroud"
 ## Chance of the second affix when the data has no per-act value.
 const DEFAULT_TWO_CHANCE: float = 0.5
 
@@ -91,8 +95,11 @@ static func roll_affixes(content: ContentSet, enemy_index: int, act: int, stream
 	for _n: int in wanted:
 		var usable: PackedInt32Array = PackedInt32Array()
 		for a: AffixDef in content.affixes:
-			if not chosen.has(a.index) and not _clashes(run, chosen, a.index, act, enemy_index):
-				usable.append(a.index)
+			if chosen.has(a.index) or _clashes(run, chosen, a.index, act, enemy_index):
+				continue
+			if a.id == SHROUD_AFFIX and content.enemies[enemy_index].standoff_m > 0.0:
+				continue
+			usable.append(a.index)
 		if usable.is_empty():
 			break
 		chosen.append(usable[PlanRng.index(stream, usable.size())])

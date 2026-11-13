@@ -2,7 +2,7 @@ class_name HudSandbox
 extends Control
 ## CombatHud + FakeRunApi cycling through the states a review needs (ARCH 11), every STEP_SECONDS:
 ##   0 combat with Scrap, full core, abilities ready
-##   1 upgrade drawer open with mixed cards (affordable, too expensive, maxed, locked)
+##   1 the legacy shop numbers (affordable, too expensive, maxed, locked); the upgrade drawer that showed them is gone (V5-A)
 ##   2 shield active, EMP cooling down, overdrive ready
 ##   3 wave 5 boss bar, core nearly gone (low-core warning), shield broken
 ##   4 reload in progress (empty magazine)
@@ -117,9 +117,7 @@ func apply_step(n: int) -> void:
 			_api.fake_purchase_block[&"armor_piercing"] = Reason.Id.INSUFFICIENT_SCRAP
 			_api.fake_purchase_block[&"smg_unlock"] = Reason.Id.PREREQ_NOT_MET
 			Events.upgrade_level_changed.emit(&"damage", 2)
-			_hud.open_drawer()
 		2:
-			_hud.close_drawer()
 			_api.set_core(820.0)
 			_api.fake_shield_hp = 70.0
 			_api.fake_ability_active_left[&"shield"] = 300
@@ -165,7 +163,6 @@ func _reset() -> void:
 	_api.fake_reload_ticks_left = 0
 	_api.fake_phase = GameState.Id.SPAWNING
 	_api.fake_phase_ticks_left = 0
-	_hud.close_drawer()
 	Events.reload_finished.emit()
 
 

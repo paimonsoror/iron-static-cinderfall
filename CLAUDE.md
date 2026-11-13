@@ -1,7 +1,8 @@
 # CLAUDE.md - IRON STATIC: CINDERFALL
 
-Godot 4.7.2 (statically typed GDScript), portrait, Mobile renderer (Vulkan). A 3D top-down defense slice: the
-Warden holds Relay Core B-4 against five waves. Project root `C:\dev\tower-two` (Git Bash `/c/dev/tower-two`). The
+Godot 4.7.2 (statically typed GDScript), portrait, Mobile renderer (Vulkan). A 3D top-down defense game: the
+Warden holds Relay Core B-4 through a generated run of 15 waves in three acts (the variety milestone; the five scripted
+waves of milestone 1 live on as a test fixture only). Project root `C:\dev\tower-two` (Git Bash `/c/dev/tower-two`). The
 original game at `C:\dev\tower` is read-only reference; never read `secrets.local.json`, `C:\dev\keys` or any keystore.
 
 ## Doc map
@@ -53,6 +54,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\tower-two\tools\test.
 powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\tower-two\tools\test.ps1 -Path res://tests/unit/content,res://tests/unit/save
 powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\tower-two\tools\test.ps1 -Suite test_formulas
 powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\tower-two\tools\test.ps1 -Canary      # prints CANARY OK
+
+# Headless whole runs with a bot (none, greedy, random, hoarder, spammer, turret_rush, balanced, risk). Pass = exit 0 and a
+# last line "SIM SUMMARY: runs=N victories=V defeats=D".
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\tower-two\tools\sim_run.ps1 -Seed 1 -Policy balanced -Runs 20
+# The predictability scorecard (19 rows: integrity + S1..S18). -Runs 30 is the gate, -Runs 200 the full card, -Jobs k uses k
+# processes. Pass = exit 0 (PASS or WARN; exit 1 on FAIL), last line "SCORECARD: PASS|WARN|FAIL rows=19 pass=.. warn=.. fail=.. runs=..".
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\tower-two\tools\scorecard_run.ps1 -Runs 30 -Pool base -Jobs 4
+# The whole plan of a seed (bosses, both options of every wave, events).
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\tower-two\tools\plan_dump.ps1 -Seed 1
 
 # Desktop screenshot through the real renderer (opens a window briefly). Pass = exit 0, "CAPTURE OK <path>".
 # From Git Bash write -Out with FORWARD slashes (backslashes are eaten by bash).
@@ -159,8 +169,11 @@ Source of truth: `docs/design/VARIETY_SPEC.md` (contracts: section 13; tasks and
 
 - **Two contents.** `TestContent.baseline()` is the legacy 5-wave content (4 enemies, 2 weapons, the shop, `run == null`,
   no plan): every older test keeps using it and `tests/fixtures/data_baseline/` stays byte-identical.
-  `TestContent.variety()` / `variety_world(seed)` read `tests/fixtures/data_variety/` (a frozen copy of the slice data):
-  every variety test uses it. `ContentLoader.build` takes the six variety files as its 7th parameter (file name to parsed
+  `TestContent.variety()` / `variety_world(seed)` read `tests/fixtures/data_variety/` (a copy of the shipped data: the
+  15-wave game): every variety test uses it. **The fixture rule:** `tests/fixtures/data_variety/` is a byte copy of `data/`
+  and `data/strings/` (`test_fixture_copy.gd` pins it): whoever changes a data or strings file applies the identical change
+  to its fixture copy in the same commit and re-records the goldens that move. `VarietyAKit.act_one_content()` is the
+  fixture cut to act I (5 waves) for a test that plays a short run to its end; `slice_content()` is the old slice. `ContentLoader.build` takes the six variety files as its 7th parameter (file name to parsed
   JSON); empty = legacy. `content.is_variety()` tells them apart. `res://data/` is variety content.
 - **Shared files are frozen again** (VARIETY_SPEC 15.4): `src/shared/**`, `src/content/defs/**`, the loaders and validators
   in `src/content/`, `sim_world.gd`, `sim_command.gd`, `sim_event_kind.gd`, `sim_config.gd`, `run_stats.gd`,
@@ -181,12 +194,25 @@ Source of truth: `docs/design/VARIETY_SPEC.md` (contracts: section 13; tasks and
 - **Awaiting.** While `world.phase_state.awaiting != PhaseState.Await.NONE` a `step()` with an empty queue does nothing
   and the tick does not advance. The UI reads it as `RunApi.awaiting()` (`RunApi.AWAIT_*`).
 - **RNG.** Stream names are exactly those of VARIETY_SPEC 9.2. Building a world draws from no stream (a test checks it).
-- **The shipped run is the slice** (V3-I; VARIETY_SPEC 15.2): `RunPlanSystem.build` makes a generated plan from the seed
-  (act I: four waves and a boss wave, the Siege Hulk standing in), the shop is closed (`mission.shop_enabled` false,
+- **The shipped run is the 15-wave game** (V5-A; `data/run.json`): `RunPlanSystem.build` makes the plan from the seed:
+  three acts of five waves, boss waves 5, 10 and 15 (act I: Brood Carrier or Lance Platform; act II: Aegis Array or Tremor
+  Rig; act III: the Siege Hulk with one of three variants). The shop is closed (`mission.shop_enabled` false,
   `SHOP_CLOSED`), every intermission is SALVAGE, DRAFT, ROUTE or BOSS_BRIEF and a 3 s breather. `content.waves` is still
   loaded on variety content but nothing plays it: ask `PhaseSystem.wave_count(world)`, `RunApi.wave_count()` or
-  `RunRoster.wave_count(content)` (UI), never `content.waves.size()`. The legacy five scripted waves live on in
-  `TestContent.baseline()` only.
+  `RunRoster.wave_count(content)` (UI), never `content.waves.size()`, and never write a literal 5 or 15. The legacy five
+  scripted waves live on in `TestContent.baseline()` only.
+- **Recovered Data is counted by the sim** (CONTENT 10): `RunStats.data` banks waves, act bosses, `rw_data` and data_siphon;
+  `SimWorld.data_reward()` adds the victory part; `GameRewards` pays `summary.data_reward` unchanged.
+- **A fresh profile** finds `smg`, `scattergun` and `assault_rifle` in its crates (the guaranteed crate after wave 2 holds
+  one of them); the other six weapons, 29 directives, five kits and the six field options are Archive unlocks
+  (`data/unlocks.json`, 24 rows). The sim asks `world.config.has_unlock(id)`, the UI `RunApi.has_unlock(id)`; a Daily Run
+  has every unlock.
+- **Debug starts of the real game:** `--scenario=wave:<n>` (start at wave n with a scripted build) and
+  `--scenario=boss:<id>` (a boss id or `hulk_plated|hulk_fed|hulk_overclocked`); with `--autoplay=balanced --unlock=all`
+  they are the fast way to a late wave. A run with any debug switch (`SimConfig.is_debug()`) records nothing in the Archive.
+- **UI width checks.** `UiOverflowKit` (`tests/unit/ui/overflow_kit.gd`) lays a screen out at phone sizes and names every
+  Control that sticks out sideways; every new screen or overlay gets a test with it (the Archive overflowed a real phone
+  while its captures looked fine).
 - **Whole-run tests.** A driver of a generated run must answer every await (a bot does; `GameHarness.play_intermission`
   does it through the RunApi; `VarietyAKit.run_to_await` for units). `tools\sim_run.ps1 -Policy balanced` and
   `--autoplay=balanced` (any name of `PolicyBot.NAMES`) play the same game hash for hash. Legacy whole-run facts (the

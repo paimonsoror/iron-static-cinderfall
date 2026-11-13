@@ -43,9 +43,11 @@ static func begin_wave(world: SimWorld) -> void:
 	EventSystem.begin_wave(world, world.wave)
 
 
-## The intermission begins (a wave was cleared): the wave-clear effects, before the first await. They are the route reward
-## of the option that spawned (its crate is dropped during the wave instead, see `on_wave_tick`) and, after a boss wave,
-## the act-clear repair.
+## The intermission begins (a wave was cleared): the wave-clear effects, before the first await, in the order of
+## VARIETY_SPEC 2.5. They are the route reward of the option that spawned (its grants; `rw_rare_draft` and
+## `rw_double_pick` arm the draft of this intermission; its crate is dropped during the wave instead, see
+## `on_wave_tick`), the wave-clear effects of directives (CoreHooks.on_wave_cleared) and, after a boss wave, the
+## act-clear repair.
 static func begin_intermission(world: SimWorld) -> void:
 	world.phase_state.drafted = false
 	world.phase_state.breather = false
@@ -53,10 +55,15 @@ static func begin_intermission(world: SimWorld) -> void:
 	if option != null and option.reward_index >= 0:
 		var ops: Array[OpDef] = []
 		for op: OpDef in world.content.run.route_rewards[option.reward_index].ops:
-			if not _is_crate(op):
+			if op.kind == OpDef.Kind.FLAG and op.target == &"next_draft_rare":
+				DraftSystem.arm_next_rare(world)
+			elif op.kind == OpDef.Kind.FLAG and op.target == &"next_draft_double":
+				DraftSystem.arm_next_double(world)
+			elif not _is_crate(op):
 				ops.append(op)
 		if not ops.is_empty():
 			ModSystem.grant(world, ops)
+	CoreHooks.on_wave_cleared(world)  # field_weld, compound_interest, borrowed_time
 	var pw: PlannedWave = world.plan.wave(world.wave)
 	if pw != null and pw.is_boss:
 		var repair: OpDef = OpDef.new()
@@ -65,6 +72,13 @@ static func begin_intermission(world: SimWorld) -> void:
 		repair.value = ACT_CLEAR_REPAIR_FRAC
 		var list: Array[OpDef] = [repair]
 		ModSystem.grant(world, list)
+
+
+## Wave `world.wave` was cleared (the last one too): the Recovered Data of CONTENT 10 that a cleared wave banks, which is
+## `reward.per_wave` plus the 2 per stack of data_siphon (ModState.data_per_wave). The act bosses are paid at their
+## death (DeathHooks) and `rw_data` with the other route rewards (ModSystem.grant).
+static func bank_wave_data(world: SimWorld) -> void:
+	world.stats.add_data(world.content.run.reward_per_wave + roundi(world.mods.data_per_wave))
 
 
 ## Each tick of a combat phase: drops the field crate of an `rw_crate` reward at 40 percent of the wave window.

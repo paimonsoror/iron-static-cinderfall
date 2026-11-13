@@ -85,6 +85,7 @@ func _init(cfg: SimConfig) -> void:
 	ArsenalSystem.init_world(self)
 	EventSystem.init_world(self)
 	plan = RunPlanSystem.build(self)
+	DebugStart.apply(self)
 
 
 ## Exactly one tick; a no-op once the run is over. Order is fixed (ARCH 6.2, extended by VARIETY_SPEC 13.2).
@@ -193,7 +194,7 @@ func summary(run_id: String) -> RunSummary:
 	s.peak_alive_by_wave = stats.peak_alive_by_wave.duplicate()
 	s.scrap_earned = stats.scrap_earned
 	s.scrap_spent = stats.scrap_spent
-	s.data_reward = Formulas.data_reward(s.result, waves_completed, core_hp, content.mission)
+	s.data_reward = data_reward()
 	s.act_reached = stats.act_reached
 	s.combat_ticks = stats.combat_ticks
 	s.directives = draft.stacks.duplicate()
@@ -205,6 +206,20 @@ func summary(run_id: String) -> RunSummary:
 	s.crates_secured = stats.crates_secured
 	s.boss_ids = stats.boss_ids.duplicate()
 	return s
+
+
+## The Recovered Data the run is worth now. A generated run pays the table of CONTENT 10: what RunStats.data banked
+## (waves cleared, act bosses, `rw_data`, data_siphon) plus, for a victory, victory_base + floor(victory_core_bonus x
+## core / core max). An unfinished run is worth what it banked (a run that cannot be resumed is closed with it). The
+## legacy content keeps Formulas.data_reward.
+func data_reward() -> int:
+	if content.run == null:
+		return Formulas.data_reward(result(), waves_completed, core_hp, content.mission)
+	var total: int = stats.data
+	if phase == GameState.Id.VICTORY:
+		var frac: float = clampf(core_hp / maxf(1.0, core_max_hp), 0.0, 1.0)
+		total += content.run.reward_victory_base + floori(float(content.run.reward_victory_core_bonus) * frac)
+	return total
 
 
 # --- shared mutators: the ONLY way these things may change ---
@@ -270,6 +285,8 @@ func spawn_enemy(type_index: int, x: float, z: float, affix_mask: int = 0) -> in
 	events.push(SimEventKind.Id.ENEMY_SPAWNED, enemy_id, type_index, x, z)
 	if def.is_boss:
 		events.push(SimEventKind.Id.BOSS_SPAWNED, enemy_id, type_index)
+		if not stats.boss_ids.has(type_index):
+			stats.boss_ids.append(type_index)  # one entry per boss type of the run, in spawn order
 		BossSystem.on_spawned(self, i)
 	if affix_mask != 0:
 		ext.flags[i] |= EnemyExtState.F_ELITE

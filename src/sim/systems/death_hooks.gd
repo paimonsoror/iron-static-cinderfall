@@ -53,11 +53,23 @@ static func on_killed(world: SimWorld, enemy_index: int, source: int) -> void:
 	elif type_index == Ids.EN_SKITTER and world.mods.has_flag(&"volatile_skitters") and world.mods.volatile_radius > 0.0:
 		_queue(world, def, x, z, world.mods.volatile_radius, world.mods.volatile_damage, 1.0, 0.0)
 	SalvageSystem.on_enemy_killed(world, enemy_index, source)
+	_bank_boss_data(world, def, source)
 	_directive_blasts(world, enemy_index, def, source)
 	StatusSystem.on_enemy_killed(world, enemy_index, source)  # V4-N: the splitter's shards, the jammer's death stun, VOLATILE
 	if source != SOURCE_SELF and world.ext.is_elite(enemy_index) and ModRules.held(world, &"chorus_handshake") > 0:
 		if world.salvage.elite_kills % CHORUS_ELITES_PER_CRATE == 0:
 			SalvageSystem.grant_crate(world, false)
+
+
+## CONTENT 10: an act boss killed by the player's side banks `reward.boss_by_act[act - 1]` Recovered Data (30 and 45; the
+## last act has no entry: its boss is the victory).
+static func _bank_boss_data(world: SimWorld, def: EnemyDef, source: int) -> void:
+	if not def.is_boss or source == SOURCE_SELF:
+		return
+	var by_act: PackedInt32Array = world.content.run.reward_boss_by_act
+	var slot: int = world.phase_state.act - 1
+	if slot >= 0 and slot < by_act.size():
+		world.stats.add_data(by_act[slot])
 
 
 ## the_tally (+1% per 10 Warden kills), aftershock (an enemy killed while stunned blasts) and unstable_munitions (20% of Warden kills blast, one draw of the
