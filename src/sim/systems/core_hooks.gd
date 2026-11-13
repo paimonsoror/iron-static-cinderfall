@@ -72,14 +72,10 @@ static func allow_defeat(world: SimWorld) -> bool:
 	return false
 
 
-## field_weld, compound_interest, borrowed_time, the free shield of amber_surge: before the first await of the
-## intermission. The 2% repair of field_weld is skipped after a mod_no_breather wave ("no core repair").
+## field_weld, compound_interest, borrowed_time: before the first await of the intermission. The 2% repair of field_weld is skipped after a mod_no_breather wave ("no core repair").
 static func on_wave_cleared(world: SimWorld) -> void:
 	if world.content.run == null:
 		return
-	if world.shield_hp > 0.0 and world.abilities.active_left[Ids.AB_SHIELD] <= 0:
-		world.shield_hp = 0.0  # the free shield of amber_surge lasts for its wave
-		world.events.push(SimEventKind.Id.SHIELD_CHANGED, 0, 0, 0.0, world.content.abilities[Ids.AB_SHIELD].absorb)
 	var weld: float = world.mods.core_regen_wave
 	if weld > 0.0 and not DraftSystem.breather_denied(world):
 		ModSystem.repair_core(world, weld * world.core_max_hp)
@@ -120,11 +116,17 @@ static func on_emp(world: SimWorld) -> void:
 		)
 
 
-## shield_burst: the shield ended or broke. 150 damage within 6 m of the core.
+## shield_burst: the shield ended or broke (AbilitySystem._end, after it started the cooldown). 150 damage within 6 m of
+## the core. amber_surge: a free shield that ends gives the Shield cooldown back as it was when the shield started.
 static func on_shield_end(world: SimWorld) -> void:
-	if world.content.run == null or ModRules.held(world, &"shield_burst") <= 0:
+	if world.content.run == null:
 		return
-	_blast_at_core(world, SHIELD_BURST_RADIUS_M, SHIELD_BURST_DAMAGE)
+	var kept: int = HookMemory.free_shield_cooldown(world)
+	if kept >= 0:
+		world.abilities.cooldown_left[Ids.AB_SHIELD] = kept
+		HookMemory.end_free_shield(world)
+	if ModRules.held(world, &"shield_burst") > 0:
+		_blast_at_core(world, SHIELD_BURST_RADIUS_M, SHIELD_BURST_DAMAGE)
 
 
 ## core_lash: once per combat tick. Every period (1.5 s, 1.2 s, 0.9 s by stack, on the global tick) the core fires a bolt
@@ -153,14 +155,20 @@ static func lash_target(world: SimWorld) -> int:
 	return best
 
 
-## A Shield that starts for free (amber_surge): the absorb pool of the ability with its upgrades, no timer and no
-## cooldown change (the Shield cooldown starts when the ability ends, which a free shield must not trigger). Nothing
-## happens while a shield is up.
+## A Shield that starts for free (amber_surge): the ability is active (the shield of an inactive ability breaks the
+## invariant of the sim) with the absorb and the duration it has with its upgrades, and the Shield cooldown stays as it
+## was: the cooldown before the start is kept in HookMemory and given back by `on_shield_end` (AbilitySystem._end starts
+## the cooldown when any shield ends). Nothing happens while a shield is up.
 static func start_free_shield(world: SimWorld) -> void:
-	if world.shield_hp > 0.0 or world.abilities.active_left[Ids.AB_SHIELD] > 0:
+	var st: AbilityState = world.abilities
+	if world.shield_hp > 0.0 or st.active_left[Ids.AB_SHIELD] > 0:
 		return
-	var absorb: float = world.content.abilities[Ids.AB_SHIELD].absorb + world.mods.shield_absorb_add
+	var def: AbilityDef = world.content.abilities[Ids.AB_SHIELD]
+	var absorb: float = def.absorb + world.mods.shield_absorb_add
+	HookMemory.begin_free_shield(world, st.cooldown_left[Ids.AB_SHIELD])
+	st.active_left[Ids.AB_SHIELD] = def.duration_ticks + roundi(world.mods.shield_dur_add * float(SimWorld.TICK_RATE))
 	world.shield_hp = absorb
+	world.events.push(SimEventKind.Id.ABILITY_ACTIVATED, Ids.AB_SHIELD, 0)
 	world.events.push(SimEventKind.Id.SHIELD_CHANGED, 0, 0, absorb, absorb)
 
 

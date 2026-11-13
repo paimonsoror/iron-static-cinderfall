@@ -5,6 +5,7 @@ extends RefCounted
 ##   dead_mans_switch  1 = armed, 2 = spent (stacks above `max` are never offered again and never apply ops)
 ##   borrowed_time     1 + the waves cleared since it was taken
 ##   the_tally         1 + bonus percent (0..100) + TALLY_TICK_STEP x the tick of the last halving (0 = never)
+##   amber_surge       1 = armed, 2 + n = its free shield is running and the Shield cooldown was n ticks before it
 ## DraftSystem.build_tags and ModSystem.recompute clamp a held count to `max`, so these numbers never leak into the
 ## draft weights or the op stacks. The UI must not print the count of a directive whose `max` is 1.
 ## TODO(needs owner): a real state class (HookState on SimWorld) would replace this file and nothing else.
@@ -33,6 +34,20 @@ static func switch_armed(world: SimWorld) -> bool:
 
 static func spend_switch(world: SimWorld) -> void:
 	set_raw(world, &"dead_mans_switch", SPENT)
+
+
+## amber_surge: the Shield cooldown to give back when the free shield ends, or -1 when no free shield is running.
+static func free_shield_cooldown(world: SimWorld) -> int:
+	var n: int = raw(world, &"amber_surge")
+	return n - SPENT if n >= SPENT else -1
+
+
+static func begin_free_shield(world: SimWorld, cooldown_ticks: int) -> void:
+	set_raw(world, &"amber_surge", SPENT + maxi(0, cooldown_ticks))
+
+
+static func end_free_shield(world: SimWorld) -> void:
+	set_raw(world, &"amber_surge", 1)
 
 
 ## Waves cleared since borrowed_time was taken.

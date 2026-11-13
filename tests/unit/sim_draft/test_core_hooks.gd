@@ -70,17 +70,42 @@ func test_amber_surge_starts_a_free_shield_when_the_core_drops_below_half() -> v
 	CoreHooks.on_core_changed(w, 600.0, 450.0)
 	assert_float(w.shield_hp).is_equal(100.0)
 	assert_int(w.abilities.cooldown_left[Ids.AB_SHIELD]).is_equal(0)  # no cooldown change
-	assert_int(w.abilities.active_left[Ids.AB_SHIELD]).is_equal(0)
+	assert_int(w.abilities.active_left[Ids.AB_SHIELD]).is_equal(480)  # the ability is active: 8 s
 	var changed: Array[SimEvent] = DirectiveKit.events_of(w, SimEventKind.Id.SHIELD_CHANGED)
 	assert_float(changed[changed.size() - 1].f).is_equal(100.0)
+	var started: Array[SimEvent] = DirectiveKit.events_of(w, SimEventKind.Id.ABILITY_ACTIVATED)
+	assert_int(started.size()).is_equal(1)
+	assert_int(started[0].a).is_equal(Ids.AB_SHIELD)
 	w.shield_hp = 30.0
 	CoreHooks.on_core_changed(w, 500.0, 499.0)  # a shield is up: nothing starts
 	assert_float(w.shield_hp).is_equal(30.0)
 	w.shield_hp = 0.0
+	w.abilities.active_left[Ids.AB_SHIELD] = 0
 	CoreHooks.on_core_changed(w, 450.0, 300.0)  # already below the line
 	assert_float(w.shield_hp).is_equal(0.0)
 	CoreHooks.on_core_changed(w, 500.0, 0.0)  # a lethal drop is the switch's business, not the surge's
 	assert_float(w.shield_hp).is_equal(0.0)
+
+
+func test_a_free_shield_gives_the_shield_cooldown_back_when_it_ends() -> void:
+	DirectiveKit.give(w, &"amber_surge")
+	w.abilities.cooldown_left[Ids.AB_SHIELD] = 1234  # the real Shield is cooling down
+	CoreHooks.on_core_changed(w, 600.0, 450.0)
+	assert_int(w.abilities.cooldown_left[Ids.AB_SHIELD]).is_equal(1234)
+	assert_int(w.abilities.active_left[Ids.AB_SHIELD]).is_equal(480)
+	assert_int(HookMemory.free_shield_cooldown(w)).is_equal(1234)
+	assert_int(ModRules.held(w, &"amber_surge")).is_equal(1)  # the memory is not a stack
+	# what AbilitySystem._end does when a shield ends: the cooldown starts
+	w.abilities.active_left[Ids.AB_SHIELD] = 0
+	w.shield_hp = 0.0
+	w.abilities.cooldown_left[Ids.AB_SHIELD] = 3000
+	CoreHooks.on_shield_end(w)
+	assert_int(w.abilities.cooldown_left[Ids.AB_SHIELD]).is_equal(1234)
+	assert_int(HookMemory.free_shield_cooldown(w)).is_equal(-1)
+	assert_int(DirectiveKit.held(w, &"amber_surge")).is_equal(1)  # armed again for the next wave
+	w.abilities.cooldown_left[Ids.AB_SHIELD] = 3000  # a shield the player started: its cooldown stands
+	CoreHooks.on_shield_end(w)
+	assert_int(w.abilities.cooldown_left[Ids.AB_SHIELD]).is_equal(3000)
 
 
 func test_amber_surge_through_a_core_hit_and_with_shield_lattice() -> void:
@@ -89,6 +114,7 @@ func test_amber_surge_through_a_core_hit_and_with_shield_lattice() -> void:
 	w.set_core_hp(450.0)
 	CoreHooks.on_core_hit(w, -1, 150.0, 0.0)  # it was 600 before this hit
 	assert_float(w.shield_hp).is_equal(160.0)  # 100 + 60
+	assert_int(w.abilities.active_left[Ids.AB_SHIELD]).is_equal(600)  # 8 s + 2 s
 	var other: SimWorld = DirectiveKit.world()
 	other.set_core_hp(450.0)
 	CoreHooks.on_core_hit(other, -1, 150.0, 0.0)  # without the directive nothing happens
@@ -144,23 +170,20 @@ func test_the_tally_halves_through_an_empty_shield_at_most_once_per_five_seconds
 	assert_int(ModRules.held(w, &"the_tally")).is_equal(1)
 
 
-func test_field_weld_compound_interest_and_the_free_shield_at_wave_clear() -> void:
+func test_field_weld_and_compound_interest_at_wave_clear() -> void:
 	DirectiveKit.give(w, &"field_weld", 2)
 	DirectiveKit.give(w, &"compound_interest")
 	w.set_core_hp(500.0)
 	w.add_scrap(1000)
-	w.shield_hp = 60.0
 	CoreHooks.on_wave_cleared(w)
 	assert_float(w.core_hp).is_equal_approx(540.0, 0.001)  # 2 x 2% of 1000
 	assert_int(w.scrap).is_equal(1100)  # +10%
-	assert_float(w.shield_hp).is_equal(0.0)  # a free shield lasts for its wave
 	w.add_scrap(5000 - w.scrap)
 	CoreHooks.on_wave_cleared(w)
 	assert_int(w.scrap).is_equal(5150)  # capped at +150
-	w.shield_hp = 40.0
-	w.abilities.active_left[Ids.AB_SHIELD] = 100  # the real ability is running: it keeps its shield
+	w.set_core_hp(1000.0)
 	CoreHooks.on_wave_cleared(w)
-	assert_float(w.shield_hp).is_equal(40.0)
+	assert_float(w.core_hp).is_equal(1000.0)  # never above the maximum
 
 
 func test_no_breather_wave_brings_no_core_repair() -> void:
