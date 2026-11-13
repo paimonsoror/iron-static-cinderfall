@@ -74,7 +74,6 @@ static func touch_lane(world: SimWorld, lane_z: float, half_width: float, x_lo: 
 ## take it; a drum that has taken `stray_damage` ignites. Fire kinds call this for shots that hit nothing.
 static func stray(world: SimWorld, x: float, z: float, damage: float) -> void:
 	var h: HazardState = world.hazards
-	var limit: int = roundi(_num(world, &"stray_damage", 80.0) * MILLI)
 	var reach: float = _num(world, &"radius_m", 0.4)
 	for k: int in h.d_alive.size():
 		if h.d_alive[k] == 0:
@@ -82,11 +81,42 @@ static func stray(world: SimWorld, x: float, z: float, damage: float) -> void:
 		var p: Vector2 = position_of(world, k)
 		var dx: float = p.x - x
 		var dz: float = p.y - z
-		if dx * dx + dz * dz > reach * reach:
+		if dx * dx + dz * dz <= reach * reach:
+			hit(world, k, damage)
+
+
+## Fills `out` with the indices of the standing drums within `reach` of (x, z), nearest first (ties: the lower index), and
+## returns how many. A fire kind that lets a stray round go to a neighbour of its target offers it the drums here.
+static func standing_near(world: SimWorld, x: float, z: float, reach: float, out: PackedInt32Array) -> int:
+	var h: HazardState = world.hazards
+	var dist: PackedFloat64Array = PackedFloat64Array()
+	out.clear()
+	for k: int in h.d_alive.size():
+		if h.d_alive[k] == 0:
 			continue
-		h.d_damage_milli[k] += roundi(damage * MILLI)
-		if h.d_damage_milli[k] >= limit:
-			ignite(world, k)
+		var p: Vector2 = position_of(world, k)
+		var dx: float = p.x - x
+		var dz: float = p.y - z
+		var d2: float = dx * dx + dz * dz
+		if d2 > reach * reach:
+			continue
+		var at: int = out.size()
+		while at > 0 and dist[at - 1] > d2:
+			at -= 1
+		out.insert(at, k)
+		dist.insert(at, d2)
+	return out.size()
+
+
+## One round of damage on standing drum `k` (a stray round that was sent at it): the damage adds to what it has taken, and it
+## ignites when that reaches `stray_damage`. A drum that is gone takes nothing.
+static func hit(world: SimWorld, k: int, damage: float) -> void:
+	var h: HazardState = world.hazards
+	if k < 0 or k >= h.d_alive.size() or h.d_alive[k] == 0:
+		return
+	h.d_damage_milli[k] += roundi(damage * MILLI)
+	if h.d_damage_milli[k] >= roundi(_num(world, &"stray_damage", 80.0) * MILLI):
+		ignite(world, k)
 
 
 ## Lights drum `k` (a no-op for one that is gone): it is removed now and its blast lands `fuse_ticks` later.

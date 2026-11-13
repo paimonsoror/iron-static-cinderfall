@@ -139,16 +139,19 @@ static func _land_due(world: SimWorld, h: HazardState) -> void:
 			AreaDamage.apply(world, x, z, radius, damage, edge, flags, source)
 		if core_damage > 0.0 and GameState.is_combat(world.phase):
 			CoreAttackSystem.damage_core(world, core_damage, 0, type_index)
-		_after_landing(world, kind, x, z, radius)
+		_after_landing(world, kind, x, z, radius, source)
 
 
-## What a landed hit sets off: the vent throws the survivors back, a drum blast leaves its slag pool, and any blast
-## ignites the standing fuel drums it reaches (the ignition is queued, so a chain is a ripple, never recursion).
-static func _after_landing(world: SimWorld, kind: int, x: float, z: float, radius: float) -> void:
+## What a landed hit sets off: the vent throws the survivors back, a drum blast leaves its slag pool, a slag mortar shell
+## leaves the pool of the mortar, and any blast ignites the standing fuel drums it reaches (the ignition is queued, so a
+## chain is a ripple, never recursion).
+static func _after_landing(world: SimWorld, kind: int, x: float, z: float, radius: float, source: int) -> void:
 	if kind == HazardState.K_VENT:
 		EventCoreVent.land(world, x, z, radius)
 	elif kind == HazardState.K_DRUM:
 		HazardDrums.after_blast(world, x, z)
+	elif kind == HazardState.K_SHELL:
+		HazardShells.landed(world, x, z, source)
 	if not world.hazards.d_alive.is_empty():
 		HazardDrums.touch(world, x, z, radius)
 

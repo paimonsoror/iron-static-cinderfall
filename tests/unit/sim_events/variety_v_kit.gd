@@ -114,6 +114,25 @@ static func kit_world(n: int) -> SimWorld:
 	return SimWorld.new(cfg)
 
 
+## A combat world on content that lists the given directives (an id the slice data does not have is appended), each held
+## with the given number of stacks.
+static func directive_world(held: Dictionary[StringName, int]) -> SimWorld:
+	var content: ContentSet = TestContent.variety()
+	for id: StringName in held:
+		if content.directive(id) == null:
+			var d: DirectiveDef = DirectiveDef.new()
+			d.id = id
+			d.index = content.directives.size()
+			d.max_stacks = 3
+			content.directives.append(d)
+	var w: SimWorld = SimWorld.new(SimConfig.create(content, 1))
+	w.phase = GameState.Id.SPAWNING
+	begin_wave(w, 4)
+	for id: StringName in held:
+		w.draft.stacks[content.directive_index(id)] = held[id]
+	return w
+
+
 ## The slice content stretched to 15 waves and three acts (acts II and III with two event slots per wave), for plan rules.
 static func long_content() -> ContentSet:
 	var c: ContentSet = TestContent.variety()

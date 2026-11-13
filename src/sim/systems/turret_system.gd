@@ -41,7 +41,9 @@ static func _step_pad(world: SimWorld, def: UpgradeDef, pad: int) -> void:
 		t.fire_acc_milli[pad] = MILLI_PER_SHOT
 
 
-## One shot at the pad's target. Re-picks at once when the shot killed it.
+## One shot at the pad's target. The shot hook (arc_pylons) runs once the shot is tallied, the hit hook (flak_heads) once
+## the target took the hit, before the pad looks for a new target, so the splash lands where the target stood. Re-picks at
+## once when the shot killed it.
 static func _fire(world: SimWorld, def: UpgradeDef, pad: int) -> void:
 	var t: TurretStore = world.turrets
 	var source: int = DamageSource.Id.TURRET_0 + pad
@@ -49,7 +51,11 @@ static func _fire(world: SimWorld, def: UpgradeDef, pad: int) -> void:
 	world.events.push(SimEventKind.Id.SHOT_FIRED, source, target_id)
 	t.fire_acc_milli[pad] -= MILLI_PER_SHOT
 	world.combat.shots_by_source[source] += 1
-	DamageResolver.hit(world, world.enemies.index_of(target_id), def.turret_damage * world.mods.t_dmg_mul, 0, source)
+	ShotHooks.on_turret_shot(world, pad, world.enemies.index_of(target_id))
+	var hit_index: int = world.enemies.index_of(target_id)
+	var dealt: float = DamageResolver.hit(world, hit_index, def.turret_damage * world.mods.t_dmg_mul, 0, source)
+	if hit_index >= 0:
+		ShotHooks.on_turret_hit(world, pad, hit_index, dealt)
 	if world.enemies.index_of(target_id) < 0:
 		var picked: int = Targeting.pick(world, t.x[pad], t.z[pad], def.turret_range_m)
 		t.target_id[pad] = picked
