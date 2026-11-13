@@ -102,7 +102,8 @@ func test_spammer_calls_the_strike_the_tick_the_sim_allows_it() -> void:
 	empty.events_state.charges[strike] = 0
 	PolicyBot.new(PolicyBot.Policy.SPAMMER).act(empty)
 	for c: SimCommand in empty.command_queue:
-		assert_int(c.kind).is_not_equal(SimCommand.Kind.CALL_EVENT)
+		if c.kind == SimCommand.Kind.CALL_EVENT:  # another player event (core_vent) may be legal; the strike has no charge
+			assert_int(c.arg).is_not_equal(strike)
 
 
 func test_spammer_does_nothing_between_waves() -> void:
