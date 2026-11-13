@@ -11,6 +11,10 @@ extends RefCounted
 ## CLASSES maps an id to its voice class (VARIETY_SPEC 10.5); an id that is not listed is CLASS_OTHER. The class decides
 ## how many voices the sound may hold and whether it may take a reserved one (AudioVoicePool). The 29 legacy ids stay
 ## CLASS_OTHER, except `core_low` (an alert) and the `ui_*` sounds (CLASS_UI), so their behaviour is unchanged.
+##
+## The 60 variety sounds (V2-G made 14, V4-A the other 46) by class: WEAPON the shots, pops, the rail wind-up and the held
+## loops; BLAST the area blasts and the big stomps; ALERT every warning and boss telegraph (they keep three voices of their
+## own); UI the choice screens, the crate and the resume (they also play while the game is paused); the rest is OTHER.
 
 const SFX_DIR: String = "res://assets/audio/sfx/"
 const LOOP_AMBIENCE: String = "res://assets/audio/loops/ambience.wav"
@@ -36,16 +40,32 @@ const IDS: Array[StringName] = [
 	&"defeat",
 ]
 
-## VARIETY_SPEC 12.1 / ARCH 10 (V), the 14 sounds of the slice (task V2-G). Task V4-A appends the other 46.
+## VARIETY_SPEC 12.1 / ARCH 10 (V): the 60 new sounds, in the order of the table (group by group).
 const VARIETY_IDS: Array[StringName] = [
-	&"shot_arc", &"arc_chain", &"weapon_swap",
-	&"burster_arm", &"blast_small", &"blast_big", &"mote_burn",
-	&"warn_harm", &"strike_call", &"strike_impact", &"crate_secured",
-	&"draft_open", &"draft_pick", &"route_pick",
+	# weapons
+	&"shot_scattergun", &"shot_rifle", &"shot_hornet", &"hornet_pop", &"shot_lmg", &"lmg_spin", &"shot_mortar",
+	&"mortar_blast", &"torch_loop", &"shot_arc", &"arc_chain", &"rail_charge", &"shot_rail", &"weapon_vent", &"weapon_swap",
+	# enemies
+	&"burster_arm", &"blast_small", &"blast_big", &"spitter_shot", &"bolt_impact", &"splitter_split", &"ward_hum",
+	&"ward_break", &"jammer_pop", &"borer_emerge", &"mote_burn", &"elite_spawn",
+	# bosses
+	&"brood_hatch", &"lance_charge", &"lance_fire", &"aegis_exposed", &"tremor_stomp", &"hulk_charge", &"boss_phase",
+	# events
+	&"warn_harm", &"warn_help", &"strike_call", &"strike_impact", &"core_vent", &"freight_horn", &"freight_pass",
+	&"static_front", &"surge_up", &"brownout", &"breach_crack", &"recount_tick", &"relay_window", &"crate_land",
+	&"crate_secured", &"crate_lost", &"drum_blast",
+	# interface
+	&"draft_open", &"draft_pick", &"draft_pick_corrupted", &"draft_reroll", &"route_pick", &"salvage_open", &"unlock_buy",
+	&"act_start", &"resume_link",
 ]
 
-## Sounds that may be longer than 1.5 s.
-const STINGERS: Array[StringName] = [&"boss_stinger", &"victory", &"defeat"]
+## The sounds a held voice loops (AudioHeldVoices): one-shot files that `AudioDirector.hold` plays through
+## `AudioLoopPad.looped_copy`, so the wrap never reads past the buffer. Their files are built to loop without a seam.
+## Every looping stream of the game is one of the two beds or one of these (a test pins that each one is padded).
+const LOOP_IDS: Array[StringName] = [&"lmg_spin", &"torch_loop"]
+
+## Sounds that may be longer than 1.5 s (up to 4 s): the stingers, the Lance Platform's 3 s charge and the 2 s Static Front bed.
+const STINGERS: Array[StringName] = [&"boss_stinger", &"victory", &"defeat", &"lance_charge", &"static_front"]
 
 const PARAMS: Dictionary = {
 	&"shot_pistol": [-5.0, 0.035, 90, 0],
@@ -77,21 +97,74 @@ const PARAMS: Dictionary = {
 	&"boss_stinger": [-1.0, 0.000, 2000, 2],
 	&"victory": [-2.0, 0.000, 3000, 2],
 	&"defeat": [-2.0, 0.000, 3000, 2],
-	# --- variety (V2-G). The arc projector fires 1.6 times a second, so its shot may repeat after 120 ms.
+	# --- variety (V2-G, V4-A), in the order of VARIETY_IDS. File levels differ a lot (a crack against a rumble), so the
+	# gains put the loudness of each class where a test pins it (test_variety_audio_mix.gd): the frequent shots sit about
+	# -23 dB RMS, blasts and stomps -17 to -10, alerts and telegraphs -16 to -9, the interface -21 to -16.
+	# weapons: the arc projector fires 1.6 times a second, so its shot may repeat after 120 ms; the LMG up to 10 times.
+	&"shot_scattergun": [-8.5, 0.035, 250, 0],
+	&"shot_rifle": [-5.0, 0.035, 90, 0],
+	&"shot_hornet": [-10.0, 0.035, 150, 0],
+	&"hornet_pop": [-8.0, 0.080, 40, 0],
+	&"shot_lmg": [-9.0, 0.040, 60, 0],
+	&"lmg_spin": [-8.5, 0.000, 100, 0],
+	&"shot_mortar": [-8.5, 0.030, 300, 0],
+	&"mortar_blast": [-6.5, 0.040, 120, 1],
+	&"torch_loop": [-7.5, 0.000, 100, 0],
 	&"shot_arc": [-6.0, 0.035, 120, 0],
 	&"arc_chain": [-9.0, 0.060, 70, 0],
+	&"rail_charge": [-11.0, 0.000, 800, 1],
+	&"shot_rail": [-6.0, 0.020, 400, 1],
+	&"weapon_vent": [-10.0, 0.020, 500, 1],
 	&"weapon_swap": [-6.0, 0.020, 250, 2],
+	# enemies
 	&"burster_arm": [-5.0, 0.030, 400, 2],
 	&"blast_small": [-5.0, 0.060, 45, 1],
 	&"blast_big": [-2.0, 0.030, 150, 2],
+	&"spitter_shot": [-7.5, 0.060, 70, 0],
+	&"bolt_impact": [-6.5, 0.060, 70, 0],
+	&"splitter_split": [-5.0, 0.050, 150, 1],
+	&"ward_hum": [-7.0, 0.020, 400, 0],
+	&"ward_break": [-6.0, 0.040, 200, 1],
+	&"jammer_pop": [-6.0, 0.050, 120, 1],
+	&"borer_emerge": [-7.5, 0.050, 120, 1],
 	&"mote_burn": [-13.0, 0.080, 45, 0],
+	&"elite_spawn": [-5.5, 0.000, 500, 2],
+	# bosses (the telegraphs are alerts: no jitter, so they are always recognised)
+	&"brood_hatch": [-1.0, 0.000, 800, 2],
+	&"lance_charge": [-3.5, 0.000, 3000, 2],
+	&"lance_fire": [-0.5, 0.000, 500, 2],
+	&"aegis_exposed": [0.0, 0.000, 1000, 2],
+	&"tremor_stomp": [-2.0, 0.000, 800, 2],
+	&"hulk_charge": [-5.0, 0.000, 1500, 2],
+	&"boss_phase": [-2.5, 0.000, 1000, 2],
+	# events
 	&"warn_harm": [-2.0, 0.000, 600, 2],
+	&"warn_help": [-1.0, 0.000, 500, 2],
 	&"strike_call": [-3.0, 0.000, 800, 2],
 	&"strike_impact": [-1.0, 0.020, 400, 2],
+	&"core_vent": [-1.5, 0.020, 800, 2],
+	&"freight_horn": [-3.5, 0.000, 1500, 2],
+	&"freight_pass": [-7.5, 0.000, 1500, 1],
+	&"static_front": [-8.0, 0.000, 3000, 1],
+	&"surge_up": [-5.5, 0.000, 2000, 2],
+	&"brownout": [-3.5, 0.000, 2000, 2],
+	&"breach_crack": [-3.0, 0.030, 400, 2],
+	&"recount_tick": [0.0, 0.000, 1500, 2],
+	&"relay_window": [-5.5, 0.000, 2000, 2],
+	&"crate_land": [-3.0, 0.000, 500, 1],
 	&"crate_secured": [-6.0, 0.000, 500, 2],
+	&"crate_lost": [-5.0, 0.000, 500, 1],
+	&"drum_blast": [-2.5, 0.040, 100, 1],
+	# interface
 	&"draft_open": [-6.0, 0.000, 300, 2],
 	&"draft_pick": [-5.0, 0.000, 200, 2],
+	&"draft_pick_corrupted": [-5.5, 0.000, 200, 2],
+	&"draft_reroll": [-5.5, 0.000, 150, 2],
 	&"route_pick": [-5.0, 0.000, 200, 2],
+	&"salvage_open": [-6.0, 0.000, 400, 2],
+	&"unlock_buy": [-5.0, 0.000, 200, 2],
+	&"act_start": [-3.0, 0.000, 3000, 2],
+	&"resume_link": [-6.0, 0.000, 500, 2],
 }
 
 const CLASSES: Dictionary = {
@@ -100,18 +173,49 @@ const CLASSES: Dictionary = {
 	&"ui_purchase": CLASS_UI,
 	&"ui_deny": CLASS_UI,
 	&"ui_drawer": CLASS_UI,
+	# weapons (at most WEAPON_MAX voices together; the two held loops are outside the pool but keep the class)
+	&"shot_scattergun": CLASS_WEAPON,
+	&"shot_rifle": CLASS_WEAPON,
+	&"shot_hornet": CLASS_WEAPON,
+	&"hornet_pop": CLASS_WEAPON,
+	&"shot_lmg": CLASS_WEAPON,
+	&"lmg_spin": CLASS_WEAPON,
+	&"shot_mortar": CLASS_WEAPON,
+	&"torch_loop": CLASS_WEAPON,
 	&"shot_arc": CLASS_WEAPON,
 	&"arc_chain": CLASS_WEAPON,
+	&"rail_charge": CLASS_WEAPON,
+	&"shot_rail": CLASS_WEAPON,
+	&"weapon_vent": CLASS_WEAPON,
 	&"weapon_swap": CLASS_WEAPON,
+	# blasts (may not take the voices reserved for alerts)
+	&"mortar_blast": CLASS_BLAST,
 	&"blast_small": CLASS_BLAST,
 	&"blast_big": CLASS_BLAST,
 	&"strike_impact": CLASS_BLAST,
+	&"tremor_stomp": CLASS_BLAST,
+	&"core_vent": CLASS_BLAST,
+	&"drum_blast": CLASS_BLAST,
+	# alerts (three reserved voices): every warning and boss telegraph, each with its own rhythm
 	&"warn_harm": CLASS_ALERT,
+	&"warn_help": CLASS_ALERT,
 	&"strike_call": CLASS_ALERT,
+	&"brood_hatch": CLASS_ALERT,
+	&"lance_charge": CLASS_ALERT,
+	&"aegis_exposed": CLASS_ALERT,
+	&"hulk_charge": CLASS_ALERT,
+	&"freight_horn": CLASS_ALERT,
+	&"recount_tick": CLASS_ALERT,
+	# the interface (also while paused: the resumed run comes up paused)
 	&"crate_secured": CLASS_UI,
 	&"draft_open": CLASS_UI,
 	&"draft_pick": CLASS_UI,
+	&"draft_pick_corrupted": CLASS_UI,
+	&"draft_reroll": CLASS_UI,
 	&"route_pick": CLASS_UI,
+	&"salvage_open": CLASS_UI,
+	&"unlock_buy": CLASS_UI,
+	&"resume_link": CLASS_UI,
 }
 
 
