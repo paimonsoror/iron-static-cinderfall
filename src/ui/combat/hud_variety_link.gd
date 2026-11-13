@@ -12,6 +12,7 @@ var active: bool = false
 var _hud: CombatHud
 var _api: RunApi
 var _content: ContentSet
+var _view: BattleView  ## world -> screen for the edge arrows; null in a sandbox (a linear map of the arena stands in)
 var _boss_kind: StringName = &"siege_hulk"
 
 
@@ -19,20 +20,28 @@ func _init(hud: CombatHud) -> void:
 	_hud = hud
 
 
-func setup(api: RunApi, content: ContentSet) -> void:
+func setup(api: RunApi, content: ContentSet, view: BattleView = null) -> void:
 	_api = api
 	_content = content
+	_view = view
 	active = content != null and content.is_variety()
+	RunSession.bind(api, content)
+	if not _hud.tree_exiting.is_connected(RunSession.release.bind(api)):
+		_hud.tree_exiting.connect(RunSession.release.bind(api))
 	_hud.bottom.set_variety(active, api, content)
 	_hud.top_bar.set_variety(active)
 	_hud.banners.ticker.visible = active
 
 
-## The bottom band: 26% of the height (and never thinner than the two rows), the safe-area margin on top of it.
+## The bottom band of the variety HUD: 26% of the height at most (VARIETY_SPEC 11.4), but only as tall as its two rows need
+## (the weapon row, the ability row and their gaps), never thinner than the rows, plus the safe-area margin. On a tall phone
+## 26% is far more than the rows use, and the leftover was an empty band between the battlefield and the weapon bar; the
+## battlefield (the camera fit takes the band as an input) gets that space instead.
 func bottom_band(base: float, view_h: float, margin_bottom: float) -> float:
 	if not active:
 		return base
-	return maxf(maxf(base, view_h * BOTTOM_FRACTION + margin_bottom), HudBottomPanel.variety_min_px() + margin_bottom)
+	var rows: float = minf(view_h * BOTTOM_FRACTION, HudBottomPanel.variety_fit_px())
+	return maxf(rows, HudBottomPanel.variety_min_px()) + margin_bottom
 
 
 ## Everything the variety HUD shows from the RunApi (10 Hz and on its signals).
@@ -41,10 +50,27 @@ func refresh() -> void:
 		return
 	_hud.top_bar.set_act_wave(_api.act(), _api.wave(), _api.wave_count())
 	_hud.bottom.weapon_bar.refresh()
-	_hud.banners.ticker.refresh(_api.active_events(), _content, _api.crate_status())
+	var events: Array[Dictionary] = _api.active_events()
+	_hud.banners.ticker.refresh(events, _content, _api.crate_status())
+	_hud.banners.fit_arrows()  # the ticker may have grown or shrunk
+	_hud.banners.edge_arrows.refresh(events, to_screen, _hud.banners.position + _hud.banners.edge_arrows.position)
 	_hud.banners.boss_bar.pips.set_phase(_api.boss_phase(), _api.boss_phase_count())
 	var def: BossDef = _content.boss(_boss_kind)
 	_hud.banners.boss_bar.title_text = Strings.t(def.name_key) if def != null else ""
+
+
+## A world point (x, z in meters) as a position on the HUD: the battle view's camera when there is one, else the arena's
+## rectangle stretched over the battlefield zone (X is screen right, Z screen down).
+func to_screen(x: float, z: float) -> Vector2:
+	if _view != null:
+		return _view.world_to_screen(x, z)
+	var arena: ArenaDef = _content.arena if _content != null else null
+	var zone: Rect2 = Rect2(_hud.banners.position, _hud.banners.size)
+	if arena == null or arena.max_x <= arena.min_x or arena.max_z <= arena.min_z:
+		return zone.get_center()
+	var fx: float = clampf((x - arena.min_x) / (arena.max_x - arena.min_x), 0.0, 1.0)
+	var fz: float = clampf((z - arena.min_z) / (arena.max_z - arena.min_z), 0.0, 1.0)
+	return zone.position + Vector2(fx * zone.size.x, fz * zone.size.y)
 
 
 ## Counts the ticker's notices down.

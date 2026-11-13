@@ -1,8 +1,9 @@
 class_name PauseOverlay
 extends Control
-## Full pause: a dimmed scrim, "PAUSED" and four big buttons (GDD 10.2). The signals and `setup()` are the
-## frozen contract (ARCH 9); Game connects them and frees the overlay. The simulation, cooldowns and audio are
-## frozen by whoever shows this overlay; it only reports which button was pressed.
+## Full pause: a dimmed scrim, "PAUSED" and four big buttons (GDD 10.2). A generated run adds the run's seed (a line under
+## the title) and a BUILD button that lists the directives and weapons held (the run comes from `RunSession`, which the combat HUD
+## fills). The signals and `setup()` are the frozen contract (ARCH 9); Game connects them and frees the overlay. The
+## simulation, cooldowns and audio are frozen by whoever shows this overlay; it only reports which button was pressed.
 
 signal resume_pressed
 signal restart_pressed
@@ -12,6 +13,9 @@ signal quit_pressed
 const PANEL_W: float = 780.0
 
 var title_label: Label
+var seed_label: Label  ## "SEED 48211" (a generated run)
+var build_button: Button  ## BUILD (a generated run)
+var build_list: BuildList  ## the open build list, or null
 var resume_button: Button
 var restart_button: Button
 var settings_button: Button
@@ -25,6 +29,30 @@ func _ready() -> void:
 
 func setup() -> void:
 	_ensure_built()
+	var variety: bool = RunSession.has_variety_run()
+	seed_label.visible = variety
+	build_button.visible = variety
+	if variety:
+		seed_label.text = Strings.tf("pause.seed", [RunSession.current_api().run_seed()])
+
+
+## The build list (directives and weapons held) over the pause panel; false without a generated run.
+func open_build() -> bool:
+	if not RunSession.has_variety_run():
+		return false
+	if build_list != null and is_instance_valid(build_list):
+		return true
+	build_list = BuildList.new()
+	build_list.setup(RunSession.current_api(), RunSession.current_content())
+	build_list.closed.connect(_on_build_closed)
+	add_child(build_list)
+	return true
+
+
+func _on_build_closed() -> void:
+	if build_list != null and is_instance_valid(build_list):
+		build_list.queue_free()
+	build_list = null
 
 
 func _ensure_built() -> void:
@@ -57,8 +85,16 @@ func _ensure_built() -> void:
 	HudStyle.center(title_label)
 	HudStyle.bold(title_label)
 	col.add_child(title_label)
+	seed_label = HudStyle.make_label("", HudStyle.FONT_SMALL + 2, HudStyle.color(&"gunmetal").lightened(0.4))
+	HudStyle.center(seed_label)
+	HudStyle.mono(seed_label)
+	seed_label.visible = false
+	col.add_child(seed_label)
 	resume_button = _button(col, "pause.resume", true)
 	resume_button.pressed.connect(func() -> void: resume_pressed.emit())
+	build_button = _button(col, "pause.build", false)
+	build_button.visible = false
+	build_button.pressed.connect(_on_build_pressed)
 	restart_button = _button(col, "pause.restart", false)
 	restart_button.pressed.connect(func() -> void: restart_pressed.emit())
 	settings_button = _button(col, "pause.settings", false)
@@ -85,3 +121,8 @@ func _button(col: VBoxContainer, key: String, primary: bool) -> Button:
 		HudStyle.style_button(b, HudStyle.fill(), HudStyle.color(&"warden_cyan"))
 	col.add_child(b)
 	return b
+
+
+func _on_build_pressed() -> void:
+	Sfx.play(&"ui_tap")
+	var _opened: bool = open_build()
