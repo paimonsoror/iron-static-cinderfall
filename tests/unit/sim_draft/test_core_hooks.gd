@@ -73,9 +73,7 @@ func test_amber_surge_starts_a_free_shield_when_the_core_drops_below_half() -> v
 	assert_int(w.abilities.active_left[Ids.AB_SHIELD]).is_equal(480)  # the ability is active: 8 s
 	var changed: Array[SimEvent] = DirectiveKit.events_of(w, SimEventKind.Id.SHIELD_CHANGED)
 	assert_float(changed[changed.size() - 1].f).is_equal(100.0)
-	var started: Array[SimEvent] = DirectiveKit.events_of(w, SimEventKind.Id.ABILITY_ACTIVATED)
-	assert_int(started.size()).is_equal(1)
-	assert_int(started[0].a).is_equal(Ids.AB_SHIELD)
+	assert_int(DirectiveKit.events_of(w, SimEventKind.Id.ABILITY_ACTIVATED).size()).is_equal(0)  # no command, no event
 	w.shield_hp = 30.0
 	CoreHooks.on_core_changed(w, 500.0, 499.0)  # a shield is up: nothing starts
 	assert_float(w.shield_hp).is_equal(30.0)

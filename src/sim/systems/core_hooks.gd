@@ -158,7 +158,8 @@ static func lash_target(world: SimWorld) -> int:
 ## A Shield that starts for free (amber_surge): the ability is active (the shield of an inactive ability breaks the
 ## invariant of the sim) with the absorb and the duration it has with its upgrades, and the Shield cooldown stays as it
 ## was: the cooldown before the start is kept in HookMemory and given back by `on_shield_end` (AbilitySystem._end starts
-## the cooldown when any shield ends). Nothing happens while a shield is up.
+## the cooldown when any shield ends). No ABILITY_ACTIVATED is pushed: the sim pairs that event with a logged command;
+## SHIELD_CHANGED shows the shield. Nothing happens while a shield is up.
 static func start_free_shield(world: SimWorld) -> void:
 	var st: AbilityState = world.abilities
 	if world.shield_hp > 0.0 or st.active_left[Ids.AB_SHIELD] > 0:
@@ -168,7 +169,6 @@ static func start_free_shield(world: SimWorld) -> void:
 	HookMemory.begin_free_shield(world, st.cooldown_left[Ids.AB_SHIELD])
 	st.active_left[Ids.AB_SHIELD] = def.duration_ticks + roundi(world.mods.shield_dur_add * float(SimWorld.TICK_RATE))
 	world.shield_hp = absorb
-	world.events.push(SimEventKind.Id.ABILITY_ACTIVATED, Ids.AB_SHIELD, 0)
 	world.events.push(SimEventKind.Id.SHIELD_CHANGED, 0, 0, absorb, absorb)
 
 
