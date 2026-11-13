@@ -14,7 +14,7 @@ const OVERLAYS: Dictionary[int, StringName] = {
 	RunApi.AWAIT_ROUTE: &"RouteOverlay", RunApi.AWAIT_BOSS_BRIEF: &"BossBriefOverlay",
 }
 const WIN_SEED: int = 1  ## a victory of the balanced bot (tools\sim_run.ps1 -Seed 1 -Policy balanced -Runs 20)
-const LOSS_SEED: int = 3  ## a defeat of the balanced bot in the same sweep
+const LOSS_SEED: int = 4  ## a defeat of the balanced bot in the same sweep (the only one of seeds 1 to 20 after wave V4)
 
 var _h: GameHarness
 var _win: Facts

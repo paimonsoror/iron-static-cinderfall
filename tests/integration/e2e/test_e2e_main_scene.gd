@@ -81,7 +81,9 @@ func test_the_profile_on_disk_was_updated_once_with_the_run_reward() -> void:
 	assert_int(_m.fs.tmp_writes).is_equal(_m.fs.main_replacements)
 	assert_bool(GameRewards.flush_pending).is_false()
 	var disk: Profile = _m.fs.stored_profile()
-	assert_int(disk.data).is_equal(summary.data_reward)
+	# a first victory also pays the one-time milestones of the Archive (V4-M RewardLedger): the run's Data plus that total
+	var milestone_data: int = Save.last_reward.get("milestone_data", 0)
+	assert_int(disk.data).is_equal(summary.data_reward + milestone_data)
 	assert_int(disk.runs_played).is_equal(1)
 	assert_int(disk.missions_completed).is_equal(1)
 	assert_int(disk.best_core_hp).is_equal(summary.core_hp)
