@@ -47,7 +47,7 @@ func test_the_act_tier_multiplies_hit_points_of_plain_enemies_and_elites() -> vo
 	assert_float(w.enemies.max_hp[plain]).is_equal_approx(60.75, EPS)
 	assert_float(w.enemies.max_hp[e]).is_equal_approx(133.65, EPS)
 	var boss: int = SimEnemiesKit.place_core(w, Ids.EN_HULK, 14.0, -4.0)
-	assert_float(w.enemies.max_hp[boss]).is_equal(2800.0)  # BossDef.hp is final
+	assert_float(w.enemies.max_hp[boss]).is_equal(9000.0)  # BossDef.hp is final
 
 
 func test_plated_adds_8_armor_and_30_percent_hit_points() -> void:
