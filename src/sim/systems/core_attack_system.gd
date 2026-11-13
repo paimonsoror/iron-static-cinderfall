@@ -11,11 +11,26 @@ extends RefCounted
 ## - an enemy with `fuse_s` (the burster) arms when it reaches its slot (F_ARMED, fuse_ticks) and, when the fuse ends,
 ##   hits once for core_damage and dies with no Scrap; its death blast on the enemies around it follows through
 ##   DeathHooks. A stun freezes the fuse. Killed before that, it only causes its death blast.
-## Core damage is multiplied by the act's core_dmg_mult.
+## - a parked standoff enemy with core damage (the spitter) lobs a bolt every attack period instead of hitting: the bolt
+##   is a K_BOLT entry of the hazard queue (it survives its shooter, it is hashed and saved with the queue) and it
+##   lands `bolt_flight_s` later for the core damage of the moment it was fired, shield first, as a CORE_HIT with no
+##   living attacker. HazardSystem drops K_BOLT entries without an effect, so `_land_bolts` applies an entry one tick
+##   before the queue removes it and the bolt is queued one tick longer: the damage lands exactly `bolt_flight_s`
+##   after the shot. A parked standoff enemy without core damage (the reclaimer, a ward pylon) does nothing here. A
+##   standoff boss (the Lance Platform, parked by its script) is an ordinary attacker: its timer and hit are the
+##   plain ones below.
+## - a body still under the ground (F_EMERGING) does nothing.
+## Core damage is multiplied by the act's core_dmg_mult. The attack period is multiplied by the wave modifier and by
+## the overclock aura the attacker stands in (NavState.period_mul). A LEECHING elite heals its neighbours on a hit that
+## took core HP (EliteSystem.on_core_hit).
 
 const ST_ATTACKING: int = EnemyStore.ST_ATTACKING
 const F_MINI: int = EnemyExtState.F_MINI
 const F_ARMED: int = EnemyExtState.F_ARMED
+const F_FIRED: int = EnemyExtState.F_FIRED
+const F_EMERGING: int = EnemyExtState.F_EMERGING
+## Radius of a bolt's impact mark on the cage (the hazard queue wants one; it damages nothing but the core).
+const BOLT_RADIUS_M: float = 0.6
 const UNKNOWN: int = -1
 
 
@@ -36,7 +51,11 @@ static func step(world: SimWorld) -> void:
 	var core_z: float = world.content.arena.core_z
 	var reach_sq: PackedFloat64Array = PackedFloat64Array()
 	var fuse: PackedInt32Array = PackedInt32Array()
+	var standoff: PackedByteArray = world.nav.t_standoff
+	var boss: PackedByteArray = world.nav.t_boss
 	if variety:
+		if not world.hazards.q_due.is_empty():
+			_land_bolts(world)
 		reach_sq.resize(world.content.enemies.size())
 		reach_sq.fill(float(UNKNOWN))
 		fuse.resize(world.content.enemies.size())
@@ -56,6 +75,11 @@ static func step(world: SimWorld) -> void:
 					due.append(i)
 					one_time.append(i)
 				continue
+			if (flags[i] & F_EMERGING) != 0:
+				continue
+			if attacking and standoff[t] == 1 and boss[t] == 0:
+				_standoff_tick(world, i, t)
+				continue
 			if attacking:
 				if fuse[t] == UNKNOWN:
 					fuse[t] = _fuse_ticks(world, t)
@@ -69,10 +93,14 @@ static func step(world: SimWorld) -> void:
 		store.attack_cd[i] -= 1
 		if store.attack_cd[i] <= 0:
 			due.append(i)
+	if variety:
+		CoreHooks.step(world)
 	if due.is_empty():
 		return
 	_sort_by_id(store, due)
 	for i: int in due:
+		if alive[i] == 0:
+			continue  # killed earlier in this tick (a hook's blast, a neighbour's detonation)
 		_hit_core(world, i)
 		if one_time.has(i):
 			world.kill_enemy(i, DeathHooks.SOURCE_SELF)
@@ -96,6 +124,8 @@ static func damage_core(world: SimWorld, amount: float, enemy_id: int, type_inde
 		var before: float = world.core_hp
 		world.set_core_hp(before - remainder)
 		hp_damage = before - world.core_hp
+		if world.content.run != null and hp_damage > 0.0:
+			CoreHooks.on_core_changed(world, before, world.core_hp)
 		world.stats.core_damage_taken += hp_damage
 		if type_index >= 0 and type_index < world.stats.core_damage_by_type.size():
 			world.stats.core_damage_by_type[type_index] += hp_damage
@@ -127,8 +157,56 @@ static func _hit_core(world: SimWorld, index: int) -> void:
 	if world.content.run == null:
 		store.attack_cd[index] = def.attack_period_ticks
 		return
-	store.attack_cd[index] = maxi(1, roundi(float(def.attack_period_ticks) * world.mods.enemy_attack_period_mul))
+	store.attack_cd[index] = period_of(world, index, def)
 	CoreHooks.on_core_hit(world, index, hp_damage, shield_before - world.shield_hp)
+	EliteSystem.on_core_hit(world, index, hp_damage)
+
+
+## The attack period of the enemy at `index` now, in ticks: the type's period x the wave modifier x the overclock aura.
+static func period_of(world: SimWorld, index: int, def: EnemyDef) -> int:
+	var scaled: float = float(def.attack_period_ticks) * world.mods.enemy_attack_period_mul * world.nav.period_mul[index]
+	return maxi(1, roundi(scaled))
+
+
+## One tick of a parked standoff enemy: a type with core damage that is no boss fires a bolt when its timer runs out.
+static func _standoff_tick(world: SimWorld, index: int, type_index: int) -> void:
+	var def: EnemyDef = world.content.enemies[type_index]
+	if def.core_damage <= 0.0:
+		return
+	var store: EnemyStore = world.enemies
+	store.attack_cd[index] -= 1
+	world.ext.aux_cd[index] = store.attack_cd[index]
+	if store.attack_cd[index] > 0:
+		return
+	store.attack_cd[index] = period_of(world, index, def)
+	world.ext.aux_cd[index] = store.attack_cd[index]  # the highest aux_cd among spitters = the one that just fired (the view)
+	world.ext.flags[index] |= F_FIRED
+	var flight: int = maxi(1, Formulas.ticks(def.beh(&"bolt_flight_s")))
+	var arena: ArenaDef = world.content.arena
+	var dx: float = store.x[index] - arena.core_x
+	var dz: float = store.z[index] - arena.core_z
+	var d: float = maxf(0.001, sqrt(dx * dx + dz * dz))
+	var hit_x: float = arena.core_x + dx / d * arena.core_radius
+	var hit_z: float = arena.core_z + dz / d * arena.core_radius
+	var seq: int = HazardSystem.queue_blast(
+		world, world.tick + flight + 1, HazardState.K_BOLT, hit_x, hit_z, BOLT_RADIUS_M, 0.0, 1.0, 0, DeathHooks.SOURCE_SELF,
+		core_damage_of(world, def), type_index
+	)
+	if seq > 0:
+		world.events.push(SimEventKind.Id.DELAYED_HIT_LAUNCHED, HazardState.K_BOLT, flight, store.x[index], store.z[index])
+
+
+## The bolts that land this tick (see the header): every K_BOLT entry the hazard queue will remove on the next tick,
+## in queue order.
+static func _land_bolts(world: SimWorld) -> void:
+	var h: HazardState = world.hazards
+	var next_tick: int = world.tick + 1
+	for q: int in h.q_due.size():
+		if h.q_due[q] > next_tick:
+			break
+		if h.q_due[q] == next_tick and h.q_kind[q] == HazardState.K_BOLT and h.q_core[q] > 0.0:
+			world.events.push(SimEventKind.Id.AREA_BLAST, HazardState.K_BOLT, roundi(h.q_radius[q] * 100.0), h.q_x[q], h.q_z[q])
+			damage_core(world, h.q_core[q], 0, h.q_type[q])
 
 
 ## Squared distance from the core centre at which a mini of type `type_index` burns out (cage radius + burnout_m).
