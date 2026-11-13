@@ -39,6 +39,7 @@ static func hit_ex(world: SimWorld, enemy_index: int, amount: float, flags: int,
 		raw *= 0.5
 	if (flags & F_BURN) == 0:
 		raw = maxf(1.0, raw - effective_armor(world, enemy_index, flags))
+	raw *= BossSystem.damage_taken_mult(world, enemy_index)
 	raw *= world.config.debug_damage_mult
 	var hp_before: float = maxf(0.0, store.hp[enemy_index])
 	var dealt: float = minf(raw, hp_before)
@@ -61,7 +62,7 @@ static func effective_armor(world: SimWorld, enemy_index: int, flags: int) -> fl
 	if (flags & F_IGNORE_ARMOR) != 0:
 		return 0.0
 	var content: ContentSet = world.content
-	var armor: float = content.enemies[world.enemies.type[enemy_index]].armor
+	var armor: float = BossSystem.armor_of(world, enemy_index, content.enemies[world.enemies.type[enemy_index]].armor)
 	if content.run != null:
 		armor = maxf(0.0, armor + world.mods.enemy_armor_add - float(world.ext.shred_milli[enemy_index]) / 1000.0)
 	var piercing: UpgradeDef = content.upgrades[Ids.UP_ARMOR_PIERCING]
