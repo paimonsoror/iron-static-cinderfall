@@ -56,6 +56,12 @@ static func force_move(world: SimWorld, i: int, path: float) -> float:
 		es.z[i] = target.y
 		nav.c_ttl[i] = 0
 		return 0.0
+	var point: int = world.ext.anchor_point[i]
+	if es.state[i] == EnemyStore.ST_SEEK_SLOT and point >= 0 and point < nav.sp_x.size():
+		es.x[i] = nav.sp_x[point]
+		es.z[i] = nav.sp_z[point]
+		nav.c_ttl[i] = 0
+		return 0.0
 	var flow: FlowField = nav.flow
 	var g: ArenaGrid = flow.grid
 	var here: int = g.cell_of(es.x[i], es.z[i])
