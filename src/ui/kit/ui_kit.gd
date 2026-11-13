@@ -108,6 +108,15 @@ static func _line_count(font: Font, px: int, text: String, width: float) -> int:
 	return para.get_line_count()
 
 
+## A grid of buttons that share the width (`columns` across) drops to one column when the frame has less than `min_width` for it (a window
+## narrower than the phone's 1080 px: three words such as SETTINGS, ARCHIVE and QUIT no longer fit side by side without splitting a word).
+static func stack_when_narrow(grid: GridContainer, frame: UiScreenFrame, min_width: float) -> void:
+	var across: int = grid.columns
+	var apply: Callable = func() -> void: grid.columns = 1 if frame.available_width() < min_width else across
+	frame.resized.connect(apply)
+	apply.call_deferred()
+
+
 ## An empty Control `h` tall (and `w` wide); with `grow` it also takes the free space of its container.
 static func spacer(h: float, w: float = 0.0, grow: bool = false) -> Control:
 	var c: Control = Control.new()

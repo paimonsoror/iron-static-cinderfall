@@ -157,11 +157,12 @@ static func cut_text(root: Node, tolerance: float = 1.5) -> Array[String]:
 			if need > label.size.x + tolerance:
 				out.append("%s '%s' needs %.0f has %.0f" % [label.get_path(), label.text.replace("\n", "|"), need, label.size.x])
 		var button: Button = node as Button
-		if button != null and button.text.strip_edges() != "" and not button.text.begins_with("#") and button.autowrap_mode == TextServer.AUTOWRAP_OFF:
+		if button != null and button.text.strip_edges() != "" and not button.text.begins_with("#"):
 			var font: Font = button.get_theme_font(&"font")
 			var px: int = button.get_theme_font_size(&"font_size")
 			var inner: float = button.size.x - button.get_theme_stylebox(&"normal").get_minimum_size().x
-			var need_b: float = _widest_line(font, button.text, px)
+			# a wrapping button breaks between words: what must fit is its longest word ("DIRECTIV" over "ES" is a split word)
+			var need_b: float = _widest_line(font, button.text, px) if button.autowrap_mode == TextServer.AUTOWRAP_OFF else _longest_word(font, button.text, px)
 			if need_b > inner + tolerance:
 				out.append("%s '%s' needs %.0f has %.0f" % [button.get_path(), button.text.replace("\n", "|"), need_b, inner])
 		for child: Node in node.get_children():
@@ -174,6 +175,14 @@ static func text_width(label: Label) -> float:
 	var font: Font = label.get_theme_font(&"font")
 	var px: int = label.get_theme_font_size(&"font_size")
 	return _widest_line(font, label.text, px)
+
+
+static func _longest_word(font: Font, text: String, px: int) -> float:
+	var best: float = 0.0
+	for word: String in text.replace("
+", " ").split(" ", false):
+		best = maxf(best, font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x)
+	return best
 
 
 static func _widest_line(font: Font, text: String, px: int) -> float:

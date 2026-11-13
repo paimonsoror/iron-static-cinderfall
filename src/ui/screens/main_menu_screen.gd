@@ -13,6 +13,7 @@ signal resume_pressed  ## RESUME RUN: continue the run the run file holds (V3-I)
 signal archive_pressed
 signal daily_pressed
 
+const NARROW_ROW_W: float = 900.0  ## below this much room the three footer buttons stack
 const ARCHIVE_SCENE: String = "res://src/ui/screens/archive_screen.tscn"
 
 var open_archive_overlay: bool = true  ## false when the game layer opens the Archive itself on `archive_pressed`
@@ -181,9 +182,12 @@ func _build_footer(footer: VBoxContainer) -> void:
 	daily_button.pressed.connect(func() -> void: daily_pressed.emit())
 	daily_button.visible = false
 	footer.add_child(daily_button)
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 20)
+	var row: GridContainer = GridContainer.new()
+	row.columns = 3
+	row.add_theme_constant_override("h_separation", 20)
 	footer.add_child(row)
+	row.add_theme_constant_override("v_separation", 20)
+	UiKit.stack_when_narrow(row, _frame, NARROW_ROW_W)
 	archive_button = _row_button("menu.archive", row, false)
 	archive_button.pressed.connect(_on_archive)
 	settings_button = _row_button("menu.settings", row, false)
@@ -193,7 +197,7 @@ func _build_footer(footer: VBoxContainer) -> void:
 
 
 ## A button of the three-in-a-row footer line: it shares the width (the usual minimum would need more than the screen).
-func _row_button(text_key: String, row: HBoxContainer, quiet: bool) -> Button:
+func _row_button(text_key: String, row: GridContainer, quiet: bool) -> Button:
 	var b: Button = UiKit.button_quiet(text_key) if quiet else UiKit.button(text_key)
 	b.custom_minimum_size = Vector2(UiTheme.TOUCH_MIN, UiTheme.BTN_PRIMARY_H)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL

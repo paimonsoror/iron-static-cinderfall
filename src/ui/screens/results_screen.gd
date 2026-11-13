@@ -174,9 +174,12 @@ func _build_footer() -> void:
 	retry_button = UiKit.button_primary("results.retry")
 	retry_button.pressed.connect(func() -> void: retry_pressed.emit())
 	_frame.footer.add_child(retry_button)
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 20)
+	var row: GridContainer = GridContainer.new()
+	row.columns = 3
+	row.add_theme_constant_override("h_separation", 20)
 	_frame.footer.add_child(row)
+	row.add_theme_constant_override("v_separation", 20)
+	UiKit.stack_when_narrow(row, _frame, STATS_TWO_COLUMNS_FROM)
 	same_seed_button = UiKit.button("results.same_seed")
 	same_seed_button.custom_minimum_size = Vector2(UiTheme.TOUCH_MIN, UiTheme.BTN_PRIMARY_H)
 	same_seed_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
