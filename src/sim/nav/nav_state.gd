@@ -54,6 +54,7 @@ var t_hold2: PackedFloat64Array = PackedFloat64Array()  ## minis: squared core d
 var t_standoff: PackedByteArray = PackedByteArray()  ## 1 = standoff class (EnemyDef.BodyClass.STANDOFF)
 var t_ring: PackedInt32Array = PackedInt32Array()  ## standoff ring of the type (index into ArenaDef.standoff_radii), or -1
 var t_special: PackedByteArray = PackedByteArray()  ## StatusSystem.SP_* bits: types the status pass looks at
+var t_boss: PackedByteArray = PackedByteArray()  ## 1 = a boss body (auras and wards of other enemies leave it alone)
 var sp_x: PackedFloat64Array = PackedFloat64Array()  ## standoff point world X, indexed like ArenaDef.standoff_points
 var sp_z: PackedFloat64Array = PackedFloat64Array()
 var aff: PackedInt32Array = PackedInt32Array()  ## affix mask per OpDef.AFFIX_FLAGS entry (EliteSystem.A_*), 0 = no such affix
@@ -160,6 +161,7 @@ func _setup_variety(world: SimWorld) -> void:
 	t_standoff.resize(types)
 	t_ring.resize(types)
 	t_special.resize(types)
+	t_boss.resize(types)
 	for t: int in types:
 		var def: EnemyDef = world.content.enemies[t]
 		t_claim2[t] = arena.approach_radius * arena.approach_radius
@@ -167,6 +169,7 @@ func _setup_variety(world: SimWorld) -> void:
 		t_standoff[t] = 0
 		t_ring[t] = -1
 		t_special[t] = StatusSystem.special_bits(def)
+		t_boss[t] = 1 if def.is_boss else 0
 		if def.is_mini():
 			var hold: float = arena.core_radius + maxf(0.1, def.beh(&"burnout_m", 0.6) - MovementSystem.MINI_HOLD_MARGIN_M)
 			t_hold2[t] = hold * hold
@@ -175,7 +178,7 @@ func _setup_variety(world: SimWorld) -> void:
 			t_standoff[t] = 1
 			t_claim2[t] = -1.0
 			t_ring[t] = StandoffPoints.ring_of(arena, def.standoff_m)
-			if def.speed_mps > 0.0 and def.standoff_m > 0.0:
+			if def.speed_mps > 0.0 and def.standoff_m > 0.0 and not def.is_boss:  # a boss is parked by its script
 				var reach: float = def.standoff_m + StandoffPoints.CLAIM_MARGIN_M
 				t_claim2[t] = reach * reach
 	sp_x.resize(arena.standoff_points.size())

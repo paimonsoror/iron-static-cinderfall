@@ -7,7 +7,8 @@ extends RefCounted
 
 
 ## OVERCLOCKER (CONTENT 4.3): every other living enemy within EliteSystem.OVERCLOCK_RANGE_M of one of `sources` (store
-## indices of overclockers that are not stunned) moves faster and attacks faster. Auras do not stack.
+## indices of overclockers that are not stunned) moves faster and attacks faster. Auras do not stack; a boss is not
+## affected (its script owns its timing).
 static func overclock(world: SimWorld, sources: PackedInt32Array) -> void:
 	var es: EnemyStore = world.enemies
 	var nav: NavState = world.nav
@@ -17,11 +18,12 @@ static func overclock(world: SimWorld, sources: PackedInt32Array) -> void:
 	var alive: PackedByteArray = es.alive
 	var period: PackedFloat64Array = nav.period_mul
 	var speed: PackedFloat64Array = nav.speed_mul
+	var boss: PackedByteArray = nav.t_boss
 	for o: int in sources:
 		var ox: float = xs[o]
 		var oz: float = zs[o]
 		for j: int in es.high_water:
-			if alive[j] == 0 or j == o or period[j] != 1.0:
+			if alive[j] == 0 or j == o or period[j] != 1.0 or boss[es.type[j]] == 1:
 				continue
 			var dx: float = xs[j] - ox
 			var dz: float = zs[j] - oz
@@ -31,7 +33,7 @@ static func overclock(world: SimWorld, sources: PackedInt32Array) -> void:
 
 
 ## Shieldbearer wards (CONTENT 4.2): every other living enemy within `ward_radius` of a bearer whose pool is not empty
-## is covered by it (`nav.cover` = the bearer's store index). An enemy inside two wards is covered by the bearer that
+## is covered by it (`nav.cover` = the bearer's store index); a boss is never covered. An enemy inside two wards is covered by the bearer that
 ## comes first in `bearers` (store order).
 static func cover(world: SimWorld, bearers: PackedInt32Array) -> void:
 	var es: EnemyStore = world.enemies
@@ -48,7 +50,7 @@ static func cover(world: SimWorld, bearers: PackedInt32Array) -> void:
 		var bx: float = xs[b]
 		var bz: float = zs[b]
 		for j: int in es.high_water:
-			if alive[j] == 0 or j == b or covered[j] >= 0:
+			if alive[j] == 0 or j == b or covered[j] >= 0 or nav.t_boss[es.type[j]] == 1:
 				continue
 			var dx: float = xs[j] - bx
 			var dz: float = zs[j] - bz

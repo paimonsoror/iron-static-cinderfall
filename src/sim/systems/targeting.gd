@@ -193,9 +193,11 @@ static func _targetable(world: SimWorld, index: int, d2: float) -> bool:
 	return mask == 0 or d2 <= SHROUD_SQ or (mask & world.nav.aff[EliteSystem.A_SHROUD]) == 0
 
 
-## True when an enemy in ST_ATTACKING really is attacking the core: a slot-taker always, a standoff enemy once it fired.
+## True when an enemy in ST_ATTACKING really is attacking the core: a slot-taker and a planted boss always, another
+## standoff enemy once it fired.
 static func _strikes(world: SimWorld, index: int) -> bool:
-	if world.nav.t_standoff[world.enemies.type[index]] == 0:
+	var t: int = world.enemies.type[index]
+	if world.nav.t_standoff[t] == 0 or world.nav.t_boss[t] == 1:
 		return true
 	return (world.ext.flags[index] & EnemyExtState.F_FIRED) != 0
 

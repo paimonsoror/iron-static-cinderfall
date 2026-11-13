@@ -16,7 +16,9 @@ extends RefCounted
 ##   lands `bolt_flight_s` later for the core damage of the moment it was fired, shield first, as a CORE_HIT with no
 ##   living attacker. HazardSystem drops K_BOLT entries without an effect, so `_land_bolts` applies an entry one tick
 ##   before the queue removes it and the bolt is queued one tick longer: the damage lands exactly `bolt_flight_s`
-##   after the shot. A standoff boss is left to its script (BossSystem).
+##   after the shot. A parked standoff enemy without core damage (the reclaimer, a ward pylon) does nothing here. A
+##   standoff boss (the Lance Platform, parked by its script) is an ordinary attacker: its timer and hit are the
+##   plain ones below.
 ## - a body still under the ground (F_EMERGING) does nothing.
 ## Core damage is multiplied by the act's core_dmg_mult. The attack period is multiplied by the wave modifier and by
 ## the overclock aura the attacker stands in (NavState.period_mul). A LEECHING elite heals its neighbours on a hit that
@@ -73,7 +75,7 @@ static func step(world: SimWorld) -> void:
 				continue
 			if (flags[i] & F_EMERGING) != 0:
 				continue
-			if attacking and world.nav.t_standoff[t] == 1:
+			if attacking and world.nav.t_standoff[t] == 1 and world.nav.t_boss[t] == 0:
 				_standoff_tick(world, i, t)
 				continue
 			if attacking:
@@ -161,7 +163,7 @@ static func period_of(world: SimWorld, index: int, def: EnemyDef) -> int:
 ## One tick of a parked standoff enemy: a type with core damage that is no boss fires a bolt when its timer runs out.
 static func _standoff_tick(world: SimWorld, index: int, type_index: int) -> void:
 	var def: EnemyDef = world.content.enemies[type_index]
-	if def.core_damage <= 0.0 or def.is_boss:
+	if def.core_damage <= 0.0:
 		return
 	var store: EnemyStore = world.enemies
 	store.attack_cd[index] -= 1
