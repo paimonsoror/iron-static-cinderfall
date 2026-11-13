@@ -1,0 +1,122 @@
+class_name VarietyVKit
+extends RefCounted
+## Helpers for tests/unit/sim_events (task V4-V). Worlds come from TestContent.variety() only. Enemies are placed with
+## spawn_enemy and the systems are stepped directly, in the order of SimWorld.step (events, abilities, turrets,
+## hazards), so these tests do not depend on movement, spawning or the phase flow. Event indices are those of events.json.
+
+const STRIKE: int = 0
+const VENT: int = 1
+const FREIGHT: int = 2
+const ACCORD: int = 3
+const DROP: int = 4
+const SURGE: int = 5
+const RUNAWAY: int = 6
+const STATIC: int = 7
+const BREACH: int = 8
+const RECOUNT: int = 9
+const TOUGH_HP: float = 1.0e9
+
+
+## A variety world in a combat phase, in wave `wave` of the plan (its act is taken from the plan).
+static func world(run_seed: int = 1, wave: int = 4) -> SimWorld:
+	var w: SimWorld = TestContent.variety_world(run_seed)
+	w.phase = GameState.Id.SPAWNING
+	begin_wave(w, wave)
+	return w
+
+
+## Starts wave `wave` as PhaseSystem does for the events: the wave number, the act, the start tick, EventSystem.begin_wave.
+static func begin_wave(w: SimWorld, wave: int) -> void:
+	w.wave = wave
+	w.stats.wave_start_tick[wave] = w.tick
+	w.phase_state.act = w.plan.wave(wave).act
+	EventSystem.begin_wave(w, wave)
+
+
+## Removes the planned events of every wave (the tests plan their own).
+static func clear_plan(w: SimWorld) -> void:
+	for pw: PlannedWave in w.plan.waves:
+		pw.events.clear()
+
+
+## Plans `event_index` in wave `wave`, its warning `offset` ticks after the wave starts.
+static func plan_event(w: SimWorld, wave: int, event_index: int, offset: int) -> void:
+	var pe: PlannedEvent = PlannedEvent.new()
+	pe.event_index = event_index
+	pe.start_offset = offset
+	var events: Array[PlannedEvent] = w.plan.wave(wave).events
+	events.append(pe)
+	events.sort_custom(func(a: PlannedEvent, b: PlannedEvent) -> bool: return a.start_offset < b.start_offset)
+
+
+static func place(w: SimWorld, type_index: int, x: float, z: float, state: int = EnemyStore.ST_MOVING) -> int:
+	var i: int = w.spawn_enemy(type_index, x, z)
+	w.enemies.state[i] = state
+	w.enemies.path_dist[i] = 100.0
+	return i
+
+
+static func tough(w: SimWorld, index: int) -> void:
+	w.enemies.hp[index] = TOUGH_HP
+	w.enemies.max_hp[index] = TOUGH_HP
+
+
+static func taken(w: SimWorld, index: int) -> float:
+	return w.enemies.max_hp[index] - w.enemies.hp[index]
+
+
+## One tick in the order of SimWorld.step for the systems of this task (no movement, spawning or weapons).
+static func tick(w: SimWorld) -> void:
+	w.tick += 1
+	w.events.current_tick = w.tick
+	EventSystem.step(w)
+	AbilitySystem.step(w)
+	TurretSystem.step(w)
+	HazardSystem.step(w)
+
+
+static func run(w: SimWorld, ticks: int) -> void:
+	for _n: int in ticks:
+		tick(w)
+
+
+## Runs until `kind` has been pushed `n` times in all (or `limit` ticks pass). Returns the tick of the n-th push, or -1.
+static func run_until(w: SimWorld, kind: int, n: int, limit: int) -> int:
+	for _t: int in limit:
+		tick(w)
+		if count(w, kind) >= n:
+			return w.tick
+	return -1
+
+
+static func events_of(w: SimWorld, kind: int) -> Array[SimEvent]:
+	var out: Array[SimEvent] = []
+	for e: SimEvent in w.events.peek():
+		if e.kind == kind:
+			out.append(e)
+	return out
+
+
+static func count(w: SimWorld, kind: int) -> int:
+	return events_of(w, kind).size()
+
+
+static func ticks_of(w: SimWorld, kind: int) -> Array[int]:
+	var out: Array[int] = []
+	for e: SimEvent in events_of(w, kind):
+		out.append(e.tick)
+	return out
+
+
+## The events of `kind` whose first payload is `event_index`.
+static func ticks_for(w: SimWorld, kind: int, event_index: int) -> Array[int]:
+	var out: Array[int] = []
+	for e: SimEvent in events_of(w, kind):
+		if e.a == event_index:
+			out.append(e.tick)
+	return out
+
+
+## Number of living enemies.
+static func alive(w: SimWorld) -> int:
+	return w.alive_count()

@@ -1,13 +1,44 @@
 {
   "schema_version": 1,
-  "note": "The index of an event is its position in this list (the argument of the CALL_EVENT command): append only. The slice (VARIETY_SPEC 15.2) has the player-triggered Deadfall Strike only; V4-V appends the other nine events of VARIETY_CONTENT 6 and the fuel drums.",
+  "note": "The index of an event is its position in this list (the argument of the CALL_EVENT command): append only. Numbers are VARIETY_CONTENT 6 (first pass; V5-C tunes them). `params` per event: see the header of each systems/events/event_<id>.gd. `hazards.fuel_drums` and `hazards.mine` are read by HazardDrums and HazardMines.",
   "events": [
     { "id": "deadfall_strike", "who": "player", "name_key": "event.deadfall_strike.name", "warn_s": 2.0, "duration_s": 0,
       "weights": [0, 0, 0], "boss_safe": true, "harmful": false,
-      "params": { "damage": 450, "radius_m": 4.0, "edge_frac": 0.5, "boss_mult": 0.5, "start_charges": 1, "charges_per_act": 1, "charge_cap": 3 } }
+      "params": { "damage": 450, "radius_m": 4.0, "edge_frac": 0.5, "boss_mult": 0.5, "start_charges": 1, "charges_per_act": 1, "charge_cap": 3 } },
+    { "id": "core_vent", "who": "player", "name_key": "event.core_vent.name", "warn_s": 0.5, "duration_s": 0,
+      "weights": [0, 0, 0], "boss_safe": true, "harmful": false,
+      "params": { "core_cost_frac": 0.08, "block_core_frac": 0.10, "damage": 220, "radius_m": 6.0, "knockback_m": 2.0,
+                  "start_charges": 1, "charges_per_wave": 1, "charge_cap": 1 } },
+    { "id": "freight_call", "who": "player", "name_key": "event.freight_call.name", "warn_s": 4.0, "duration_s": 1.2,
+      "weights": [0, 0, 0], "boss_safe": true, "harmful": false,
+      "params": { "start_charges": 0, "charges_per_act": 0, "charge_cap": 1 } },
+    { "id": "accord_window", "who": "world", "name_key": "event.accord_window.name", "warn_s": 0, "duration_s": 10,
+      "weights": [30, 15, 10], "boss_safe": true, "harmful": false,
+      "params": { "scrap_mult": 2.0 } },
+    { "id": "supply_drop", "who": "world", "name_key": "event.supply_drop.name", "warn_s": 3.0, "duration_s": 0,
+      "weights": [30, 20, 15], "boss_safe": true, "harmful": false,
+      "params": { "squatters": 3, "squat_ring_m": 0.6 } },
+    { "id": "power_surge", "who": "world", "name_key": "event.power_surge.name", "warn_s": 4.0, "duration_s": 10,
+      "weights": [20, 15, 15], "boss_safe": true, "harmful": false,
+      "params": { "turret_rate_mult": 2.0, "brownout_s": 5.0 } },
+    { "id": "runaway_freight", "who": "world", "name_key": "event.runaway_freight.name", "warn_s": 4.0, "duration_s": 1.2,
+      "weights": [10, 15, 15], "boss_safe": true, "harmful": false,
+      "params": { "damage": 700, "boss_mult": 0.5, "knockback_m": 1.5 } },
+    { "id": "static_front", "who": "world", "name_key": "event.static_front.name", "warn_s": 6.0, "duration_s": 12,
+      "weights": [10, 15, 20], "boss_safe": false, "harmful": true,
+      "params": { "mote_stun_s": 2.0 } },
+    { "id": "floor_breach", "who": "world", "name_key": "event.floor_breach.name", "warn_s": 2.5, "duration_s": 0,
+      "weights": [0, 15, 15], "boss_safe": false, "harmful": true,
+      "params": { "points_act2": 2, "points_act3": 3, "borers_base": 1, "ring_m": 0.3 } },
+    { "id": "recount", "who": "world", "name_key": "event.recount.name", "warn_s": 3.0, "duration_s": 0,
+      "weights": [0, 5, 10], "boss_safe": false, "harmful": true,
+      "params": { "spawns": 12 } }
   ],
   "hazards": {
-    "burn": { "seconds": 3 }
+    "burn": { "seconds": 3 },
+    "fuel_drums": { "per_act": 3, "radius_m": 0.4, "blast_radius_m": 3.0, "blast_damage": 150, "stray_damage": 80, "fuse_ticks": 6,
+                    "slag_s": 5.0, "slag_radius_m": 2.2, "slag_dps": 15, "slag_slow": 0.25 },
+    "mine": { "damage": 90, "radius_m": 2.0, "trigger_m": 0.9, "per_owner": 3 }
   },
   "rules": { "window_min": 0.25, "window_max": 0.70, "mercy_core_frac": 0.15 }
 }
