@@ -46,6 +46,24 @@ var t_weave_rate: PackedFloat64Array = PackedFloat64Array()  ## radians per tick
 var t_direct: PackedByteArray = PackedByteArray()
 var t_clear: PackedFloat64Array = PackedFloat64Array()
 var t_period: PackedInt32Array = PackedInt32Array()  ## attack_period_ticks
+## Squared core distance inside which a mover of the type claims its place: the approach circle for a bodied type (an
+## attack slot), `standoff_m + StandoffPoints.CLAIM_MARGIN_M` for a standoff type (a standoff point), -1 = never (minis,
+## and standoff types that do not walk).
+var t_claim2: PackedFloat64Array = PackedFloat64Array()
+var t_hold2: PackedFloat64Array = PackedFloat64Array()  ## minis: squared core distance at which they stop; -1 = not a mini
+var t_standoff: PackedByteArray = PackedByteArray()  ## 1 = standoff class (EnemyDef.BodyClass.STANDOFF)
+var t_ring: PackedInt32Array = PackedInt32Array()  ## standoff ring of the type (index into ArenaDef.standoff_radii), or -1
+var t_special: PackedByteArray = PackedByteArray()  ## StatusSystem.SP_* bits: types the status pass looks at
+var t_boss: PackedByteArray = PackedByteArray()  ## 1 = a boss body (auras and wards of other enemies leave it alone)
+var sp_x: PackedFloat64Array = PackedFloat64Array()  ## standoff point world X, indexed like ArenaDef.standoff_points
+var sp_z: PackedFloat64Array = PackedFloat64Array()
+var aff: PackedInt32Array = PackedInt32Array()  ## affix mask per OpDef.AFFIX_FLAGS entry (EliteSystem.A_*), 0 = no such affix
+
+# --- derived every tick by StatusSystem from hashed state, before anything reads it (not hashed, not saved) ---
+var speed_mul: PackedFloat64Array = PackedFloat64Array()  ## per store index: slow x SWIFT x overclock aura; 1.0 = plain
+var period_mul: PackedFloat64Array = PackedFloat64Array()  ## per store index: attack period factor (overclock aura)
+var cover: PackedInt32Array = PackedInt32Array()  ## per store index: store index of the shieldbearer covering it, or -1
+var magnets: int = 0  ## living MAGNETIC elites (Targeting.is_valid looks for one only when this is not 0)
 
 # --- spawn schedule of the current wave, sorted by (due tick, group, ordinal) ---
 var wave_begun: int = 0  ## wave index of the schedule (0 = none yet)
@@ -115,6 +133,7 @@ func setup(world: SimWorld) -> void:
 		t_direct[t] = 1 if def.direct_seek else 0
 		t_clear[t] = minf(def.radius, CLEARANCE_CAP_M)
 		t_period[t] = def.attack_period_ticks
+	_setup_variety(world)
 	var cap: int = world.enemies.capacity
 	track_id.resize(cap)
 	stuck_ref.resize(cap)
@@ -125,6 +144,50 @@ func setup(world: SimWorld) -> void:
 	c_ttl.resize(cap)
 	c_vx.resize(cap)
 	c_vz.resize(cap)
+	speed_mul.resize(cap)
+	speed_mul.fill(1.0)
+	period_mul.resize(cap)
+	period_mul.fill(1.0)
+	cover.resize(cap)
+	cover.fill(-1)
+
+
+## The per-type tables of the variety enemies (VARIETY_SPEC 5): claim distances, mini hold distances, standoff rings,
+## the affix masks. On the legacy content every type is a bodied slot-taker and there are no affixes.
+func _setup_variety(world: SimWorld) -> void:
+	var arena: ArenaDef = world.content.arena
+	var types: int = world.content.enemies.size()
+	t_claim2.resize(types)
+	t_hold2.resize(types)
+	t_standoff.resize(types)
+	t_ring.resize(types)
+	t_special.resize(types)
+	t_boss.resize(types)
+	for t: int in types:
+		var def: EnemyDef = world.content.enemies[t]
+		t_claim2[t] = arena.approach_radius * arena.approach_radius
+		t_hold2[t] = -1.0
+		t_standoff[t] = 0
+		t_ring[t] = -1
+		t_special[t] = StatusSystem.special_bits(def)
+		t_boss[t] = 1 if def.is_boss else 0
+		if def.is_mini():
+			var hold: float = arena.core_radius + maxf(0.1, def.beh(&"burnout_m", 0.6) - MovementSystem.MINI_HOLD_MARGIN_M)
+			t_hold2[t] = hold * hold
+			t_claim2[t] = -1.0
+		elif def.enemy_class == EnemyDef.BodyClass.STANDOFF:
+			t_standoff[t] = 1
+			t_claim2[t] = -1.0
+			t_ring[t] = StandoffPoints.ring_of(arena, def.standoff_m)
+			if def.speed_mps > 0.0 and def.standoff_m > 0.0 and not def.is_boss:  # a boss is parked by its script
+				var reach: float = def.standoff_m + StandoffPoints.CLAIM_MARGIN_M
+				t_claim2[t] = reach * reach
+	sp_x.resize(arena.standoff_points.size())
+	sp_z.resize(arena.standoff_points.size())
+	for k: int in arena.standoff_points.size():
+		sp_x[k] = arena.standoff_points[k].x
+		sp_z[k] = arena.standoff_points[k].y
+	aff = EliteSystem.flag_masks(world.content)
 
 
 func _build_zones(arena: ArenaDef) -> void:

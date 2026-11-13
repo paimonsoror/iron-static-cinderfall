@@ -10,6 +10,11 @@ extends RefCounted
 ## Minis (EnemyExtState.F_MINI, VARIETY_SPEC 5.4) take the cheap path: the flow heading (straight at the core inside the
 ## approach circle), no weave, no separation (they neither push nor are pushed), no slot. They wait just inside their
 ## burnout range (MINI_HOLD_MARGIN_M) for CoreAttackSystem, and keep the stuck window so a wedged mini cannot stall a wave.
+## Standoff types (spitter, reclaimer) claim a standoff point instead of a slot (StandoffPoints) once they are within
+## their standoff distance plus a margin, walk to it and park there (ST_ATTACKING with `slot` -1). An enemy that is still
+## under the ground (F_EMERGING, the borer) does not move. Every displacement is scaled by `nav.speed_mul` (slow, SWIFT,
+## the overclock aura), which StatusSystem derives earlier in the tick; it is exactly 1.0 for a plain enemy.
+## The helpers (separation, prop fence, claims, capture, settle) live in NavSteering.
 
 ## Within this distance of its slot a seeking enemy is captured: ST_ATTACKING, then it settles onto the slot.
 const SNAP_M: float = 0.25
@@ -25,6 +30,10 @@ const PUSH_EPS: float = 0.000001
 ## A mini stops this far inside its burnout range (`burnout_m`, CONTENT 4.2: 0.6 m from the cage), so CoreAttackSystem
 ## always reaches it.
 const MINI_HOLD_MARGIN_M: float = 0.1
+## Enemies with one of these flags neither push nor are pushed: minis and bodies still under the ground.
+const F_NO_PUSH: int = EnemyExtState.F_MINI | EnemyExtState.F_EMERGING
+## A knockback moves a body of at most this mass by the full distance; heavier bodies move mass-proportionally less.
+const KNOCKBACK_FULL_MASS: float = 1.5
 
 
 static func step(world: SimWorld) -> void:
@@ -51,6 +60,9 @@ static func step(world: SimWorld) -> void:
 	var c_vz: PackedFloat64Array = nav.c_vz
 	var t_step: PackedFloat64Array = nav.t_step
 	var t_clear: PackedFloat64Array = nav.t_clear
+	var t_claim2: PackedFloat64Array = nav.t_claim2
+	var t_hold2: PackedFloat64Array = nav.t_hold2
+	var speed_mul: PackedFloat64Array = nav.speed_mul
 	var zone: PackedByteArray = nav.zone
 	var gcols: int = nav.flow.grid.cols
 	var gox: float = nav.flow.grid.origin_x
@@ -63,8 +75,8 @@ static func step(world: SimWorld) -> void:
 	var bmax_x: float = nav.bound_max_x
 	var bmin_z: float = nav.bound_min_z
 	var bmax_z: float = nav.bound_max_z
-	var app2: float = arena.approach_radius * arena.approach_radius
 	var xflags: PackedInt32Array = world.ext.flags
+	var anchor: PackedInt32Array = world.ext.anchor_point
 	for i: int in es.high_water:
 		if alive[i] == 0:
 			continue
@@ -72,7 +84,8 @@ static func step(world: SimWorld) -> void:
 		var pz: float = ez[i]
 		prev_x[i] = px
 		prev_z[i] = pz
-		if stun[i] > 0:
+		var xf: int = xflags[i]
+		if stun[i] > 0 or (xf & EnemyExtState.F_EMERGING) != 0:
 			continue
 		var enemy_id: int = ids[i]
 		if track_id[i] != enemy_id:
@@ -83,49 +96,57 @@ static func step(world: SimWorld) -> void:
 			es.path_dist[i] = nav.path_dist_of(es, i)
 			nav.track(i, enemy_id, es.path_dist[i])
 		var t: int = types[i]
-		var spd: float = t_step[t]
+		var k: float = speed_mul[i]
+		var spd: float = t_step[t] * k
 		var st: int = states[i]
 		if st == EnemyStore.ST_ATTACKING:
 			if nav.grace[i] == NavState.SETTLING:
-				_settle(nav, es, i, px, pz, spd)
+				NavSteering.settle(world, nav, es, i, px, pz, spd)
 			continue
-		if st == EnemyStore.ST_SEEK_SLOT and slot_of[i] < 0:
-			st = EnemyStore.ST_MOVING
-			states[i] = st
+		var slot_i: int = slot_of[i]
+		var tx: float = 0.0
+		var tz: float = 0.0
+		if st == EnemyStore.ST_SEEK_SLOT:
+			if slot_i >= 0:
+				tx = nav.slots.pos_x[slot_i]
+				tz = nav.slots.pos_z[slot_i]
+			elif anchor[i] >= 0:
+				tx = nav.sp_x[anchor[i]]
+				tz = nav.sp_z[anchor[i]]
+			else:
+				st = EnemyStore.ST_MOVING
+				states[i] = st
 		var cdx: float = px - core_x
 		var cdz: float = pz - core_z
 		var core_d2: float = cdx * cdx + cdz * cdz
-		var is_mini: bool = (xflags[i] & EnemyExtState.F_MINI) != 0
-		if is_mini:
-			var hold: float = core_radius + maxf(0.1, world.content.enemies[t].beh(&"burnout_m", 0.6) - MINI_HOLD_MARGIN_M)
-			if core_d2 <= hold * hold:
-				es.path_dist[i] = 0.0
-				continue
+		var is_mini: bool = (xf & EnemyExtState.F_MINI) != 0
+		if is_mini and core_d2 <= t_hold2[t]:
+			es.path_dist[i] = 0.0
+			continue
 		var left: int = ttl[i] - 1
 		ttl[i] = left
 		var mx: float
 		var mz: float
 		if st == EnemyStore.ST_MOVING:
-			if core_d2 <= app2 and not is_mini:
+			if core_d2 <= t_claim2[t]:
 				nav.claims.append(i)
 			if left <= 0 and _resample(world, es, nav, arena, i, t, enemy_id, st, px, pz, cdx, cdz, core_d2, 0.0, is_mini):
 				continue
-			mx = c_vx[i]
-			mz = c_vz[i]
+			mx = c_vx[i] * k
+			mz = c_vz[i] * k
 		else:
-			var slot_i: int = slot_of[i]
-			var vx: float = nav.slots.pos_x[slot_i] - px
-			var vz: float = nav.slots.pos_z[slot_i] - pz
+			var vx: float = tx - px
+			var vz: float = tz - pz
 			var d: float = sqrt(vx * vx + vz * vz)
 			if d <= SNAP_M:
-				_capture(world, es, nav, arena, i, t, slot_i, px, pz, spd)
+				NavSteering.capture(world, es, nav, arena, i, t, slot_i, px, pz, spd)
 				continue
 			es.path_dist[i] = d
 			if left <= 0 and _resample(world, es, nav, arena, i, t, enemy_id, st, px, pz, cdx, cdz, core_d2, d, false):
 				continue
 			var reach: float = minf(spd, d)
-			mx = vx / d * reach + c_vx[i]
-			mz = vz / d * reach + c_vz[i]
+			mx = vx / d * reach + c_vx[i] * k
+			mz = vz / d * reach + c_vz[i] * k
 			es.face_x[i] = vx / d
 			es.face_z[i] = vz / d
 			var limit: float = spd * MAX_STEP_MULT
@@ -139,7 +160,7 @@ static func step(world: SimWorld) -> void:
 		var zf: int = zone[int((pz - goz) * ginv) * gcols + int((px - gox) * ginv)]
 		if zf != 0:
 			if (zf & NavState.ZONE_PROPS) != 0:
-				_push_props(nav, arena, t_clear[t], px, pz, qx, qz)
+				NavSteering.push_props(nav, arena, t_clear[t], px, pz, qx, qz)
 				qx = nav.fix[0]
 				qz = nav.fix[1]
 			if (zf & NavState.ZONE_CORE) != 0:
@@ -166,32 +187,39 @@ static func step(world: SimWorld) -> void:
 		ex[i] = qx
 		ez[i] = qz
 	if not nav.claims.is_empty():
-		_make_claims(world, es, nav)
+		NavSteering.make_claims(world, es, nav)
 
 
-## Keeps a move that starts near props out of them (and off the prop's box, sliding along its face); writes the
-## result into nav.fix. A quick distance test against each prop's bounding circle skips the exact geometry in the
-## common case.
-static func _push_props(nav: NavState, arena: ArenaDef, clear: float, px: float, pz: float, qx: float, qz: float) -> void:
-	var fix: PackedFloat64Array = nav.fix
-	fix[0] = qx
-	fix[1] = qz
-	var margin: float = clear * 1.5 + 0.01
-	var near: bool = false
-	for k: int in nav.ob_x.size():
-		var dx: float = qx - nav.ob_x[k]
-		var dz: float = qz - nav.ob_z[k]
-		var reach: float = nav.ob_r[k] + margin
-		if dx * dx + dz * dz <= reach * reach:
-			near = true
-			break
-	if not near:
-		return
-	var obstacles: Array[ObstacleDef] = arena.obstacles
-	NavGeometry.push_out_into(obstacles, qx, qz, clear, fix)
-	if NavGeometry.inside_any(obstacles, fix[0], fix[1], 0.0):
-		fix[0] = px
-		fix[1] = pz
+## Shoves the enemy at store index `enemy_index` by `meters` along (dir_x, dir_z) now (scattergun, core vent, freight).
+## A body heavier than KNOCKBACK_FULL_MASS moves mass-proportionally less; a boss, an ANCHORED elite, a parked standoff
+## enemy and a body still under the ground do not move. The move is fenced like a walk (props, the core body, the
+## grid); an attacker walks back to its slot afterwards. Returns the meters moved.
+static func knockback(world: SimWorld, enemy_index: int, dir_x: float, dir_z: float, meters: float) -> float:
+	var es: EnemyStore = world.enemies
+	if enemy_index < 0 or enemy_index >= es.capacity or es.alive[enemy_index] == 0 or meters <= 0.0:
+		return 0.0
+	var len2: float = dir_x * dir_x + dir_z * dir_z
+	var t: int = es.type[enemy_index]
+	var def: EnemyDef = world.content.enemies[t]
+	if len2 < 0.000000001 or def.is_boss or def.speed_mps <= 0.0 or EliteSystem.is_anchored(world, enemy_index):
+		return 0.0
+	if world.ext.has_flag(enemy_index, EnemyExtState.F_EMERGING):
+		return 0.0
+	var attacking: bool = es.state[enemy_index] == EnemyStore.ST_ATTACKING
+	if attacking and es.slot[enemy_index] < 0:
+		return 0.0
+	var nav: NavState = world.nav
+	var push: float = meters * minf(1.0, KNOCKBACK_FULL_MASS / maxf(0.001, def.mass)) / sqrt(len2)
+	var px: float = es.x[enemy_index]
+	var pz: float = es.z[enemy_index]
+	NavSteering.fence(nav, world.content.arena, nav.t_clear[t], px, pz, px + dir_x * push, pz + dir_z * push)
+	es.x[enemy_index] = nav.fix[0]
+	es.z[enemy_index] = nav.fix[1]
+	if attacking:
+		nav.grace[enemy_index] = NavState.SETTLING
+	else:
+		nav.c_ttl[enemy_index] = 0
+	return sqrt((nav.fix[0] - px) * (nav.fix[0] - px) + (nav.fix[1] - pz) * (nav.fix[1] - pz))
 
 
 ## Refreshes the cached steering of enemy `i` and its stuck bookkeeping. Moving enemies: heading from the flow field
@@ -247,7 +275,7 @@ static func _resample(
 		es.path_dist[i] = path
 	var sepw: float = nav.t_sepw[t]
 	if sepw > 0.0 and nav.sep_off[i] == 0 and not mini:
-		var push: Vector2 = _separation(es, nav, i, t, enemy_id, px, pz, sepw, spd, world.ext.flags)
+		var push: Vector2 = NavSteering.separation(es, nav, i, t, enemy_id, px, pz, sepw, spd, world.ext.flags)
 		vx += push.x
 		vz += push.y
 	var limit: float = spd * MAX_STEP_MULT
@@ -269,132 +297,3 @@ static func _resample(
 	else:
 		nav.stuck_timer[i] = timer
 	return false
-
-
-## Push away from overlapping movers: weight_i * overlap * mass share of the other, from up to six neighbors,
-## capped at the enemy's own speed per tick. Attackers are not in the hash and are ignored; a zero weight (the boss)
-## is never pushed. Heavy movers (the boss) are tested from a short list instead of the cells.
-static func _separation(
-	es: EnemyStore, nav: NavState, i: int, t: int, enemy_id: int, px: float, pz: float, sepw: float, spd: float,
-	xflags: PackedInt32Array
-) -> Vector2:
-	var r_i: float = nav.t_radius[t]
-	var m_i: float = nav.t_mass[t]
-	var neigh: PackedInt32Array = nav.neigh
-	var cnt: int = nav.spatial.gather(px, pz, SEP_SPACE * (r_i + nav.light_radius), neigh)
-	var heavy: PackedInt32Array = nav.heavy
-	for h: int in heavy:
-		neigh.append(h)
-	cnt += heavy.size()
-	if cnt < 2:
-		return Vector2.ZERO
-	var xs: PackedFloat64Array = es.x
-	var zs: PackedFloat64Array = es.z
-	var types: PackedByteArray = es.type
-	var states: PackedByteArray = es.state
-	var radii: PackedFloat64Array = nav.t_radius
-	var masses: PackedFloat64Array = nav.t_mass
-	var sx: float = 0.0
-	var sz: float = 0.0
-	var used: int = 0
-	for q: int in cnt:
-		var j: int = neigh[q]
-		if j == i or states[j] == EnemyStore.ST_ATTACKING or (xflags[j] & EnemyExtState.F_MINI) != 0:
-			continue
-		var tj: int = types[j]
-		var space: float = SEP_SPACE * (r_i + radii[tj])
-		var dx: float = px - xs[j]
-		var dz: float = pz - zs[j]
-		var d2: float = dx * dx + dz * dz
-		if d2 >= space * space:
-			continue
-		var d: float = sqrt(d2)
-		var ux: float
-		var uz: float = 0.0
-		if d < 0.000001:
-			ux = 1.0 if enemy_id < es.id[j] else -1.0
-		else:
-			ux = dx / d
-			uz = dz / d
-		var m_j: float = masses[tj]
-		var amount: float = (space - d) * SEP_GAIN * sepw * (m_j / (m_i + m_j))
-		sx += ux * amount
-		sz += uz * amount
-		used += 1
-		if used >= SEP_MAX_NEIGHBORS:
-			break
-	var s2: float = sx * sx + sz * sz
-	if s2 > spd * spd:
-		var shrink: float = spd / sqrt(s2)
-		sx *= shrink
-		sz *= shrink
-	return Vector2(sx, sz)
-
-
-## Moving enemies inside the approach circle claim a slot, in ascending id order (the one order-sensitive effect).
-static func _make_claims(world: SimWorld, es: EnemyStore, nav: NavState) -> void:
-	var claims: PackedInt32Array = nav.claims
-	for a: int in range(1, claims.size()):
-		var cur: int = claims[a]
-		var b: int = a - 1
-		while b >= 0 and es.id[claims[b]] > es.id[cur]:
-			claims[b + 1] = claims[b]
-			b -= 1
-		claims[b + 1] = cur
-	for k: int in claims.size():
-		var i: int = claims[k]
-		if es.state[i] != EnemyStore.ST_MOVING:
-			continue
-		var slot_i: int = nav.slots.claim(world, i)
-		if slot_i >= 0:
-			es.state[i] = EnemyStore.ST_SEEK_SLOT
-			nav.c_ttl[i] = 0
-
-
-## The enemy came within SNAP_M of its slot: it starts attacking now and settles onto the slot.
-static func _capture(
-	world: SimWorld,
-	es: EnemyStore,
-	nav: NavState,
-	arena: ArenaDef,
-	i: int,
-	t: int,
-	slot_i: int,
-	px: float,
-	pz: float,
-	spd: float
-) -> void:
-	es.state[i] = EnemyStore.ST_ATTACKING
-	es.attack_cd[i] = nav.t_period[t]
-	es.path_dist[i] = 0.0
-	nav.grace[i] = NavState.SETTLING
-	var fx: float = arena.core_x - px
-	var fz: float = arena.core_z - pz
-	var f: float = sqrt(fx * fx + fz * fz)
-	if f > 0.000001:
-		es.face_x[i] = fx / f
-		es.face_z[i] = fz / f
-	world.events.push(SimEventKind.Id.ENEMY_REACHED_SLOT, es.id[i], slot_i)
-	_settle(nav, es, i, px, pz, spd)
-
-
-## Moves an attacker toward its slot position by at most the per-tick displacement bound (exactly onto it when
-## closer), so the final snap never breaks the bound either.
-static func _settle(nav: NavState, es: EnemyStore, i: int, px: float, pz: float, spd: float) -> void:
-	var slot_i: int = es.slot[i]
-	if slot_i < 0:
-		nav.grace[i] = 0
-		return
-	var tx: float = nav.slots.pos_x[slot_i]
-	var tz: float = nav.slots.pos_z[slot_i]
-	var vx: float = tx - px
-	var vz: float = tz - pz
-	var d: float = sqrt(vx * vx + vz * vz)
-	var limit: float = spd * MAX_STEP_MULT
-	if d <= limit:
-		es.x[i] = tx
-		es.z[i] = tz
-		nav.grace[i] = 0
-	else:
-		es.x[i] = px + vx / d * limit
-		es.z[i] = pz + vz / d * limit
