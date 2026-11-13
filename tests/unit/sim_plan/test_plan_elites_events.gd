@@ -165,14 +165,17 @@ func _events_content() -> ContentSet:
 	]
 	for row: Array in rows:
 		var weights: Array = row[1]
-		var e: EventDef = EventDef.new()
-		e.id = row[0]
-		e.index = c.events.size()
-		e.who = EventDef.Who.WORLD
+		var id: StringName = row[0]
+		var e: EventDef = c.event_def(id)  # the frozen fixture has the real events now: the rows replace their plan fields
+		if e == null:
+			e = EventDef.new()
+			e.id = id
+			e.index = c.events.size()
+			e.who = EventDef.Who.WORLD
+			c.events.append(e)
 		e.weights = PackedFloat32Array(weights)
 		e.boss_safe = row[2]
 		e.harmful = row[3]
-		c.events.append(e)
 	return c
 
 
@@ -244,6 +247,9 @@ func test_event_warnings_start_between_25_and_70_percent_of_the_window_in_order(
 
 
 func test_a_slice_without_world_events_plans_none() -> void:
-	var c: ContentSet = VarietyAKit.content()  # only the player-triggered strike exists
+	var c: ContentSet = VarietyAKit.content()
+	for e: EventDef in c.events:
+		if e.who == EventDef.Who.WORLD:
+			e.weights = PackedFloat32Array([0.0, 0.0, 0.0])  # no world event has a weight: the plan rolls none
 	for pw: PlannedWave in RunPlanSystem.build_for(c, 1).waves:
 		assert_int(pw.events.size()).is_equal(0)
