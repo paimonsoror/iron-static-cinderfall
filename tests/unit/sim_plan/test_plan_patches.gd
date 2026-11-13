@@ -11,20 +11,25 @@ var c: ContentSet
 
 func before_test() -> void:
 	c = VarietyAKit.long_content()
+	for e: EventDef in c.events:
+		if e.who == EventDef.Who.WORLD:
+			e.weights = PackedFloat32Array([0.0, 0.0, 0.0])  # the plan never rolls the fixture's world events: the tests place them
 
 
 func _add_event(id: StringName, harmful: bool, boss_safe: bool) -> int:
-	var e: EventDef = EventDef.new()
-	e.id = id
-	e.index = c.events.size()
-	e.who = EventDef.Who.WORLD
+	var e: EventDef = c.event_def(id)  # the frozen fixture has the real events now: reuse one with the same id
+	if e == null:
+		e = EventDef.new()
+		e.id = id
+		e.index = c.events.size()
+		e.who = EventDef.Who.WORLD
+		c.events.append(e)
 	e.name_key = "event.%s.name" % String(id)
 	e.warn_ticks = 360
 	e.duration_ticks = 720
 	e.weights = PackedFloat32Array([0.0, 0.0, 0.0])  # the plan never rolls them: the tests place them by hand
 	e.harmful = harmful
 	e.boss_safe = boss_safe
-	c.events.append(e)
 	return e.index
 
 
@@ -176,8 +181,9 @@ func test_static_pact_offsets_stay_inside_the_event_window_and_in_order() -> voi
 
 
 func test_static_pact_without_a_static_front_in_the_content_changes_nothing() -> void:
+	c.event_def(&"static_front").id = &"static_front_removed"  # a content set without that event
 	var reference: RunPlan = RunPlanSystem.build_for(c, SEED)
-	var w: SimWorld = DirectiveKit.world(SEED, 2, 1, c)  # the fixture events have no static_front yet
+	var w: SimWorld = DirectiveKit.world(SEED, 2, 1, c)
 	DirectiveKit.give(w, &"static_pact")
 	assert_str(_plan_hash(w.plan)).is_equal(_plan_hash(reference))
 

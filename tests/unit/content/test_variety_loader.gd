@@ -239,7 +239,7 @@ func test_directives_json() -> void:
 
 
 func test_events_json() -> void:
-	assert_int(c.events.size()).is_equal(1)
+	assert_int(c.events.size()).is_equal(10)
 	var strike: EventDef = c.event_def(&"deadfall_strike")
 	assert_int(strike.index).is_equal(0)
 	assert_int(strike.who).is_equal(EventDef.Who.PLAYER)
@@ -248,7 +248,7 @@ func test_events_json() -> void:
 	assert_float(strike.param(&"damage")).is_equal(450.0)
 	assert_float(strike.param(&"charge_cap")).is_equal(3.0)
 	assert_float(strike.param(&"nope", 2.0)).is_equal(2.0)
-	assert_int(c.event_index(&"core_vent")).is_equal(-1)
+	assert_int(c.event_index(&"core_vent")).is_equal(1)
 	assert_float(c.run.event_window_min).is_equal(0.25)
 	assert_float(c.run.mercy_core_frac).is_equal_approx(0.15, 0.0001)
 	var burn: Dictionary = c.run.hazards[&"burn"]
