@@ -81,6 +81,32 @@ static func shoot(world: SimWorld, a: ArsenalState, slot: int, def: WeaponDef, s
 	return fired
 
 
+## Starts the pool of every mortar shell that HazardSystem will land on this tick (it runs after the weapon step). The
+## queue is sorted by (due, sequence) and at most RunDef.max_blasts_per_tick hits land per tick, so the first entries that
+## are due and of kind K_SHELL from the Warden are exactly the shells landing now. The pool has the numbers of the mortar
+## in the Warden's slots (its level counts), else of the plain data entry. Stand-in for a landing hook in HazardSystem.
+static func start_landing_pools(world: SimWorld) -> void:
+	var h: HazardState = world.hazards
+	if h.q_due.is_empty():
+		return
+	var run: RunDef = world.content.run
+	var limit: int = run.max_blasts_per_tick if run != null else HazardSystem.DEFAULT_MAX_PER_TICK
+	for k: int in mini(limit, h.q_due.size()):
+		if h.q_due[k] > world.tick:
+			break
+		var from_warden: bool = h.q_source[k] == DamageSource.Id.WARDEN or h.q_source[k] == DamageSource.Id.WARDEN_OFFHAND
+		if h.q_kind[k] != HazardState.K_SHELL or not from_warden:
+			continue
+		var slot: int = ArsenalSystem.slot_of(world, Ids.WP_SLAG_MORTAR)
+		var def: WeaponDef = world.content.weapons[Ids.WP_SLAG_MORTAR]
+		if slot >= 0:
+			def = ArsenalSystem.effective_of(world, slot)
+		if def.pool_ticks > 0:
+			var _pool: int = HazardSystem.add_pool(
+				world, h.q_x[k], h.q_z[k], def.pool_radius_m * world.mods.area_mul, def.pool_ticks, def.pool_dps, def.pool_slow
+			)
+
+
 ## The holstered weapon fires (twin_link). Called once per tick after the active weapon.
 static func step_offhand(world: SimWorld, a: ArsenalState, active_slot: int) -> void:
 	if ShotHooks.stacks(world, ShotHooks.D_TWIN_LINK) <= 0:

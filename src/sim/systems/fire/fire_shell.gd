@@ -7,9 +7,9 @@ extends RefCounted
 ## minimum range and the maximum range the weapon holds fire (false: no shot is paid for).
 ## The damage is that of a direct hit on the enemy at the cluster centre, evaluated at launch (weapon level, the damage
 ## level and the conditional multipliers of DamageResolver.warden_amount). A shell is the Warden's: kills count for it.
-## Pool: the pool starts at launch and lives `flight_ticks` + `pool_ticks`, so it burns for exactly `pool_ticks` after the
-## shell lands. (HazardSystem starts pools only through add_pool and has no hook for a landing; its first pulse can
-## fall inside the flight. See the V4-W report, "needs owner".)
+## Pool: not started here. When a shell lands, ArsenalFire.start_landing_pools (called every tick by ArsenalSystem, a tick
+## before HazardSystem lands the hit) starts the pool at the point of the shell for `pool_ticks`; HazardSystem has no
+## landing hook of its own yet (see the V4-W report, "needs owner").
 ## ModState.area_mul (overpressure) widens the blast and the pool.
 
 
@@ -33,11 +33,6 @@ static func fire(world: SimWorld, slot: int, def: WeaponDef, source: int) -> boo
 		world, world.tick + def.flight_ticks, HazardState.K_SHELL, at.x, at.y, radius, amount, def.edge_frac,
 		DamageResolver.F_AREA | DamageResolver.weapon_flags(def), source
 	)
-	if def.pool_ticks > 0:
-		var pool_radius: float = def.pool_radius_m * world.mods.area_mul
-		var _pool: int = HazardSystem.add_pool(
-			world, at.x, at.y, pool_radius, def.flight_ticks + def.pool_ticks, def.pool_dps, def.pool_slow
-		)
 	w.aim_x = at.x
 	w.aim_z = at.y
 	return true

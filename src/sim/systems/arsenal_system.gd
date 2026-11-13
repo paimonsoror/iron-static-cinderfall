@@ -48,6 +48,7 @@ static func step(world: SimWorld) -> void:
 	for s: int in a.slot_count:
 		if s != a.active and a.slot_weapon[s] >= 0:
 			_tick_holstered(world, a, s)
+	ArsenalFire.start_landing_pools(world)
 	var slot: int = a.active
 	var def: WeaponDef = effective_of(world, slot)
 	_tick_active(world, a, slot, def)
