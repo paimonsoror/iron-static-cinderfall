@@ -95,14 +95,16 @@ func step(delta: float) -> void:
 	if every <= 0.0:
 		return
 	_spark_cd -= delta
-	if _spark_cd > 0.0:
-		return
-	_spark_cd = every
-	var ang: float = _ctx.rng.randf_range(0.0, TAU)
-	var out: float = _ctx.rng.randf_range(0.5, 2.0)
-	var vel: Vector3 = Vector3(cos(ang) * out, _ctx.rng.randf_range(2.0, 4.0), sin(ang) * out)
-	var off: Vector3 = Vector3(_ctx.rng.randf_range(-1.2, 1.2), 0.0, _ctx.rng.randf_range(-1.2, 1.2))
-	var _spark: int = _sparks.spawn(_site + off, vel, 0.45, 0.05, _ctx.rng.randf_range(0.2, 0.34))
+	var made: int = 0
+	while _spark_cd <= 0.0 and made < 4:  # a slow frame throws as many as it missed
+		_spark_cd += every
+		made += 1
+		var ang: float = _ctx.rng.randf_range(0.0, TAU)
+		var out: float = _ctx.rng.randf_range(0.5, 2.0)
+		var vel: Vector3 = Vector3(cos(ang) * out, _ctx.rng.randf_range(2.0, 4.0), sin(ang) * out)
+		var off: Vector3 = Vector3(_ctx.rng.randf_range(-1.2, 1.2), 0.0, _ctx.rng.randf_range(-1.2, 1.2))
+		var _spark: int = _sparks.spawn(_site + off, vel, 0.45, 0.05, _ctx.rng.randf_range(0.2, 0.34))
+	_spark_cd = maxf(_spark_cd, 0.0)
 
 
 func aftermath_active() -> bool:

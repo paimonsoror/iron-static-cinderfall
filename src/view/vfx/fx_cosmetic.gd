@@ -12,8 +12,8 @@ extends RefCounted
 const SCORCH_Y: float = 0.034
 const SCORCH_LIFE_S: float = 45.0
 const SCORCH_MIN_M: float = 0.7
-const SCORCH_MAX_M: float = 2.2
-const SCORCH_SHARE: float = 0.6  ## a mark is this share of its blast's radius
+const SCORCH_MAX_M: float = 1.8
+const SCORCH_SHARE: float = 0.5  ## a mark is this share of its blast's radius
 const EMBER_Y: float = 0.5
 const RAIN_HEIGHT_M: float = 9.0
 const SHAKE_MAX_M: float = 0.32  ## camera offset at full trauma and full tier gain, meters

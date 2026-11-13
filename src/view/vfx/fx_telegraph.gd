@@ -31,6 +31,7 @@ const LANE_HALF_WIDTH_M: float = 1.3
 const LANE_CLOSE: float = 1.9
 const BAND_ASPECT: float = 8.0  ## a recount band is this many times as long as it is wide (the hatch keeps square stripes)
 const BREACH_RADIUS_M: float = 1.4
+const PAD_MARK_M: float = 1.5  ## the mark of a brownout or a surge on a turret pad
 const CORE_VENT_RADIUS_M: float = 6.0
 const OUTLINE_INNER: float = 0.88
 const OUTLINE_INNER_CONTRAST: float = 0.72
@@ -137,6 +138,18 @@ func warned(event_id: StringName, ticks: int, x: float, z: float) -> void:
 				danger(Vector3(x, 0.0, z), radius, life)
 			else:
 				friendly(Vector3(x, 0.0, z), radius, life)
+
+
+## The aftermath of a core surge (SPEC 7.2 part 3): while the turrets are offline a red hatch lies on every pad (it hurts our side: the tools
+## are gone), for the `life` seconds the sim says the brownout lasts. While they fire double, a cyan ring stays on every pad.
+func brownout(life: float) -> void:
+	for p: Vector2 in _content.arena.turret_pads:
+		var _fill: int = hatches.spawn(Vector3(p.x, HATCH_Y, p.y), Vector3.ZERO, PAD_MARK_M, PAD_MARK_M, life)
+
+
+func surge(life: float) -> void:
+	for p: Vector2 in _content.arena.turret_pads:
+		var _ring: int = rings_cyan.spawn(Vector3(p.x, RING_Y, p.y), Vector3.ZERO, PAD_MARK_M, PAD_MARK_M, life)
 
 
 ## A cyan outline at `radius` and a ring contracting onto it over `life` seconds.

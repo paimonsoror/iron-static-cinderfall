@@ -223,3 +223,39 @@ func test_reduced_flash_holds_the_static_still() -> void:
 		vfx.render(1.0, 0.05)
 		seen[overlay.left.texture.get_instance_id()] = true
 	assert_int(seen.size()).is_greater(1)
+
+
+func test_a_brownout_hatches_the_pads_and_a_surge_rings_them_for_the_ticks_the_sim_says() -> void:
+	var rig: VfxXTestKit.Rig = VfxXTestKit.rig(self)
+	var w: SimWorld = rig.world
+	var vfx: VfxLayer = rig.vfx
+	var tele: FxTelegraph = _tele(vfx)
+	var pads: int = w.content.arena.turret_pads.size()
+	w.events_state.turret_rate_milli = 2000
+	w.events_state.turret_rate_ticks = 600  # a core surge: 10 s of double fire
+	vfx.render(1.0, 0.0)
+	assert_int(tele.rings_cyan.live_count()).is_equal(pads)
+	vfx.render(1.0, 0.0)
+	assert_int(tele.rings_cyan.live_count()).is_equal(pads)  # drawn once, on the edge, not again every frame
+	w.events_state.turret_rate_ticks = 0
+	w.events_state.turret_offline_ticks = 300  # ... then the brownout: 5 s without turrets
+	vfx.render(1.0, 0.0)
+	assert_int(tele.hatches.live_count()).is_equal(pads)  # a red hatch on every pad: the tools are gone
+	for _n: int in 20:
+		vfx.render(1.0, 0.0)
+	assert_int(tele.hatches.live_count()).is_equal(pads)
+	vfx.unbind()
+	vfx.bind(w)
+	vfx.render(1.0, 0.0)
+	assert_int(tele.hatches.live_count()).is_equal(pads)  # a view that binds in the middle of a brownout shows it
+
+
+func test_a_relay_window_ripples_amber_at_the_core_and_has_no_other_decal() -> void:
+	var rig: VfxXTestKit.Rig = VfxXTestKit.rig(self)
+	var vfx: VfxLayer = rig.vfx
+	var blasts: FxBlasts = vfx.chaos().blasts
+	Events.event_started.emit(&"accord_window")
+	assert_int(blasts.rings_amber.live_count()).is_equal(1)
+	vfx.render(1.0, 0.0)
+	assert_float(blasts.rings_amber.slot_transform(0).origin.x).is_equal_approx(rig.world.content.arena.core_x, 0.001)
+	assert_int(_tele(vfx).live_count()).is_equal(0)

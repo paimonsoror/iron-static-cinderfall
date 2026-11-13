@@ -40,6 +40,7 @@ func test_every_pool_is_allocated_at_its_high_size_and_limited_by_the_tier() -> 
 		assert_int(c.lobs.shells.limit + c.lobs.hornets.limit).is_equal(VisualQuality.lob_cap(t))
 		assert_int(c.lobs.bolts.limit).is_equal(12)  # an enemy projectile is never tier-gated
 		assert_int(c.zones.rings.limit).is_equal(VisualQuality.ward_rings(t))
+		assert_int(c.zones.auras.limit).is_equal(VisualQuality.ward_rings(t))
 		assert_int(c.zones.tethers.limit).is_equal(VisualQuality.tethers(t))
 		assert_int(c.cosmetic.scorch.limit).is_equal(VisualQuality.scorch_marks(t))
 		assert_int(c.cosmetic.ghosts.limit()).is_equal(VisualQuality.ghost_swarm(t))

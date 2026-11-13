@@ -8,14 +8,21 @@ extends RefCounted
 ## Colour and shape (SPEC 5.6): none of these hurts the player's side, so they carry no hatch; they are red because they are CHORUS, and
 ## DASHED so the solid shrinking outline of a danger decal never reads alike. A static front takes every ward and aura down: no ring is
 ## drawn while the abilities are locked (`EventState.ability_lock_ticks`). A ward the sim reports broken (`ward_changed` at 0) loses its
-## ring until the sim reports it back. Tier: 8 / 10 / 12 rings and 6 / 9 / 12 tether lines, importance first (shieldbearer wards, then
-## jammer auras, personal wards, overclockers; reclaimer tethers, then magnetic ones); whatever does not fit is not drawn.
+## ring until the sim reports it back. Tier: 8 / 10 / 12 rings (one budget over two pools, `rings` for the small ward rings and `auras` for
+## the big ones, whose band is thinner so a 7 m aura never becomes a wall of red) and 6 / 9 / 12 tether lines, importance first (shieldbearer
+## wards, then jammer auras, personal wards, overclockers; reclaimer tethers, then magnetic ones); whatever does not fit is not drawn.
+## The Aegis Array's orbit of pylons is drawn as a ring on the boss while a pylon lives.
 
 const RING_Y: float = 0.04
 const RING_DASHES: int = 24
 const RING_DUTY: float = 0.62
 const RING_INNER: float = 0.93
 const RING_INNER_CONTRAST: float = 0.84
+const AURA_DASHES: int = 36
+const AURA_DUTY: float = 0.5
+const AURA_INNER: float = 0.972
+const AURA_INNER_CONTRAST: float = 0.93
+const PYLON_RING_M: float = 2.7
 const PERSONAL_WARD_M: float = 0.85
 const OVERCLOCK_M: float = 4.0
 const MAGNET_M: float = 12.0
@@ -27,6 +34,7 @@ const LINE_TO_Y: float = 0.7
 enum Ring { WARD, AURA, PERSONAL, OVERCLOCK }
 
 var rings: FxFollow = FxFollow.new()
+var auras: FxFollow = FxFollow.new()
 var tethers: FxFollow = FxFollow.new()
 
 var _ctx: FxContext
@@ -38,13 +46,19 @@ var _near: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## the nearest damage
 var _near_d: PackedFloat32Array = PackedFloat32Array([0.0, 0.0, 0.0])
 var _lit_ring: ArrayMesh
 var _bold_ring: ArrayMesh
+var _lit_aura: ArrayMesh
+var _bold_aura: ArrayMesh
+var _used: int = 0  ## rings drawn this frame, over both pools
 
 
 func setup(parent: Node3D, bounds: AABB, ctx: FxContext) -> void:
 	_ctx = ctx
 	_lit_ring = VfxMeshes.dashed_ring(RING_INNER, RING_DASHES, RING_DUTY, &"add_red")
 	_bold_ring = VfxMeshes.dashed_ring(RING_INNER_CONTRAST, RING_DASHES, RING_DUTY, &"add_red")
+	_lit_aura = VfxMeshes.dashed_ring(AURA_INNER, AURA_DASHES, AURA_DUTY, &"add_red")
+	_bold_aura = VfxMeshes.dashed_ring(AURA_INNER_CONTRAST, AURA_DASHES, AURA_DUTY, &"add_red")
 	rings.setup(parent, "WardRings", _lit_ring, VisualQuality.WARD_RING_CAP[VisualQuality.Tier.HIGH], bounds)
+	auras.setup(parent, "AuraRings", _lit_aura, VisualQuality.WARD_RING_CAP[VisualQuality.Tier.HIGH], bounds)
 	tethers.setup(parent, "Tethers", VfxMeshes.tracer(&"add_red"), VisualQuality.TETHER_CAP[VisualQuality.Tier.HIGH], bounds)
 	_bit_warded = _affix_bit(&"aff_warded")
 	_bit_overclock = _affix_bit(&"aff_overclock")
@@ -63,23 +77,28 @@ func unbind() -> void:
 		Events.ward_changed.disconnect(_on_ward_changed)
 	_broken.clear()
 	rings.clear()
+	auras.clear()
 	tethers.clear()
 
 
 func set_quality(tier: int) -> void:
 	rings.set_limit(VisualQuality.ward_rings(tier))
+	auras.set_limit(VisualQuality.ward_rings(tier))
 	tethers.set_limit(VisualQuality.tethers(tier))
 
 
 ## High Contrast thickens the ring band and the tether line.
 func set_contrast(on: bool) -> void:
 	rings.set_mesh(_bold_ring if on else _lit_ring)
+	auras.set_mesh(_bold_aura if on else _lit_aura)
 
 
 ## Once per rendered frame: rebuilds the rings and the lines from the sim.
 func step() -> void:
 	rings.begin()
+	auras.begin()
 	tethers.begin()
+	_used = 0
 	var sim: SimWorld = _ctx.sim
 	if sim != null and sim.content.is_variety():
 		if sim.events_state.ability_lock_ticks <= 0:
@@ -89,7 +108,17 @@ func step() -> void:
 		if _bit_magnetic >= 0:
 			_add_magnetic_tethers(sim)
 	rings.end()
+	auras.end()
 	tethers.end()
+
+
+## Rings drawn this frame over both pools, and the ones that did not fit.
+func ring_count() -> int:
+	return rings.drawn() + auras.drawn()
+
+
+func dropped() -> int:
+	return rings.dropped + auras.dropped
 
 
 func is_broken(enemy_id: int) -> bool:
@@ -97,7 +126,7 @@ func is_broken(enemy_id: int) -> bool:
 
 
 func live_count() -> int:
-	return rings.drawn() + tethers.drawn()
+	return ring_count() + tethers.drawn()
 
 
 func _add_rings(sim: SimWorld, kind: int) -> void:
@@ -109,8 +138,14 @@ func _add_rings(sim: SimWorld, kind: int) -> void:
 		if radius <= 0.0:
 			continue
 		var at: Vector3 = _ctx.enemy_at(st.id[i])
-		if at.is_finite() and not rings.add_ring(Vector3(at.x, RING_Y, at.z), radius):
-			return  # the pool is full: the rest of this kind, and the kinds after it, are not drawn
+		if not at.is_finite():
+			continue
+		var pool: FxFollow = auras if kind == Ring.AURA or kind == Ring.OVERCLOCK else rings
+		if _used >= rings.limit:
+			pool.dropped += 1
+			return  # the budget of the tier is spent: the rest of this kind, and the kinds after it, are not drawn
+		if pool.add_ring(Vector3(at.x, RING_Y, at.z), radius):
+			_used += 1
 
 
 func _ring_radius(sim: SimWorld, i: int, kind: int) -> float:
@@ -119,6 +154,8 @@ func _ring_radius(sim: SimWorld, i: int, kind: int) -> float:
 	var mask: int = sim.ext.affix_mask[i]
 	match kind:
 		Ring.WARD:
+			if sim.enemies.type[i] == Ids.EN_AEGIS_ARRAY and sim.boss.parts_alive > 0:
+				return PYLON_RING_M  # the orbit of its pylons
 			return def.beh(&"ward_radius") if up else 0.0
 		Ring.AURA:
 			return def.beh(&"aura_radius")

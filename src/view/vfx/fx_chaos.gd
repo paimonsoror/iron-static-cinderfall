@@ -26,6 +26,8 @@ var freight: FreightView = FreightView.new()
 var ctx: FxContext = FxContext.new()
 
 var _actors: ActorLayer
+var _offline_on: bool = false  ## the turrets were offline at the last frame (the sim's brownout)
+var _surge_on: bool = false  ## the turrets were firing double at the last frame
 
 
 func setup(parent: Node3D, content: ContentSet, rig: CameraRig, actors: ActorLayer, sparks: VfxPool, bounds: AABB, rng: RandomNumberGenerator) -> void:
@@ -103,6 +105,8 @@ func unbind() -> void:
 	freight.clear()
 	ground.clear()
 	arcs.forget()
+	_offline_on = false
+	_surge_on = false
 	ctx.sim = null
 
 
@@ -124,6 +128,7 @@ func step(delta: float, facing: Basis) -> void:
 	var sim: SimWorld = ctx.sim
 	drums.refresh(sim)
 	overlay.step(delta, sim.events_state.ability_lock_ticks if sim != null else 0)
+	_track_turret_states(sim)
 	blasts.frame_done()
 	arcs.frame_done()
 
@@ -184,8 +189,27 @@ func _on_warned(event_id: StringName, ticks: int, x: float, z: float) -> void:
 	overlay.warned(event_id, ticks, x, z)
 
 
+## The aftermath of a core surge is read from the state of the sim: the turrets offline (a brownout, a stomp) get a red hatch on every pad
+## and the turrets firing double a cyan ring, each for the ticks that are left when the state begins (an edge, so it is drawn once).
+func _track_turret_states(sim: SimWorld) -> void:
+	if sim == null:
+		return
+	var es: EventState = sim.events_state
+	var offline: bool = es.turret_offline_ticks > 0
+	if offline and not _offline_on:
+		telegraph.brownout(float(es.turret_offline_ticks) * SimWorld.DT)
+	_offline_on = offline
+	var surging: bool = es.turret_rate_ticks > 0 and es.turret_rate_milli > 1000
+	if surging and not _surge_on:
+		telegraph.surge(float(es.turret_rate_ticks) * SimWorld.DT)
+	_surge_on = surging
+
+
 func _on_started(event_id: StringName) -> void:
 	overlay.started(event_id)
+	if event_id == &"accord_window":  # a relay window has no ground decal: an amber ripple at the core says Scrap is doubled
+		var core: Vector3 = Vector3(ctx.content.arena.core_x, FxBlasts.RING_Y, ctx.content.arena.core_z)
+		var _slot: int = blasts.ring(false, core, 1.5, 4.5, 0.9)
 	if freight.started(event_id):
 		cosmetic.shake(0.5)
 	var def: EventDef = ctx.content.event_def(event_id)

@@ -32,8 +32,10 @@ func test_a_blast_leaves_a_calm_dark_mark_that_stays_and_a_vent_or_a_freight_lea
 	_steps(vfx, 300)  # 30 s later
 	assert_int(cos.scorch.live_count()).is_equal(1)  # a persistent ring buffer, not a timer of seconds
 	var mesh: ArrayMesh = cos.scorch.node.multimesh.mesh as ArrayMesh
-	assert_object(mesh.surface_get_material(0)).is_same(MatLib.mat(&"shadow_blob"))  # dark, no emission
-	assert_bool(MatLib.mat(&"shadow_blob").emission_enabled).is_false()
+	var dark: StandardMaterial3D = mesh.surface_get_material(0) as StandardMaterial3D
+	assert_str(dark.resource_name).is_equal("shadow_blob")  # the black shadow material, no emission ...
+	assert_bool(dark.emission_enabled).is_false()
+	assert_float(dark.albedo_color.a).is_less(MatLib.mat(&"shadow_blob").albedo_color.a)  # ... a little lighter than a blob shadow: a mark, not a hole
 	Events.area_blast.emit(HazardState.K_STRIKE, 0.0, 0.0, 4.0)
 	vfx.render(1.0, 0.0)
 	assert_float(cos.scorch.slot_transform(1).basis.x.length()).is_less_equal(FxCosmetic.SCORCH_MAX_M + 0.001)

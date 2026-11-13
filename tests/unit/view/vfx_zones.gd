@@ -26,8 +26,9 @@ func _has(radii: Array[float], radius: float) -> bool:
 
 func _radii(zones: FxZones) -> Array[float]:
 	var out: Array[float] = []
-	for i: int in zones.rings.drawn():
-		out.append(zones.rings.transform_of(i).basis.x.length())
+	for pool: FxFollow in [zones.rings, zones.auras]:
+		for i: int in pool.drawn():
+			out.append(pool.transform_of(i).basis.x.length())
 	return out
 
 
@@ -39,16 +40,16 @@ func test_a_shieldbearer_wears_a_ward_ring_of_its_radius_until_the_ward_breaks()
 	var zones: FxZones = _zones(rig)
 	var radius: float = w.content.enemies[Ids.EN_SHIELDBEARER].beh(&"ward_radius")
 	assert_float(radius).is_greater(2.0)
-	assert_int(zones.rings.drawn()).is_equal(1)
+	assert_int(zones.ring_count()).is_equal(1)
 	assert_float(zones.rings.transform_of(0).basis.x.length()).is_equal_approx(radius, 0.001)
 	assert_float(zones.rings.transform_of(0).origin.x).is_equal_approx(2.0, 0.05)
 	Events.ward_changed.emit(w.enemies.id[i], 0.0)  # the sim says the ward is down
 	_frame(rig)
 	assert_bool(zones.is_broken(w.enemies.id[i])).is_true()
-	assert_int(zones.rings.drawn()).is_equal(0)
+	assert_int(zones.ring_count()).is_equal(0)
 	Events.ward_changed.emit(w.enemies.id[i], 0.4)  # ... and back up
 	_frame(rig)
-	assert_int(zones.rings.drawn()).is_equal(1)
+	assert_int(zones.ring_count()).is_equal(1)
 
 
 func test_a_jammer_wears_its_aura_ring_and_a_static_front_takes_every_ring_down() -> void:
@@ -60,14 +61,14 @@ func test_a_jammer_wears_its_aura_ring_and_a_static_front_takes_every_ring_down(
 	var zones: FxZones = _zones(rig)
 	var aura: float = w.content.enemies[Ids.EN_JAMMER].beh(&"aura_radius")
 	assert_float(aura).is_greater_equal(6.0)
-	assert_int(zones.rings.drawn()).is_equal(2)
+	assert_int(zones.ring_count()).is_equal(2)
 	assert_bool(_has(_radii(zones), aura)).is_true()
 	w.events_state.ability_lock_ticks = 300  # a static front: wards and auras are down
 	_frame(rig)
-	assert_int(zones.rings.drawn()).is_equal(0)
+	assert_int(zones.ring_count()).is_equal(0)
 	w.events_state.ability_lock_ticks = 0
 	_frame(rig)
-	assert_int(zones.rings.drawn()).is_equal(2)
+	assert_int(zones.ring_count()).is_equal(2)
 
 
 func test_elite_affixes_draw_a_personal_ward_and_an_overclock_ring() -> void:
@@ -89,7 +90,7 @@ func test_elite_affixes_draw_a_personal_ward_and_an_overclock_ring() -> void:
 	assert_bool(_has(radii, FxZones.OVERCLOCK_M)).is_true()
 	Events.ward_changed.emit(w.enemies.id[a], 0.0)
 	_frame(rig)
-	assert_int(zones.rings.drawn()).is_equal(1)  # a broken personal ward loses its ring, the overclock stays
+	assert_int(zones.ring_count()).is_equal(1)  # a broken personal ward loses its ring, the overclock stays
 
 
 func test_rings_come_most_important_first_when_the_pool_is_full() -> void:
@@ -109,13 +110,13 @@ func test_rings_come_most_important_first_when_the_pool_is_full() -> void:
 			wards += 1
 		else:
 			auras += 1
-	assert_int(zones.rings.drawn()).is_equal(8)
+	assert_int(zones.ring_count()).is_equal(8)
 	assert_int(wards).is_equal(6)  # every ward first ...
 	assert_int(auras).is_equal(2)  # ... then as many auras as fit
-	assert_int(zones.rings.dropped).is_greater(0)
+	assert_int(zones.dropped()).is_greater(0)
 	rig.vfx.set_quality(VisualQuality.Tier.HIGH)
 	_frame(rig)
-	assert_int(zones.rings.drawn()).is_equal(12)
+	assert_int(zones.ring_count()).is_equal(12)
 
 
 func test_a_reclaimer_is_tethered_to_the_nearest_three_damaged_enemies_in_range() -> void:
@@ -198,6 +199,7 @@ func test_high_contrast_thickens_the_rings_and_the_lines() -> void:
 	var layer: ActorLayer = rig.layer
 	var zones: FxZones = _zones(rig)
 	var lit: Mesh = zones.rings.node.multimesh.mesh
+	var lit_aura: Mesh = zones.auras.node.multimesh.mesh
 	layer.set_high_contrast(true)
 	rig.vfx.render(1.0, 0.016)  # the layer picks the switch up from the actors by itself
 	assert_bool(rig.vfx.chaos().ctx.contrast).is_true()
@@ -205,6 +207,37 @@ func test_high_contrast_thickens_the_rings_and_the_lines() -> void:
 	assert_bool(bold == lit).is_false()
 	assert_float(FxZones.LINE_WIDTH_CONTRAST_M).is_greater(FxZones.LINE_WIDTH_M)
 	assert_float(FxZones.RING_INNER_CONTRAST).is_less(FxZones.RING_INNER)
+	assert_bool(zones.auras.node.multimesh.mesh == lit_aura).is_false()
 	layer.set_high_contrast(false)
 	rig.vfx.render(1.0, 0.016)
 	assert_bool(zones.rings.node.multimesh.mesh == lit).is_true()
+
+
+func test_the_big_aura_ring_has_a_thinner_band_than_the_ward_ring_and_both_share_one_budget() -> void:
+	var rig: VfxXTestKit.Rig = VfxXTestKit.rig(self)
+	var w: SimWorld = rig.world
+	for n: int in 3:
+		var _s: int = VfxXTestKit.enemy(w, Ids.EN_SHIELDBEARER, -3.0 + float(n) * 3.0, -8.0)
+	for n: int in 6:
+		var _j: int = VfxXTestKit.enemy(w, Ids.EN_JAMMER, -3.0 + float(n), -3.0)
+	rig.vfx.set_quality(VisualQuality.Tier.LOW)
+	_frame(rig)
+	var zones: FxZones = _zones(rig)
+	assert_int(zones.rings.drawn()).is_equal(3)  # the wards in the small-ring pool
+	assert_int(zones.auras.drawn()).is_equal(5)  # the auras in the thin-band pool, until the 8 rings of LOW are spent
+	assert_int(zones.ring_count()).is_equal(8)
+	assert_float(FxZones.AURA_INNER).is_greater(FxZones.RING_INNER)  # a 7 m aura is a thin line, not a wall of red
+
+
+func test_the_aegis_array_wears_the_orbit_ring_of_its_pylons_while_one_lives() -> void:
+	var rig: VfxXTestKit.Rig = VfxXTestKit.rig(self)
+	var w: SimWorld = rig.world
+	var i: int = VfxXTestKit.enemy(w, Ids.EN_AEGIS_ARRAY, 3.0, -4.0)
+	w.boss.boss_id = w.enemies.id[i]
+	_frame(rig)
+	var zones: FxZones = _zones(rig)
+	assert_int(zones.ring_count()).is_equal(0)  # no pylon alive: no orbit to draw
+	w.boss.parts_alive = 3
+	_frame(rig)
+	assert_int(zones.ring_count()).is_equal(1)
+	assert_float(_radii(zones)[0]).is_equal_approx(FxZones.PYLON_RING_M, 0.001)

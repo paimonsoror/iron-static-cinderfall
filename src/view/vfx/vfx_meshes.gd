@@ -7,6 +7,9 @@ extends RefCounted
 
 static var _dimmed: Dictionary[String, StandardMaterial3D] = {}
 
+## Share of the black shadow material's alpha a scorch mark keeps (the slice capture of V4-X showed the full strength as a hole in the floor).
+const SCORCH_DARKNESS: float = 0.55
+
 
 ## The MatLib material `mat_id`, or a shared copy with its alpha scaled by `scale` (used for Reduced Flash and for
 ## soft effects: per-instance transparency is ignored by the Mobile renderer, so dimming is a material, not a node flag).
@@ -176,6 +179,7 @@ static func scorch_mark(rim_scale: float = 0.3) -> ArrayMesh:
 	b.add_disc_at(Vector3(-0.28, 0.0, -0.3), 0.62, 14, 0)
 	b.add_band(0.9, 1.0, 20, 1)
 	var mesh: ArrayMesh = b.build([&"shadow_blob", &"add_amber"], 1.0)
+	mesh.surface_set_material(0, VfxMeshes.material(&"shadow_blob", SCORCH_DARKNESS))  # three overlapping blots: the middle is darker, never black
 	mesh.surface_set_material(1, VfxMeshes.material(&"add_amber", rim_scale))
 	return mesh
 
