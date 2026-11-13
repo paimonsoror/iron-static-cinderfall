@@ -1,9 +1,11 @@
 extends GdUnitTestSuite
-## V2-F: the arc projector in the Warden's hands (VARIETY_SPEC 3.5): a third weapon node, shown for `weapon_changed`,
-## `weapon_swapped` and the sim's weapon index; weapons that have no model yet are drawn with the SMG; the muzzle is the arc's; the
-## hard-surface looks dress it with the shared materials; the old two weapons keep their behaviour.
+## V2-F and V4-R: the weapons in the Warden's hands (VARIETY_SPEC 3.5), the arc projector as the example. The Warden has three weapon
+## MOUNTS (pistol, SMG and a third, named for the arc projector, that shows every other weapon), shown for `weapon_changed`,
+## `weapon_swapped` and the sim's weapon index; each of the ten weapons has its own model, muzzle and grips; the hard-surface looks dress
+## them with the shared materials; the old two weapons keep their behaviour.
 
-const ARC: int = 2
+const ARC: int = 2  ## the third mount
+const ARC_WEAPON: int = Ids.WP_ARC_PROJECTOR
 
 
 func before_test() -> void:
@@ -33,6 +35,12 @@ func test_the_warden_has_three_weapon_nodes_and_only_the_one_in_hand_is_visible(
 	assert_int(WeaponMeshes.model_index(Ids.WP_PISTOL)).is_equal(0)
 	assert_int(WeaponMeshes.model_index(Ids.WP_SMG)).is_equal(1)
 	assert_int(WeaponMeshes.model_index(Ids.WP_ARC_PROJECTOR)).is_equal(ARC)
+	assert_int(WeaponMeshes.model_index(Ids.WP_PISTOL)).is_equal(0)
+	assert_int(WeaponMeshes.model_index(Ids.WP_SMG)).is_equal(1)
+	for k: int in range(2, Ids.WEAPONS.size()):
+		assert_int(WeaponMeshes.model_index(k)).is_equal(ARC)  # the seven others share the third mount
+	assert_int(WeaponMeshes.model_index(Ids.WEAPONS.size())).is_equal(1)  # beyond the ten: the SMG, never invisible
+	assert_int(WeaponMeshes.model_index(-1)).is_equal(1)
 	assert_int(ActorMeshes.WARDEN_WEAPON_NODES.size()).is_equal(3)
 
 
@@ -56,12 +64,39 @@ func test_weapon_changed_and_weapon_swapped_bring_the_arc_projector_into_the_han
 	assert_int(warden.weapon_index()).is_equal(0)
 
 
-func test_a_weapon_without_a_model_yet_is_drawn_with_the_smg_and_never_vanishes() -> void:
-	var warden: WardenView = _warden()
-	for id: StringName in [&"scattergun", &"assault_rifle", &"hornet_rack", &"lmg", &"slag_mortar", &"cutting_torch", &"rail_lance"]:
+func test_every_weapon_has_its_own_model_in_hand_and_never_vanishes() -> void:
+	var layer: ActorLayer = VarietyFKit.bound_layer(self, VarietyFKit.world())
+	var warden: WardenView = layer.warden
+	var tips: Array[Vector3] = []
+	for id: StringName in Ids.WEAPONS:
+		var index: int = Ids.weapon_index(id)
 		Events.weapon_changed.emit(id)
-		assert_int(warden.weapon_index()).is_equal(1)
-		assert_bool(warden.weapon_visible(1)).is_true()
+		assert_int(warden.held_weapon()).is_equal(index)
+		assert_int(warden.weapon_index()).is_equal(WeaponMeshes.model_index(index))
+		for k: int in warden.parts().weapons.size():
+			assert_bool(warden.weapon_visible(k)).is_equal(k == warden.weapon_index())  # exactly one mount is drawn
+		var mount: MeshInstance3D = warden.parts().weapons[warden.weapon_index()]
+		assert_object(mount.mesh).is_same(ActorMeshes.warden_part(id, LookDevStyle.Look.CURRENT))  # the mount shows this weapon's own mesh
+		var marker: Node3D = mount.get_node("Muzzle") as Node3D
+		assert_that(marker.position).is_equal(WeaponMeshes.muzzle(index))  # the marker follows the weapon: that is where the tracers leave from
+		var tip: Vector3 = warden.muzzle_position()
+		assert_bool(tip.is_finite()).is_true()
+		tips.append(tip)
+	assert_float(tips[Ids.WP_RAIL_LANCE].distance_to(tips[Ids.WP_PISTOL])).is_greater(0.3)  # a long rail lance and a pistol: different places
+	Events.weapon_changed.emit(&"scattergun")
+	Events.weapon_changed.emit(&"smg")
+	assert_bool(warden.weapon_visible(1)).is_true()
+	assert_bool(warden.weapon_visible(ARC)).is_false()
+	assert_object(warden.parts().weapons[1].mesh).is_same(ActorMeshes.smg())  # the SMG mount never changes its mesh
+	layer.set_look(LookDevStyle.Look.STYLISED)
+	Events.weapon_changed.emit(&"rail_lance")
+	var third: MeshInstance3D = warden.parts().weapons[ARC]
+	assert_object(third.mesh).is_same(ActorMeshes.new_weapon(&"rail_lance"))
+	var roles: Array[StringName] = VarietyFKit.roles(third.mesh as ArrayMesh)
+	for s: int in third.mesh.get_surface_count():
+		assert_object(third.get_surface_override_material(s)).is_same(
+			LookDevMat.surface(roles[s], LookDevStyle.Look.STYLISED, layer.quality())
+		)  # the hard-surface materials follow the swap
 
 
 func test_the_sim_weapon_index_decides_what_is_in_hand_when_the_view_binds() -> void:
@@ -85,12 +120,12 @@ func test_the_muzzle_is_the_arc_projectors_and_the_hands_hold_its_grips() -> voi
 	var arc_tip: Vector3 = warden.muzzle_position()
 	assert_bool(arc_tip.is_finite()).is_true()
 	assert_bool(arc_tip.distance_to(smg_tip) > 0.02).is_true()  # a different weapon, a different place the tracers leave from
-	assert_float(WeaponMeshes.muzzle(ARC).z).is_equal(WeaponMeshes.ARC_MUZZLE.z)
+	assert_float(WeaponMeshes.muzzle(ARC_WEAPON).z).is_equal(WeaponMeshes.ARC_MUZZLE.z)
 	assert_float(WeaponMeshes.muzzle(1).z).is_equal(HeroMeshes.SMG_MUZZLE.z)
 	assert_float(WeaponMeshes.muzzle(0).z).is_equal(HeroMeshes.PISTOL_MUZZLE.z)
-	assert_that(LookDevGear.grip_r(ARC)).is_equal(WeaponMeshes.ARC_GRIP_R)
-	assert_that(LookDevGear.grip_l(ARC)).is_equal(WeaponMeshes.ARC_GRIP_L)
-	assert_that(LookDevGear.mag_point(ARC)).is_equal(WeaponMeshes.ARC_MAG)
+	assert_that(LookDevGear.grip_r(ARC_WEAPON)).is_equal(WeaponMeshes.ARC_GRIP_R)
+	assert_that(LookDevGear.grip_l(ARC_WEAPON)).is_equal(WeaponMeshes.ARC_GRIP_L)
+	assert_that(LookDevGear.mag_point(ARC_WEAPON)).is_equal(WeaponMeshes.ARC_MAG)
 	assert_that(LookDevGear.grip_r(1)).is_equal(LookDevGear.SMG_GRIP_R)  # the old weapons' grips did not move
 	assert_that(LookDevGear.grip_l(0)).is_equal(LookDevGear.PISTOL_GRIP_L)
 	var tip: AABB = ActorMeshes.new_weapon(&"arc_projector").get_aabb()

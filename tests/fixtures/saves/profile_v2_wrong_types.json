@@ -1,0 +1,15 @@
+{
+	"schema_version": 2,
+	"data": "plenty",
+	"data_lifetime": -40,
+	"unlocks": "all of them",
+	"claimed": [1, 2, "ms_first_victory"],
+	"kit": 12,
+	"codex_seen": {"enemy.burster": true},
+	"best_wave": 2.7,
+	"boss_kills": {"siege_hulk": "many", "brood_carrier": -3, "aegis_array": 2.9, "": 5},
+	"victories_by_kit": [1, 2, 3],
+	"victory_weapons": ["lmg", "lmg", null],
+	"daily": {"date": "yesterday", "best_wave": 9, "won": true, "rewarded": true},
+	"settings": {"swap_assist": "yes", "sound_on": false}
+}

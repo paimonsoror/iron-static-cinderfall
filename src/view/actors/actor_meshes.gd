@@ -10,6 +10,10 @@ extends RefCounted
 ## V2-F (variety milestone): burster 400, mote 40 (a 40 instance MultiMesh), the arc projector 350 and the crate 200. The Warden's
 ## 2,500 still holds for the pistol and the SMG; with a 350 triangle weapon in hand the loadout budget is `WARDEN_LOADOUT_BUDGET`
 ## (body 2,300 plus a weapon, VARIETY_SPEC 12.2).
+## V4-R: spitter, borer and jammer 400, splitter, shieldbearer and reclaimer 500, shard 40, ward_pylon 150, every weapon 350 and the
+## four new bosses 1,500 each (the Hulk's budget: one boss is alive at a time and each is one pooled node, so the cost is bounded by
+## the Hulk's; the spec's 900 was the Hulk's budget before W3-D). The new enemies and bosses have ONE geometry for every look: they
+## wear the flat palette in CURRENT and the look's materials in the hard-surface looks, like the new weapons.
 
 const TRI_BUDGET: Dictionary[StringName, int] = {
 	&"skitter": 450,
@@ -22,6 +26,25 @@ const TRI_BUDGET: Dictionary[StringName, int] = {
 	&"mote": 40,
 	&"arc_projector": 350,
 	&"crate": 200,
+	&"spitter": 400,
+	&"borer": 400,
+	&"jammer": 400,
+	&"splitter": 500,
+	&"shieldbearer": 500,
+	&"reclaimer": 500,
+	&"shard": 40,
+	&"ward_pylon": 150,
+	&"brood_carrier": 1500,
+	&"lance_platform": 1500,
+	&"aegis_array": 1500,
+	&"tremor_rig": 1500,
+	&"scattergun": 350,
+	&"assault_rifle": 350,
+	&"hornet_rack": 350,
+	&"lmg": 350,
+	&"slag_mortar": 350,
+	&"cutting_torch": 350,
+	&"rail_lance": 350,
 }
 const WARDEN_LOADOUT_BUDGET: int = 2650
 const MAX_SURFACES: int = 3
@@ -30,16 +53,28 @@ const WARDEN_BODY_PARTS: Array[StringName] = [
 	&"legs", &"torso", &"arm_ru", &"arm_rf", &"arm_lu", &"arm_lf", &"pack", &"antenna", &"cable"
 ]
 const WARDEN_WEAPONS: Array[StringName] = [&"pistol", &"smg"]
-## The weapons added by the variety milestone (V2-F: the arc projector; V4-R appends the others). They have one model for every
-## look. `WARDEN_WEAPON_NODES` is the order of the Warden's weapon nodes (`WeaponMeshes.model_index`).
-const NEW_WEAPONS: Array[StringName] = [&"arc_projector"]
+## The weapons added by the variety milestone (V2-F: the arc projector; V4-R: the other seven). They have one model for every
+## look. `WARDEN_WEAPON_NODES` names the Warden's three weapon MOUNTS (`WeaponMeshes.model_index`): the pistol, the SMG and a third,
+## named for the arc projector, that shows the mesh of every other weapon (a weapon change swaps its mesh and its muzzle marker). The
+## mount names are pinned by `look_dev_view_test` (the exact set of the Warden's mesh instances), so there is no node per weapon.
+const NEW_WEAPONS: Array[StringName] = [
+	&"scattergun", &"assault_rifle", &"hornet_rack", &"lmg", &"slag_mortar", &"cutting_torch", &"arc_projector", &"rail_lance",
+]
 const WARDEN_WEAPON_NODES: Array[StringName] = [&"pistol", &"smg", &"arc_projector"]
+## The enemies and bosses V4-R models (one geometry for every look), by `Ids.ENEMIES` id.
+const ROSTER: Array[StringName] = [
+	&"spitter", &"splitter", &"shard", &"shieldbearer", &"reclaimer", &"jammer", &"borer", &"ward_pylon", &"brood_carrier",
+	&"lance_platform", &"aegis_array", &"tremor_rig",
+]
 
 static var _cache: Dictionary[StringName, ArrayMesh] = {}
 
 
 ## The merged mesh of an enemy by id (`Ids.ENEMIES`). Unknown ids give the skitter so nothing is invisible.
 static func enemy(enemy_id: StringName) -> ArrayMesh:
+	var roster: Callable = roster_builder(enemy_id)
+	if roster.is_valid():
+		return _cached(enemy_id, roster)
 	match enemy_id:
 		&"hollow_warden":
 			return _cached(enemy_id, EnemyMeshes.hollow_warden)
@@ -57,6 +92,8 @@ static func enemy(enemy_id: StringName) -> ArrayMesh:
 ## The merged mesh of an enemy in a look (`LookDevStyle.Look`; W3-D). CURRENT, or a rollout that is switched off, gives the old
 ## mesh (`enemy`); the hard-surface looks share one geometry per enemy, cached under its own key.
 static func enemy_look(enemy_id: StringName, look: int) -> ArrayMesh:
+	if roster_builder(enemy_id).is_valid():
+		return enemy(enemy_id)
 	if not LookActorsStyle.enabled(look):
 		return enemy(enemy_id)
 	match enemy_id:
@@ -73,10 +110,12 @@ static func enemy_look(enemy_id: StringName, look: int) -> ArrayMesh:
 	return _cached(&"styled_skitter", LookActorsSkitter.build)
 
 
-## The mesh a MiniSwarm draws for the mini type `enemy_id` in a look: the mote; the shard (V4-R) and any mini that has no model of
-## its own yet use the mote so that a swarm is never 40 copies of a 340 triangle crawler.
-static func mini_look(_enemy_id: StringName, look: int) -> ArrayMesh:
-	return enemy_look(&"mote", look)  # V4-R: `match _enemy_id: &"shard": return enemy_look(&"shard", look)`
+## The mesh a MiniSwarm draws for the mini type `enemy_id` in a look: the shard for the shard, the mote for the mote and for any mini
+## that has no model of its own, so that a swarm is never 40 copies of a 340 triangle crawler.
+static func mini_look(enemy_id: StringName, look: int) -> ArrayMesh:
+	if enemy_id == &"shard":
+		return enemy_look(&"shard", look)
+	return enemy_look(&"mote", look)
 
 
 ## The turret's static `base` or yawing `head` in a look (W3-D); the old meshes for CURRENT.
@@ -151,8 +190,23 @@ static func warden_part(part: StringName, look: int) -> ArrayMesh:
 ## One weapon the variety milestone added (`NEW_WEAPONS`), the same model in every look (there is no old look of a new weapon: in
 ## CURRENT it simply wears the flat palette). Null for any other id.
 static func new_weapon(part: StringName) -> ArrayMesh:
-	if part == &"arc_projector":
-		return _cached(&"arc_projector", WeaponMeshes.arc_projector)
+	match part:
+		&"scattergun":
+			return _cached(part, WeaponMeshes2.scattergun)
+		&"assault_rifle":
+			return _cached(part, WeaponMeshes2.assault_rifle)
+		&"hornet_rack":
+			return _cached(part, WeaponMeshes2.hornet_rack)
+		&"lmg":
+			return _cached(part, WeaponMeshes2.lmg)
+		&"slag_mortar":
+			return _cached(part, WeaponMeshes3.slag_mortar)
+		&"cutting_torch":
+			return _cached(part, WeaponMeshes3.cutting_torch)
+		&"arc_projector":
+			return _cached(&"arc_projector", WeaponMeshes.arc_projector)
+		&"rail_lance":
+			return _cached(part, WeaponMeshes3.rail_lance)
 	return null
 
 
@@ -212,6 +266,36 @@ static func triangle_count(mesh: Mesh) -> int:
 ## Bounding box of a mesh in its own space.
 static func bounds(mesh: Mesh) -> AABB:
 	return mesh.get_aabb()
+
+
+## The builder of one of the V4-R machines (`ROSTER`); an invalid Callable for any other id (the tests time it).
+static func roster_builder(enemy_id: StringName) -> Callable:
+	match enemy_id:
+		&"spitter":
+			return LookActorsSpitter.build
+		&"splitter":
+			return LookActorsSplitter.build
+		&"shard":
+			return LookActorsShard.build
+		&"shieldbearer":
+			return LookActorsShieldbearer.build
+		&"reclaimer":
+			return LookActorsReclaimer.build
+		&"jammer":
+			return LookActorsJammer.build
+		&"borer":
+			return LookActorsBorer.build
+		&"ward_pylon":
+			return LookActorsPylon.build
+		&"brood_carrier":
+			return LookActorsBrood.build
+		&"lance_platform":
+			return LookActorsLance.build
+		&"aegis_array":
+			return LookActorsAegis.build
+		&"tremor_rig":
+			return LookActorsTremor.build
+	return Callable()
 
 
 static func _cached(key: StringName, builder: Callable) -> ArrayMesh:

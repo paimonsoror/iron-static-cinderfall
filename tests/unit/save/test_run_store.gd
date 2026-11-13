@@ -160,15 +160,13 @@ func test_the_fixture_run_file_of_another_build_is_readable() -> void:
 	assert_int(_wave_of(doc)).is_equal(3)
 
 
-func test_profile_v2_fields_are_read_when_present_and_a_v1_file_stays_a_v1_file() -> void:
-	var v1_text: String = ProfileCodec.encode(Profile.defaults())
-	assert_bool(v1_text.contains("unlocks")).is_false()
-	assert_bool(v1_text.contains("\"kit\"")).is_false()
-	var p: Profile = ProfileCodec.decode(v1_text).profile
+func test_profile_v2_fields_round_trip_and_unknown_unlock_ids_are_kept() -> void:
+	var text: String = ProfileCodec.encode(Profile.defaults())
+	var p: Profile = ProfileCodec.decode(text).profile
 	assert_int(p.unlocks.size()).is_equal(0)
 	assert_str(String(p.kit)).is_equal("k_standard")
-	var with_v2: String = v1_text.replace("\"data\": 0,", "\"data\": 0, \"unlocks\": [\"u_w_lmg\", \"u_future\", 7, \"u_w_lmg\"], \"kit\": \"k_gambler\",")
-	var q: Profile = ProfileCodec.decode(with_v2).profile
+	var with_unlocks: String = text.replace("\"unlocks\": [],", "\"unlocks\": [\"u_w_lmg\", \"u_future\", 7, \"u_w_lmg\"],").replace("\"kit\": \"k_standard\"", "\"kit\": \"k_gambler\"")
+	var q: Profile = ProfileCodec.decode(with_unlocks).profile
 	assert_array(Array(q.unlocks)).is_equal(["u_w_lmg", "u_future"])  # unknown ids are kept, junk and repeats dropped
 	assert_str(String(q.kit)).is_equal("k_gambler")
 	var again: Profile = ProfileCodec.decode(ProfileCodec.encode(q)).profile
@@ -182,7 +180,7 @@ func test_has_unlock_reads_the_profile() -> void:
 	assert_bool(Save.has_unlock(&"u_w_lmg")).is_true()
 
 
-func test_the_reward_extras_parameter_is_optional_and_changes_nothing_yet() -> void:
+func test_the_reward_extras_parameter_is_optional() -> void:
 	assert_bool(Save.grant_run_reward("run-x", RunResult.Id.DEFEAT, 30, 0, {"best_wave": 3})).is_true()
 	assert_bool(Save.grant_run_reward("run-x", RunResult.Id.DEFEAT, 30, 0, {"best_wave": 3})).is_false()
 	assert_bool(Save.grant_run_reward("run-y", RunResult.Id.DEFEAT, 10, 0)).is_true()

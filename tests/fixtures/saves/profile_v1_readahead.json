@@ -1,0 +1,20 @@
+{
+	"schema_version": 1,
+	"data": 120,
+	"missions_completed": 1,
+	"best_core_hp": 500,
+	"runs_played": 2,
+	"awarded_run_ids": ["1763000001-11", "1763000100-12"],
+	"hints_seen": [],
+	"unlocks": ["u_w_lmg", "u_w_hornet"],
+	"kit": "k_gambler",
+	"settings": {
+		"sound_on": true,
+		"music_on": true,
+		"haptics_on": true,
+		"reduced_flash": false,
+		"high_contrast": false,
+		"quality": 2,
+		"fps_cap": 60
+	}
+}
