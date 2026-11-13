@@ -44,6 +44,7 @@ static func step(world: SimWorld) -> void:
 	nav.speed_mul.fill(1.0)
 	nav.period_mul.fill(1.0)
 	nav.cover.fill(-1)
+	nav.magnets = 0
 	var alive: PackedByteArray = store.alive
 	var types: PackedByteArray = store.type
 	var flags: PackedInt32Array = ext.flags
@@ -328,7 +329,8 @@ static func begin_breach(world: SimWorld, enemy_index: int) -> void:
 	world.ext.aux_cd[enemy_index] = ticks
 
 
-## The per-tick work of an elite: ANCHORED shrugs off a stun, SWIFT speed, the WARDED ward, REGENERATING, and the
+## The per-tick work of an elite: ANCHORED shrugs off a stun, SWIFT speed, the WARDED ward, REGENERATING, the count of
+## living MAGNETIC elites (NavState.magnets), and the
 ## list of overclockers whose aura is on (a stunned one gives none).
 static func _elite_tick(world: SimWorld, i: int, sp: int, clocks: PackedInt32Array) -> void:
 	var mask: int = world.ext.affix_mask[i]
@@ -341,6 +343,8 @@ static func _elite_tick(world: SimWorld, i: int, sp: int, clocks: PackedInt32Arr
 	world.nav.speed_mul[i] *= EliteSystem.stat(world.content, mask, &"speed_mul", 1.0)
 	if (mask & aff[EliteSystem.A_WARDED]) != 0 and (sp & SP_BEARER) == 0:
 		_ward_tick(world, i)
+	if (mask & aff[EliteSystem.A_MAGNETIC]) != 0:
+		world.nav.magnets += 1
 	if (mask & aff[EliteSystem.A_REGEN]) != 0:
 		EliteSystem.regen_tick(world, i)
 	if (mask & aff[EliteSystem.A_OVERCLOCK]) != 0 and store.stun_ticks[i] <= 0:

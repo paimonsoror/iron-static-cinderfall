@@ -63,6 +63,7 @@ var aff: PackedInt32Array = PackedInt32Array()  ## affix mask per OpDef.AFFIX_FL
 var speed_mul: PackedFloat64Array = PackedFloat64Array()  ## per store index: slow x SWIFT x overclock aura; 1.0 = plain
 var period_mul: PackedFloat64Array = PackedFloat64Array()  ## per store index: attack period factor (overclock aura)
 var cover: PackedInt32Array = PackedInt32Array()  ## per store index: store index of the shieldbearer covering it, or -1
+var magnets: int = 0  ## living MAGNETIC elites (Targeting.is_valid looks for one only when this is not 0)
 
 # --- spawn schedule of the current wave, sorted by (due tick, group, ordinal) ---
 var wave_begun: int = 0  ## wave index of the schedule (0 = none yet)

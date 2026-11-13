@@ -161,6 +161,7 @@ func test_magnetic_forces_every_shooter_within_12_m_to_target_it() -> void:
 	w.enemies.x[magnet] = sx + 11.0
 	w.enemies.z[magnet] = sz
 	w.enemies.path_dist[magnet] = 50.0  # by rank it would be last
+	_status(w)  # counts the living MAGNETIC elites for is_valid
 	assert_int(Targeting.pick(w, sx, sz, 20.0)).is_equal(w.enemies.id[magnet])
 	assert_bool(Targeting.is_valid(w, w.enemies.id[attacker], sx, sz, 20.0)).is_false()  # a held lock is dropped
 	assert_bool(Targeting.is_valid(w, w.enemies.id[magnet], sx, sz, 20.0)).is_true()
@@ -170,6 +171,8 @@ func test_magnetic_forces_every_shooter_within_12_m_to_target_it() -> void:
 	assert_bool(Targeting.is_valid(w, w.enemies.id[attacker], sx, sz, 20.0)).is_true()
 	w.enemies.x[magnet] = sx + 11.0
 	SimEnemiesKit.kill(w, magnet)  # "while it lives"
+	_status(w)
+	assert_bool(Targeting.is_valid(w, w.enemies.id[attacker], sx, sz, 20.0)).is_true()
 	assert_int(Targeting.pick(w, sx, sz, 20.0)).is_equal(w.enemies.id[attacker])
 
 

@@ -13,7 +13,8 @@ extends RefCounted
 ## - a body still under the ground (F_EMERGING) is no target;
 ## - SHROUDED: no target for a shooter farther than EliteSystem.SHROUD_RANGE_M;
 ## - MAGNETIC: while a MAGNETIC elite is in range and within EliteSystem.MAGNETIC_RANGE_M of the shooter, the shooter
-##   must target a MAGNETIC elite (the best ranked one): `pick` returns it and `is_valid` drops any other target.
+##   must target a MAGNETIC elite (the best ranked one): `pick` returns it and `is_valid` drops any other target
+##   (`is_valid` looks for one only while NavState.magnets, counted by StatusSystem every tick, is not 0).
 
 const NO_BUCKET: int = 1 << 30  ## ETA bucket of an enemy that can never arrive (speed 0)
 const MAGNETIC_SQ: float = EliteSystem.MAGNETIC_RANGE_M * EliteSystem.MAGNETIC_RANGE_M
@@ -36,16 +37,26 @@ static func pick(world: SimWorld, from_x: float, from_z: float, range_m: float) 
 		return store.id[best] if best >= 0 else 0
 	var magnet: int = -1
 	var masks: PackedInt32Array = world.ext.affix_mask
+	var flags: PackedInt32Array = world.ext.flags
 	var magnetic: int = world.nav.aff[EliteSystem.A_MAGNETIC]
+	var shroud: int = world.nav.aff[EliteSystem.A_SHROUD]
+	var alive: PackedByteArray = store.alive
+	var xs: PackedFloat64Array = store.x
+	var zs: PackedFloat64Array = store.z
 	for i: int in store.high_water:
-		if store.alive[i] == 0:
+		if alive[i] == 0:
 			continue
-		var d2: float = _dist_sq(store, i, from_x, from_z)
-		if d2 > range_sq or not _targetable(world, i, d2):
+		var dx: float = xs[i] - from_x
+		var dz: float = zs[i] - from_z
+		var d2: float = dx * dx + dz * dz
+		if d2 > range_sq or (flags[i] & EnemyExtState.F_EMERGING) != 0:
 			continue
-		if (masks[i] & magnetic) != 0 and d2 <= MAGNETIC_SQ:
-			if magnet < 0 or compare(world, i, magnet, from_x, from_z):
-				magnet = i
+		if masks[i] != 0:
+			if d2 > SHROUD_SQ and (masks[i] & shroud) != 0:
+				continue
+			if (masks[i] & magnetic) != 0 and d2 <= MAGNETIC_SQ:
+				if magnet < 0 or compare(world, i, magnet, from_x, from_z):
+					magnet = i
 		if best < 0 or compare(world, i, best, from_x, from_z):
 			best = i
 	if magnet >= 0:
@@ -65,8 +76,10 @@ static func is_valid(world: SimWorld, enemy_id: int, from_x: float, from_z: floa
 		return true
 	if not _targetable(world, i, d2):
 		return false
+	if world.nav.magnets == 0:
+		return true
 	var magnetic: int = world.nav.aff[EliteSystem.A_MAGNETIC]
-	if magnetic == 0 or ((world.ext.affix_mask[i] & magnetic) != 0 and d2 <= MAGNETIC_SQ):
+	if (world.ext.affix_mask[i] & magnetic) != 0 and d2 <= MAGNETIC_SQ:
 		return true
 	return _magnet_in_reach(world, from_x, from_z, range_m * range_m) < 0
 

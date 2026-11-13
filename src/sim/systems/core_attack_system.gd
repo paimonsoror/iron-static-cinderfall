@@ -51,6 +51,8 @@ static func step(world: SimWorld) -> void:
 	var core_z: float = world.content.arena.core_z
 	var reach_sq: PackedFloat64Array = PackedFloat64Array()
 	var fuse: PackedInt32Array = PackedInt32Array()
+	var standoff: PackedByteArray = world.nav.t_standoff
+	var boss: PackedByteArray = world.nav.t_boss
 	if variety:
 		if not world.hazards.q_due.is_empty():
 			_land_bolts(world)
@@ -75,7 +77,7 @@ static func step(world: SimWorld) -> void:
 				continue
 			if (flags[i] & F_EMERGING) != 0:
 				continue
-			if attacking and world.nav.t_standoff[t] == 1 and world.nav.t_boss[t] == 0:
+			if attacking and standoff[t] == 1 and boss[t] == 0:
 				_standoff_tick(world, i, t)
 				continue
 			if attacking:
