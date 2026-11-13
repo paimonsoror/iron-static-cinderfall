@@ -2,12 +2,11 @@ class_name FxPools
 extends RefCounted
 ## Burning ground pools (slag, burn; VARIETY_SPEC 10.3 "Ground pools", 12.3 `fx_pool`): a glowing amber disc under every pool the sim
 ## keeps alive. They hurt enemies, so they are amber with no hatch (5.6 rule 4). `pool_changed(id, x, z, radius, on)` opens a pool (on)
-## or closes it (off, by id). One transform-only MultiMesh at the HIGH size (10) limited by tier (6 / 8 / 10): when more pools
+## or closes it (off, by id). One transform-only MultiMesh at the HIGH size (10) limited by tier (`VisualQuality.pool_cap`: 6 / 8 / 10): when more pools
 ## are alive than the limit the OLDEST is dropped from the view. A pool is persistent, so it is not a VfxPool ring buffer: a slot
 ## stays until its id closes it. The disc breathes a little (a 5 percent scale pulse). Nothing is allocated after `setup`.
 
 const CAP_HIGH: int = 10
-const CAPS: Array[int] = [6, 8, 10]
 const Y: float = 0.045
 const PULSE: float = 0.05
 
@@ -45,7 +44,7 @@ func setup(parent: Node3D, bounds: AABB) -> void:
 
 
 func set_quality(tier: int) -> void:
-	_limit = CAPS[clampi(tier, 0, 2)]
+	_limit = VisualQuality.pool_cap(tier)
 	for i: int in range(_limit, CAP_HIGH):
 		_live[i] = 0
 
