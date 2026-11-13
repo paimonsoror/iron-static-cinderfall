@@ -12,7 +12,8 @@ extends RefCounted
 const SCORCH_Y: float = 0.034
 const SCORCH_LIFE_S: float = 45.0
 const SCORCH_MIN_M: float = 0.7
-const SCORCH_MAX_M: float = 2.6
+const SCORCH_MAX_M: float = 2.2
+const SCORCH_SHARE: float = 0.6  ## a mark is this share of its blast's radius
 const EMBER_Y: float = 0.5
 const RAIN_HEIGHT_M: float = 9.0
 const SHAKE_MAX_M: float = 0.32  ## camera offset at full trauma and full tier gain, meters
@@ -71,7 +72,7 @@ func set_reduced(on: bool) -> void:
 ## Every blast: a scorch mark under it, embers over it and a shake of the camera when it is big. `radius` is the blast's own radius in meters.
 func blast(kind: int, x: float, z: float, radius: float) -> void:
 	if MARK_KINDS.has(kind) and scorch.limit > 0:
-		var r: float = clampf(radius * 0.75, SCORCH_MIN_M, SCORCH_MAX_M)
+		var r: float = clampf(radius * SCORCH_SHARE, SCORCH_MIN_M, SCORCH_MAX_M)
 		var _slot: int = scorch.spawn(Vector3(x, SCORCH_Y, z), Vector3.ZERO, r, r * 0.85, SCORCH_LIFE_S, _ctx.rng.randf_range(0.0, TAU))
 		marks += 1
 	for _k: int in VisualQuality.embers_per_blast(_ctx.tier):

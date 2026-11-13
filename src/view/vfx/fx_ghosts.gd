@@ -24,6 +24,7 @@ var _limit: int = CAP_HIGH
 var _shown: int = 0
 var _t: float = 0.0
 var _hold: bool = false  ## Reduced Flash: the ghosts stand still (nothing flickers or crawls)
+var _xf: Array[Transform3D] = []  ## what was written (a headless MultiMesh cannot be read back)
 
 
 func setup(parent: Node3D, bounds: AABB, ctx: FxContext) -> void:
@@ -31,6 +32,7 @@ func setup(parent: Node3D, bounds: AABB, ctx: FxContext) -> void:
 	_base.resize(CAP_HIGH)
 	_yaw.resize(CAP_HIGH)
 	_phase.resize(CAP_HIGH)
+	_xf.resize(CAP_HIGH)
 	var regions: Array[SpawnRegionDef] = ctx.content.arena.spawn_regions
 	var center: Vector2 = Vector2(
 		(ctx.content.arena.min_x + ctx.content.arena.max_x) * 0.5, (ctx.content.arena.min_z + ctx.content.arena.max_z) * 0.5
@@ -90,7 +92,8 @@ func step(delta: float) -> void:
 		var b: Vector3 = _base[i]
 		var basis_i: Basis = Basis(Vector3.UP, _yaw[i]) * Basis.from_scale(Vector3.ONE * b.y)
 		var bob: float = 0.0 if _hold else absf(sin(_t * 2.1 + _phase[i])) * 0.06
-		_mm.set_instance_transform(i, Transform3D(basis_i, Vector3(b.x + sway, BODY_Y + bob, b.z)))
+		_xf[i] = Transform3D(basis_i, Vector3(b.x + sway, BODY_Y + bob, b.z))
+		_mm.set_instance_transform(i, _xf[i])
 	_mm.visible_instance_count = _shown
 
 
@@ -100,6 +103,11 @@ func shown() -> int:
 
 func limit() -> int:
 	return _limit
+
+
+## Where ghost `i` of the last frame stands (tests).
+func transform_of(i: int) -> Transform3D:
+	return _xf[i] if i >= 0 and i < _shown else Transform3D.IDENTITY
 
 
 ## Where ghost `i` rests (x, z); tests check that none is inside the playable rectangle.

@@ -1,6 +1,6 @@
 class_name DrumView
 extends Node3D
-## The fuel drums of the hazard (GDD 7b `fuel_drums`, SPEC 13.6; V4-X). A drum is a squat red barrel with an amber hazard band (80 triangles at
+## The fuel drums of the hazard (GDD 7b `fuel_drums`, SPEC 13.6; V4-X). A drum is a squat red barrel with an amber hazard band (64 triangles, 80 at
 ## most, no emission: nothing but optics glows on the CHORUS side and nothing here is theirs). The yard has six fixed drum points
 ## (`arena.drum_points`); at each act start the sim places three of them (`HazardState.d_point`, `d_alive`) and a drum that ignites stops being
 ## alive; the view only reads those arrays, so it can never show a drum the sim does not have. ONE transform-only MultiMesh (`MAX` instances,
@@ -72,5 +72,4 @@ func _mesh() -> ArrayMesh:
 	var mb: MeshBuilder = MeshKit.begin()
 	mb.cylinder(RADIUS_M, RADIUS_M, HEIGHT_M, 8, Transform3D(Basis.IDENTITY, Vector3(0.0, HEIGHT_M * 0.5, 0.0)), &"steel_red")
 	mb.cylinder(RADIUS_M + 0.015, RADIUS_M + 0.015, 0.14, 8, Transform3D(Basis.IDENTITY, Vector3(0.0, HEIGHT_M * 0.5, 0.0)), &"hazard")
-	mb.cylinder(RADIUS_M * 0.8, RADIUS_M * 0.8, 0.04, 8, Transform3D(Basis.IDENTITY, Vector3(0.0, HEIGHT_M + 0.02, 0.0)), &"dark_frame")
 	return mb.build()

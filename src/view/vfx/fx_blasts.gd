@@ -22,7 +22,7 @@ const RING_DIM: float = 0.5
 const MIN_RING_M: float = 1.6  ## the smallest a blast ring is drawn, in meters (a volatile skitter's 1.2 m blast is drawn 1.6 m)
 const RING_BAND: float = 0.6  ## inner radius of the ring band (the inside of a blast stays clear)
 const FLASH_MIN_M: float = 1.2
-const FLASH_MAX_M: float = 3.0  ## the biggest flash star, in meters of radius
+const FLASH_MAX_M: float = 2.6  ## the biggest flash star, in meters of radius (the same as before: its area stays under 5 percent of the yard)
 
 var rings_amber: VfxPool
 var rings_cyan: VfxPool
@@ -90,7 +90,7 @@ func frame_done() -> void:
 func blast(kind: int, x: float, z: float, radius: float) -> void:
 	var r: float = clampf(radius, 0.4, 12.0)
 	if r < BIG_RADIUS_M:  # a big blast is a real zone (the strike, a vent) and is drawn at its true radius; a small one is boosted to stay readable
-		r = minf(maxf(r, MIN_RING_M) * scale.at(Vector3(x, 0.0, z)), BIG_RADIUS_M)
+		r = minf(maxf(r, MIN_RING_M) * maxf(1.0, scale.at(Vector3(x, 0.0, z))), BIG_RADIUS_M)  # never drawn smaller than MIN_RING_M
 	var ours: bool = kind == HazardState.K_STRIKE or kind == HazardState.K_VENT
 	var life: float = RING_LIFE_BIG_S if r >= BIG_RADIUS_M else RING_LIFE_S
 	var slot: int = ring(ours, Vector3(x, RING_Y, z), r * 0.2, r, life)

@@ -14,6 +14,7 @@ const GUARD_S: float = 1.5
 const OVERSHOOT_M: float = 9.0  ## the car starts and ends this far outside the yard's edges
 const CAR_Y: float = 0.0
 const SPARK_EVERY_S: Array[float] = [0.0, 0.07, 0.03]
+const MAX_SPARKS_PER_FRAME: int = 4
 
 var car: MeshInstance3D
 var sparks: VfxPool  ## set by the VfxLayer; null in tests that build the car alone
@@ -109,14 +110,16 @@ func _wake(delta: float, tier: int) -> void:
 	if sparks == null or every <= 0.0:
 		return
 	_spark_cd -= delta
-	if _spark_cd > 0.0:
-		return
-	_spark_cd = every
-	if car.position.x > _arena.max_x or car.position.x < _arena.min_x:
-		return  # the sparks are for the part of the lane that is in the yard
-	var vel: Vector3 = Vector3(_rng.randf_range(1.0, 4.0), _rng.randf_range(1.5, 3.5), _rng.randf_range(-2.0, 2.0))
-	var side: float = -0.62 if _rng.randf() < 0.5 else 0.62
-	var _spark: int = sparks.spawn(Vector3(car.position.x + 2.6, 0.12, _lane_z + side), vel, 0.5, 0.06, _rng.randf_range(0.18, 0.32))
+	var made: int = 0
+	while _spark_cd <= 0.0 and made < MAX_SPARKS_PER_FRAME:  # a slow frame throws as many as it missed
+		_spark_cd += every
+		made += 1
+		if car.position.x > _arena.max_x or car.position.x < _arena.min_x:
+			continue  # the sparks are for the part of the lane that is in the yard
+		var vel: Vector3 = Vector3(_rng.randf_range(1.0, 4.0), _rng.randf_range(1.5, 3.5), _rng.randf_range(-2.0, 2.0))
+		var side: float = -0.62 if _rng.randf() < 0.5 else 0.62
+		var _spark: int = sparks.spawn(Vector3(car.position.x + 2.6, 0.12, _lane_z + side), vel, 0.5, 0.06, _rng.randf_range(0.18, 0.32))
+	_spark_cd = maxf(_spark_cd, 0.0)
 
 
 ## A boxcar 6.4 m long on two bogies of two wheels each; roof ribs, door rail and bumpers. About 330 triangles.
