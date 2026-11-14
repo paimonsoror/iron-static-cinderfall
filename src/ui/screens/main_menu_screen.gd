@@ -33,6 +33,7 @@ var settings_button: Button
 var quit_button: Button
 var archive_screen: ArchiveScreen  ## the open Archive overlay, or null
 var _frame: UiScreenFrame
+var _footer_row: GridContainer
 var _profile: Profile
 var _today: String = ""
 var _built: bool = false
@@ -104,6 +105,12 @@ func _on_archive_closed(screen: ArchiveScreen) -> void:
 	archive_screen = null
 	if _profile != null:
 		setup(_profile)  # the Archive may have spent Data
+
+
+## The ARCHIVE / SETTINGS / QUIT row drops to one column on a window narrower than the phone.
+func _stack_footer() -> void:
+	if _footer_row != null:
+		_footer_row.columns = UiKit.columns_for(_frame, 3, NARROW_ROW_W)
 
 
 ## The tagline wraps in two equal lines, never one line and a lone word.
@@ -187,7 +194,9 @@ func _build_footer(footer: VBoxContainer) -> void:
 	row.add_theme_constant_override("h_separation", 20)
 	footer.add_child(row)
 	row.add_theme_constant_override("v_separation", 20)
-	UiKit.stack_when_narrow(row, _frame, NARROW_ROW_W)
+	_footer_row = row
+	_frame.resized.connect(_stack_footer)
+	_stack_footer.call_deferred()
 	archive_button = _row_button("menu.archive", row, false)
 	archive_button.pressed.connect(_on_archive)
 	settings_button = _row_button("menu.settings", row, false)

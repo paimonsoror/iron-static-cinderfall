@@ -43,6 +43,7 @@ var open_archive_overlay: bool = true  ## false when the game layer opens the Ar
 var _seed: int = 0
 var _frame: UiScreenFrame
 var _stats: GridContainer
+var _footer_row: GridContainer
 var _kills_col: VBoxContainer
 var _built: bool = false
 var _target: int = 0
@@ -53,6 +54,12 @@ var _counting: bool = false
 
 func _ready() -> void:
 	_ensure_built()
+
+
+## SAME SEED / ARCHIVE / MENU drop to one column on a window narrower than the phone.
+func _stack_footer() -> void:
+	if _footer_row != null:
+		_footer_row.columns = UiKit.columns_for(_frame, 3, STATS_TWO_COLUMNS_FROM)
 
 
 func _notification(what: int) -> void:
@@ -179,7 +186,9 @@ func _build_footer() -> void:
 	row.add_theme_constant_override("h_separation", 20)
 	_frame.footer.add_child(row)
 	row.add_theme_constant_override("v_separation", 20)
-	UiKit.stack_when_narrow(row, _frame, STATS_TWO_COLUMNS_FROM)
+	_footer_row = row
+	_frame.resized.connect(_stack_footer)
+	_stack_footer.call_deferred()
 	same_seed_button = UiKit.button("results.same_seed")
 	same_seed_button.custom_minimum_size = Vector2(UiTheme.TOUCH_MIN, UiTheme.BTN_PRIMARY_H)
 	same_seed_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL

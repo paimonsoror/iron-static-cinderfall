@@ -228,6 +228,8 @@ func _script() -> void:
 		_command(SimCommand.purchase(_cmd_id(), Ids.UP_AUTO_TURRET))
 	if _clock == roundi(T_SMG / TICK_DT):
 		_command(SimCommand.purchase(_cmd_id(), Ids.UP_SMG))
+	if second_active and second_weapon == &"hornet_rack" and _clock >= 60 and (_clock - 60) % 100 == 0:
+		_hornet_salvo()
 	if _event_index >= 0 and _event_open_due(seconds):
 		var _slot: int = EventSlots.open(world, _event_index)
 	if not _stuck_done and seconds >= T_STUCK:
@@ -237,6 +239,17 @@ func _script() -> void:
 		if seconds >= T_ABILITY[a] and _clock >= _next_try[a] and world.abilities.is_ready(a):
 			_next_try[a] = _clock + RETRY_TICKS
 			_command(SimCommand.ability(_cmd_id(), a))
+
+
+## What the rack sends on its own shot: six hornets in the air toward the nearest bodies (the puppet's guns do not launch missiles; the
+## sim's `FireMissiles` pushes exactly these events, so the view draws the same streaks).
+func _hornet_salvo() -> void:
+	var st: EnemyStore = world.enemies
+	var sent: int = 0
+	for i: int in st.high_water:
+		if st.alive[i] == 1 and sent < 6:
+			world.events.push(SimEventKind.Id.DELAYED_HIT_LAUNCHED, HazardState.K_MISSILE, 30, st.x[i], st.z[i])
+			sent += 1
 
 
 ## The named event opens at T_EVENT, and again (after a pause of one second) whenever it has run its course.

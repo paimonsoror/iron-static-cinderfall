@@ -133,7 +133,7 @@ func _state_cues(delta: float) -> void:
 				return
 			var total: float = float(maxi(BossKit.ticks(sim, &"exposed_s", 10.0), 1))
 			var now: float = clampf(float(sim.boss.exposed_left) / total, 0.0, 1.0)
-			var before: float = clampf(now + EXPOSED_EVERY_S * float(ContentLoader.TICK_RATE) / total, 0.0, 1.0)
+			var before: float = clampf(now + EXPOSED_EVERY_S / SimWorld.DT / total, 0.0, 1.0)
 			var _ring: int = _tele.rings_cyan.spawn(
 				Vector3(at.x, Y, at.z), Vector3.ZERO, lerpf(1.0, EXPOSED_RING_M, before), lerpf(1.0, EXPOSED_RING_M, now), EXPOSED_EVERY_S * 1.2)
 
