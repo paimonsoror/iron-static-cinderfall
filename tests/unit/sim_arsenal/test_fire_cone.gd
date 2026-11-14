@@ -1,6 +1,7 @@
 extends GdUnitTestSuite
-## V4-W: the scattergun (firing kind C, VARIETY_SPEC 3.3). 10 damage a pellet, 8 pellets (12 at level 3), 1.2 shots a
-## second (a shot every 50 ticks), 6 shells, a 144-tick reload, range 9 m, a 30 degree cone, knockback 0.8 m on enemies of
+## V4-W: the scattergun (firing kind C, VARIETY_SPEC 3.3). 16 damage a pellet, 10 pellets (14 at level 3), 1.2 shots a
+## second (a shot every 50 ticks), 6 shells, a 144-tick reload, range 13 m (V5-C numbers: was 10, 8, 12 and 9 m), a 30
+## degree cone, knockback 0.8 m on enemies of
 ## mass below 3. Skitter: 45 hp, armor 0, mass 0.5, radius 0.35; Hollow Warden: armor 8, mass 3.0; Rusher: mass 1.0.
 ## Positions are relative to the Warden; the aim line is the +x axis (the target stands at z = 0).
 
@@ -20,16 +21,16 @@ func test_the_pellets_go_to_the_enemies_in_the_cone_nearest_first() -> void:
 	var b: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 5.0, 0.8)  # 9.1 degrees: inside
 	var c: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 3.0, -0.7)  # 13.1 degrees: inside, the nearest
 	var wide: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 6.0, 3.0)  # 26.6 degrees: outside
-	var far: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 9.5, 0.0)  # beyond 9 m
+	var far: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 13.5, 0.0)  # beyond 13 m
 	var behind: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, -2.0, 0.0)
 	_shoot(w)
-	assert_float(VarietyCKit.taken(w, c)).is_equal(30.0)  # 3 pellets
-	assert_float(VarietyCKit.taken(w, b)).is_equal(30.0)  # 3 pellets
-	assert_float(VarietyCKit.taken(w, t)).is_equal(20.0)  # the last 2
+	assert_float(VarietyCKit.taken(w, c)).is_equal(64.0)  # 3 pellets and the one left over
+	assert_float(VarietyCKit.taken(w, b)).is_equal(48.0)  # 3 pellets
+	assert_float(VarietyCKit.taken(w, t)).is_equal(48.0)  # 3 pellets
 	for i: int in [wide, far, behind]:
 		assert_float(VarietyCKit.taken(w, i)).is_equal(0.0)
 	assert_int(VarietyCKit.count(w, SimEventKind.Id.SHOT_FIRED)).is_equal(1)
-	assert_int(VarietyCKit.count(w, SimEventKind.Id.ENEMY_DAMAGED)).is_equal(8)
+	assert_int(VarietyCKit.count(w, SimEventKind.Id.ENEMY_DAMAGED)).is_equal(10)
 
 
 func test_an_enemy_whose_body_touches_the_cone_is_inside_it() -> void:
@@ -47,12 +48,12 @@ func test_equal_distances_go_to_the_lower_id_first_and_the_cap_is_three() -> voi
 	var near: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 4.0, 0.0, true)  # id 1
 	var upper: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 5.0, 1.0)  # id 2, 5.099 m
 	var lower: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 5.0, -1.0)  # id 3, the same distance
-	var last: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 6.0, 0.0)  # id 4
+	var last: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 4.5, 0.0)  # id 4, nearer than the pair
 	_shoot(w)
-	assert_float(VarietyCKit.taken(w, near)).is_equal(30.0)
-	assert_float(VarietyCKit.taken(w, upper)).is_equal(30.0)
-	assert_float(VarietyCKit.taken(w, lower)).is_equal(20.0)  # only 2 pellets are left for the later id
-	assert_float(VarietyCKit.taken(w, last)).is_equal(0.0)
+	assert_float(VarietyCKit.taken(w, near)).is_equal(48.0)
+	assert_float(VarietyCKit.taken(w, last)).is_equal(48.0)
+	assert_float(VarietyCKit.taken(w, upper)).is_equal(48.0)
+	assert_float(VarietyCKit.taken(w, lower)).is_equal(16.0)  # only 1 pellet is left for the later id
 
 
 func test_the_deal_gives_three_each_while_targets_remain_and_the_rest_to_the_nearest() -> void:
@@ -69,30 +70,30 @@ func test_a_lone_enemy_takes_every_pellet() -> void:
 	var w: SimWorld = _gun()
 	var t: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 6.0, 0.0, true)
 	_shoot(w)
-	assert_float(VarietyCKit.taken(w, t)).is_equal(80.0)
+	assert_float(VarietyCKit.taken(w, t)).is_equal(160.0)
 
 
 func test_level_two_scales_the_pellets_and_level_three_adds_four_more() -> void:
 	var two: SimWorld = _gun(2)
 	var a: int = ArsenalWKit.foe(two, Ids.EN_SKITTER, 6.0, 0.0, true)
 	_shoot(two)
-	assert_float(VarietyCKit.taken(two, a)).is_equal_approx(8.0 * 12.5, 1e-5)
+	assert_float(VarietyCKit.taken(two, a)).is_equal_approx(10.0 * 20.0, 1e-5)
 	var three: SimWorld = _gun(3)
 	var t: int = ArsenalWKit.foe(three, Ids.EN_SKITTER, 8.0, 0.0, true)
 	var b: int = ArsenalWKit.foe(three, Ids.EN_SKITTER, 5.0, 0.8)
 	var c: int = ArsenalWKit.foe(three, Ids.EN_SKITTER, 3.0, -0.7)
 	_shoot(three)
-	assert_float(VarietyCKit.taken(three, c)).is_equal_approx(6.0 * 15.5, 1e-4)  # 12 pellets: 6, 3, 3
-	assert_float(VarietyCKit.taken(three, b)).is_equal_approx(3.0 * 15.5, 1e-4)
-	assert_float(VarietyCKit.taken(three, t)).is_equal_approx(3.0 * 15.5, 1e-4)
-	assert_int(VarietyCKit.count(three, SimEventKind.Id.ENEMY_DAMAGED)).is_equal(12)
+	assert_float(VarietyCKit.taken(three, c)).is_equal_approx(8.0 * 24.8, 1e-4)  # 14 pellets: 8, 3, 3
+	assert_float(VarietyCKit.taken(three, b)).is_equal_approx(3.0 * 24.8, 1e-4)
+	assert_float(VarietyCKit.taken(three, t)).is_equal_approx(3.0 * 24.8, 1e-4)
+	assert_int(VarietyCKit.count(three, SimEventKind.Id.ENEMY_DAMAGED)).is_equal(14)
 
 
 func test_each_pellet_meets_the_armor_on_its_own() -> void:
 	var w: SimWorld = _gun()
 	var hollow: int = ArsenalWKit.foe(w, Ids.EN_HOLLOW, 6.0, 0.0, true)
 	_shoot(w)
-	assert_float(VarietyCKit.taken(w, hollow)).is_equal(8.0 * 2.0)  # 10 - 8 a pellet
+	assert_float(VarietyCKit.taken(w, hollow)).is_equal(10.0 * 8.0)  # 16 - 8 a pellet
 
 
 func test_cadence_magazine_and_reload() -> void:
@@ -105,13 +106,13 @@ func test_cadence_magazine_and_reload() -> void:
 	assert_int(VarietyCKit.ticks_of(w, SimEventKind.Id.RELOAD_FINISHED)[0]).is_equal(444)
 
 
-func test_it_is_silent_beyond_nine_metres() -> void:
+func test_it_is_silent_beyond_thirteen_metres() -> void:
 	var w: SimWorld = _gun()
-	var t: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 10.0, 0.0, true)
+	var t: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 14.0, 0.0, true)
 	VarietyCKit.run_weapon(w, 200)
 	assert_int(w.warden.shots_fired).is_equal(0)
 	assert_int(w.warden.target_id).is_equal(0)
-	w.enemies.x[t] = w.warden.x + 8.9
+	w.enemies.x[t] = w.warden.x + 12.9
 	VarietyCKit.run_weapon(w, 1)
 	assert_int(w.warden.shots_fired).is_equal(1)  # the banked shot leaves at once
 

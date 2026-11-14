@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
-## V4-W: the slag mortar (firing kind S, VARIETY_SPEC 3.3). 80 damage in a 2.6 m blast (50% at the edge), 0.8 shots a
-## second (the first shell leaves on tick 75), 4 shells, a 144-tick reload, range 6 to 24 m, a 42-tick flight, then a pool of
+## V4-W: the slag mortar (firing kind S, VARIETY_SPEC 3.3). 150 damage in a 3.0 m blast (50% at the edge), 0.9 shots a
+## second (the first shell leaves on tick 67; V5-C numbers: was 80, 2.6 m and 0.8), 4 shells, a 144-tick reload, range 6 to 24 m, a 42-tick flight, then a pool of
 ## 2.2 m for 240 ticks (360 at level 3): 15 damage a second and a 25% slow. The shell goes to the densest cluster; the lock
 ## does not matter. Skitter: 45 hp, armor 0, radius 0.35.
 
@@ -24,26 +24,26 @@ func _fire_once(w: SimWorld) -> void:
 	ArsenalWKit.hold_fire(w)
 
 
-func test_the_shell_leaves_on_tick_75_and_lands_42_ticks_later_on_the_densest_cluster() -> void:
+func test_the_shell_leaves_on_tick_67_and_lands_42_ticks_later_on_the_densest_cluster() -> void:
 	var w: SimWorld = _mortar()
 	_field(w)
-	assert_int(ArsenalWKit.run_until_shots(w, 1)).is_equal(75)
+	assert_int(ArsenalWKit.run_until_shots(w, 1)).is_equal(67)
 	ArsenalWKit.hold_fire(w)
 	var launched: Array[SimEvent] = VarietyCKit.events_of(w, SimEventKind.Id.DELAYED_HIT_LAUNCHED)
 	assert_int(launched.size()).is_equal(1)
 	assert_int(launched[0].a).is_equal(HazardState.K_SHELL)
 	assert_int(launched[0].b).is_equal(42)
-	# the group of three: every member has 3 within 2.6 m, so the lower id (the first skitter) is the centre
+	# the group of three: every member has 3 within 3.0 m, so the lower id (the first skitter) is the centre
 	assert_float(launched[0].f).is_equal_approx(w.enemies.x[0], 1e-4)
 	assert_float(launched[0].g).is_equal_approx(w.enemies.z[0], 1e-4)
 	ArsenalWKit.run_both(w, 41)
-	assert_float(VarietyCKit.taken(w, 0)).is_equal(0.0)  # tick 116: still in the air
-	ArsenalWKit.run_both(w, 1)  # tick 117
+	assert_float(VarietyCKit.taken(w, 0)).is_equal(0.0)  # tick 108: still in the air
+	ArsenalWKit.run_both(w, 1)  # tick 109
 	assert_int(VarietyCKit.count(w, SimEventKind.Id.AREA_BLAST)).is_equal(1)
 	var blast: SimEvent = VarietyCKit.events_of(w, SimEventKind.Id.AREA_BLAST)[0]
 	assert_int(blast.a).is_equal(HazardState.K_SHELL)
-	assert_int(blast.b).is_equal(260)
-	assert_int(blast.tick).is_equal(117)
+	assert_int(blast.b).is_equal(300)
+	assert_int(blast.tick).is_equal(109)
 
 
 func test_the_damage_falls_from_the_whole_at_the_centre_to_half_at_the_edge() -> void:
@@ -54,8 +54,8 @@ func test_the_damage_falls_from_the_whole_at_the_centre_to_half_at_the_edge() ->
 	var centre: Vector2 = Vector2(w.enemies.x[0], w.enemies.z[0])
 	for i: int in [0, 1, 2]:
 		var d: float = centre.distance_to(Vector2(w.enemies.x[i], w.enemies.z[i]))
-		assert_float(VarietyCKit.taken(w, i)).is_equal_approx(80.0 * (1.0 - 0.5 * d / 2.6), 1e-3)
-	assert_float(VarietyCKit.taken(w, 0)).is_equal_approx(80.0, 1e-3)
+		assert_float(VarietyCKit.taken(w, i)).is_equal_approx(150.0 * (1.0 - 0.5 * d / 3.0), 1e-3)
+	assert_float(VarietyCKit.taken(w, 0)).is_equal_approx(150.0, 1e-3)
 	for i: int in [3, 4, 5]:
 		assert_float(VarietyCKit.taken(w, i)).is_equal(0.0)
 
@@ -74,9 +74,9 @@ func test_the_pool_starts_when_the_shell_lands_and_burns_for_exactly_four_second
 	var w: SimWorld = _mortar()
 	_field(w)
 	_fire_once(w)
-	ArsenalWKit.run_both(w, 41)  # tick 116
+	ArsenalWKit.run_both(w, 41)  # tick 108
 	assert_int(w.hazards.pool_count()).is_equal(0)
-	ArsenalWKit.run_both(w, 1)  # tick 117: the shell lands and the pool opens
+	ArsenalWKit.run_both(w, 1)  # tick 109: the shell lands and the pool opens
 	assert_int(w.hazards.pool_count()).is_equal(1)
 	assert_int(w.hazards.p_ticks_left[0]).is_equal(239)  # 240, less the tick of the landing
 	assert_float(w.hazards.p_radius[0]).is_equal_approx(2.2, 1e-5)
@@ -85,12 +85,12 @@ func test_the_pool_starts_when_the_shell_lands_and_burns_for_exactly_four_second
 	assert_float(w.hazards.p_x[0]).is_equal_approx(w.enemies.x[0], 1e-4)
 	var started: Array[SimEvent] = VarietyCKit.events_of(w, SimEventKind.Id.POOL_STARTED)
 	assert_int(started.size()).is_equal(1)
-	assert_int(started[0].tick).is_equal(117)
+	assert_int(started[0].tick).is_equal(109)
 	assert_int(started[0].b).is_equal(220)
 	var before: float = VarietyCKit.taken(w, 1)
-	ArsenalWKit.run_both(w, 239)  # to tick 356
+	ArsenalWKit.run_both(w, 239)  # to tick 348
 	assert_int(w.hazards.pool_count()).is_equal(0)
-	assert_array(VarietyCKit.ticks_of(w, SimEventKind.Id.POOL_ENDED)).is_equal([356])
+	assert_array(VarietyCKit.ticks_of(w, SimEventKind.Id.POOL_ENDED)).is_equal([348])
 	# eight pulses of 7.5 (15 a second for 4 s) on everyone within 2.2 m of the point, whatever the armor
 	assert_float(VarietyCKit.taken(w, 1) - before).is_equal_approx(60.0, 1e-5)
 	assert_float(VarietyCKit.taken(w, 4)).is_equal(0.0)  # the pair stood outside the pool
@@ -101,15 +101,15 @@ func test_level_three_leaves_the_pool_for_six_seconds_and_level_two_hits_harder(
 	_field(two)
 	_fire_once(two)
 	ArsenalWKit.run_both(two, 42)
-	assert_float(VarietyCKit.taken(two, 0)).is_equal_approx(100.0, 1e-3)
+	assert_float(VarietyCKit.taken(two, 0)).is_equal_approx(187.5, 1e-3)
 	var three: SimWorld = _mortar(3)
 	_field(three)
 	_fire_once(three)
 	ArsenalWKit.run_both(three, 42)
-	assert_float(VarietyCKit.taken(three, 0)).is_equal_approx(80.0 * 1.55, 1e-2)
+	assert_float(VarietyCKit.taken(three, 0)).is_equal_approx(150.0 * 1.55, 1e-2)
 	assert_int(three.hazards.p_ticks_left[0]).is_equal(359)
 	ArsenalWKit.run_both(three, 359)
-	assert_array(VarietyCKit.ticks_of(three, SimEventKind.Id.POOL_ENDED)).is_equal([117 + 359])
+	assert_array(VarietyCKit.ticks_of(three, SimEventKind.Id.POOL_ENDED)).is_equal([109 + 359])
 
 
 func test_overpressure_widens_the_blast_and_the_pool() -> void:
@@ -118,7 +118,7 @@ func test_overpressure_widens_the_blast_and_the_pool() -> void:
 	_field(w)
 	_fire_once(w)
 	ArsenalWKit.run_both(w, 42)
-	assert_int(VarietyCKit.events_of(w, SimEventKind.Id.AREA_BLAST)[0].b).is_equal(351)
+	assert_int(VarietyCKit.events_of(w, SimEventKind.Id.AREA_BLAST)[0].b).is_equal(405)
 	assert_float(w.hazards.p_radius[0]).is_equal_approx(2.2 * 1.35, 1e-5)
 
 
@@ -162,8 +162,8 @@ func test_four_shells_then_a_reload_of_144_ticks() -> void:
 	var w: SimWorld = _mortar()
 	ArsenalWKit.foe(w, Ids.EN_HULK, 10.0, 0.0, true)
 	var ticks: Array[int] = ArsenalWKit.shot_ticks(w, 450)
-	assert_array(ticks).is_equal([75, 150, 225, 300, 444])
-	assert_array(VarietyCKit.ticks_of(w, SimEventKind.Id.RELOAD_STARTED)).is_equal([300])
+	assert_array(ticks).is_equal([67, 134, 200, 267, 411])
+	assert_array(VarietyCKit.ticks_of(w, SimEventKind.Id.RELOAD_STARTED)).is_equal([267])
 	assert_int(VarietyCKit.events_of(w, SimEventKind.Id.RELOAD_STARTED)[0].a).is_equal(144)
 	assert_int(VarietyCKit.count(w, SimEventKind.Id.SHOT_FIRED)).is_equal(5)
 

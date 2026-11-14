@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 ## V4-W: ShotHooks (CONTENT 3.1, 3.2) and the off-hand fire of twin_link. The slice data lists none of these directives, so
 ## the worlds come from ArsenalWKit.directive_world, which appends the ids it is given to the fixture content and holds them.
-## Pistol: 30 damage, a shot every 30 ticks, 12 rounds, a 75-tick reload. Skitter: 45 hp, armor 0, radius 0.35.
+## Pistol: 34 damage, 2.2 shots a second (rounds on ticks 28, 55, 82, 110, 137, 164, ...), 12 rounds, a 75-tick reload
+## (V5-C: was 30 damage every 30 ticks); the gun turret: 15 damage (was 12). Skitter: 45 hp, armor 0, radius 0.35.
 
 
 func _pistol_hit(w: SimWorld, enemy_index: int) -> void:
@@ -26,10 +27,10 @@ func test_every_sixth_shot_arcs_on_to_two_enemies_for_half() -> void:
 	assert_float(VarietyCKit.taken(w, 1)).is_equal(0.0)
 	assert_int(VarietyCKit.count(w, SimEventKind.Id.CHAIN_ARC)).is_equal(0)
 	ArsenalWKit.run_until_shots(w, 6)
-	assert_int(w.tick).is_equal(180)
-	assert_float(VarietyCKit.taken(w, 0)).is_equal(180.0)  # six rounds of 30
-	assert_float(VarietyCKit.taken(w, 1)).is_equal(15.0)
-	assert_float(VarietyCKit.taken(w, 2)).is_equal(15.0)
+	assert_int(w.tick).is_equal(164)
+	assert_float(VarietyCKit.taken(w, 0)).is_equal(204.0)  # six rounds of 34
+	assert_float(VarietyCKit.taken(w, 1)).is_equal(17.0)
+	assert_float(VarietyCKit.taken(w, 2)).is_equal(17.0)
 	assert_float(VarietyCKit.taken(w, 3)).is_equal(0.0)
 	var pairs: Array[Array] = []
 	for e: SimEvent in VarietyCKit.events_of(w, SimEventKind.Id.CHAIN_ARC):
@@ -41,17 +42,17 @@ func test_more_stacks_shorten_the_period_and_the_reach_follows_overpressure() ->
 	var two: SimWorld = ArsenalWKit.directive_world({&"shock_rounds": 2})
 	_arc_field(two)
 	ArsenalWKit.run_until_shots(two, 5)
-	assert_float(VarietyCKit.taken(two, 1)).is_equal(15.0)  # the 5th round
+	assert_float(VarietyCKit.taken(two, 1)).is_equal(17.0)  # the 5th round
 	var three: SimWorld = ArsenalWKit.directive_world({&"shock_rounds": 3})
 	_arc_field(three)
 	ArsenalWKit.run_until_shots(three, 4)
-	assert_float(VarietyCKit.taken(three, 1)).is_equal(15.0)  # the 4th round
+	assert_float(VarietyCKit.taken(three, 1)).is_equal(17.0)  # the 4th round
 	var wide: SimWorld = ArsenalWKit.directive_world({&"shock_rounds": 1})
 	wide.mods.area_mul = 1.35
 	ArsenalWKit.foe(wide, Ids.EN_SKITTER, 10.0, 0.0, true)
 	var reached: int = ArsenalWKit.foe(wide, Ids.EN_SKITTER, 12.9, 0.0)  # 2.9 m: beyond 2.5, inside 3.375
 	ArsenalWKit.run_until_shots(wide, 6)
-	assert_float(VarietyCKit.taken(wide, reached)).is_equal(15.0)
+	assert_float(VarietyCKit.taken(wide, reached)).is_equal(17.0)
 
 
 func test_without_the_directive_nothing_arcs() -> void:
@@ -79,7 +80,7 @@ func test_a_killing_hitscan_round_goes_on_to_one_more_enemy_for_60_percent() -> 
 	_ricochet_field(w)
 	ArsenalWKit.run_until_shots(w, 1)
 	assert_int(w.enemies.alive[0]).is_equal(0)
-	assert_float(VarietyCKit.taken(w, 1)).is_equal_approx(18.0, 1e-5)
+	assert_float(VarietyCKit.taken(w, 1)).is_equal_approx(20.4, 1e-5)
 	assert_float(VarietyCKit.taken(w, 2)).is_equal(0.0)
 	assert_float(VarietyCKit.taken(w, 3)).is_equal(0.0)
 	assert_int(w.combat.kills_by_source[DamageSource.Id.WARDEN]).is_equal(1)
@@ -89,8 +90,8 @@ func test_the_second_stack_goes_on_to_two_enemies_from_where_the_last_one_stood(
 	var w: SimWorld = ArsenalWKit.directive_world({&"ricochet": 2})
 	_ricochet_field(w)
 	ArsenalWKit.run_until_shots(w, 1)
-	assert_float(VarietyCKit.taken(w, 1)).is_equal_approx(18.0, 1e-5)
-	assert_float(VarietyCKit.taken(w, 2)).is_equal_approx(18.0, 1e-5)  # within 3 m of the second, not of the first
+	assert_float(VarietyCKit.taken(w, 1)).is_equal_approx(20.4, 1e-5)
+	assert_float(VarietyCKit.taken(w, 2)).is_equal_approx(20.4, 1e-5)  # within 3 m of the second, not of the first
 	assert_float(VarietyCKit.taken(w, 3)).is_equal(0.0)
 
 
@@ -99,7 +100,7 @@ func test_a_round_that_does_not_kill_and_a_cone_shot_do_not_ricochet() -> void:
 	_ricochet_field(w)
 	w.enemies.hp[0] = 100.0
 	ArsenalWKit.run_until_shots(w, 1)
-	assert_float(w.enemies.hp[0]).is_equal(70.0)
+	assert_float(w.enemies.hp[0]).is_equal(66.0)
 	assert_float(VarietyCKit.taken(w, 1)).is_equal(0.0)
 	var cone: SimWorld = ArsenalWKit.directive_world({&"ricochet": 2}, Ids.WP_SCATTERGUN)
 	var weak: int = VarietyCKit.place_rel(cone, Ids.EN_SKITTER, 3.0, 0.0)
@@ -126,7 +127,7 @@ func test_each_kill_adds_four_percent_up_to_forty_and_they_last_two_seconds() ->
 	assert_int(ShotHooks.kill_chain_stacks(a)).is_equal(3)
 	assert_int(ShotHooks.kill_chain_mult_milli(a)).is_equal(1120)
 	assert_int(ShotHooks.kill_chain_ticks(a)).is_equal(120)
-	assert_int(ArsenalFire.rate_milli(w, a, ArsenalSystem.effective_of(w, 0))).is_equal(2240)  # 2000 x 1.12
+	assert_int(ArsenalFire.rate_milli(w, a, ArsenalSystem.effective_of(w, 0))).is_equal(2464)  # 2200 x 1.12
 	for k: int in range(3, 12):
 		_pistol_hit(w, k)
 	assert_int(ShotHooks.kill_chain_stacks(a)).is_equal(10)
@@ -155,8 +156,8 @@ func test_a_kill_restarts_the_two_seconds_and_the_chain_speeds_the_cadence() -> 
 	var plain: SimWorld = ArsenalWKit.world(Ids.WP_PISTOL)
 	ArsenalWKit.foe(plain, Ids.EN_HULK, 8.0, 0.0, true)
 	ArsenalWKit.foe(w, Ids.EN_HULK, 8.0, 0.0, true)
-	assert_int(ArsenalWKit.shot_ticks(plain, 70)[0]).is_equal(30)
-	assert_int(ArsenalWKit.shot_ticks(w, 70)[0]).is_less(30)
+	assert_int(ArsenalWKit.shot_ticks(plain, 70)[0]).is_equal(28)
+	assert_int(ArsenalWKit.shot_ticks(w, 70)[0]).is_less(28)
 
 
 # --- unstable_munitions ---
@@ -224,7 +225,7 @@ func test_the_holstered_weapon_fires_at_35_percent_of_its_rate_with_its_own_maga
 	assert_int(ticks.size()).is_equal(4)  # 29, 58, 86, 115
 	assert_int(w.arsenal.slot_magazine[1]).is_equal(30 - 4)
 	assert_int(w.combat.shots_by_source[DamageSource.Id.WARDEN_OFFHAND]).is_equal(4)
-	assert_int(w.warden.shots_fired).is_equal(4)  # the pistol's own: ticks 30, 60, 90, 120
+	assert_int(w.warden.shots_fired).is_equal(4)  # the pistol's own: ticks 28, 55, 82, 110
 	assert_int(w.arsenal.slot_magazine[0]).is_equal(12 - 4)
 
 
@@ -237,14 +238,14 @@ func test_without_twin_link_the_holstered_weapon_stays_quiet() -> void:
 
 
 func test_the_off_hand_shot_must_be_in_the_range_of_the_holstered_weapon() -> void:
-	var w: SimWorld = _twin({&"twin_link": 1}, Ids.WP_SCATTERGUN)  # 9 m
-	var t: int = ArsenalWKit.foe(w, Ids.EN_HULK, 12.0, 0.0, true)
+	var w: SimWorld = _twin({&"twin_link": 1}, Ids.WP_SCATTERGUN)  # 13 m
+	var t: int = ArsenalWKit.foe(w, Ids.EN_HULK, 14.0, 0.0, true)
 	ArsenalWKit.run_both(w, 200)
 	assert_array(_offhand_ticks(w)).is_empty()
 	assert_int(w.arsenal.offhand_acc_milli).is_equal(60000)  # it waits with a banked shot
-	w.enemies.x[t] = w.warden.x + 8.0
+	w.enemies.x[t] = w.warden.x + 12.0
 	ArsenalWKit.run_both(w, 1)
-	assert_int(_offhand_ticks(w).size()).is_equal(8)  # eight pellets of the scattergun, one volley
+	assert_int(_offhand_ticks(w).size()).is_equal(10)  # ten pellets of the scattergun, one volley
 
 
 func test_the_rail_lance_and_the_torch_do_not_fire_from_the_holster() -> void:
@@ -261,7 +262,7 @@ func test_a_holstered_heat_weapon_adds_heat_and_vents_at_the_cap() -> void:
 	ArsenalWKit.run_both(w, 110)  # 1.6 a second x 0.35 = 560 milli a tick: the first arc on tick 108
 	assert_array(_offhand_ticks(w)).is_equal([108])
 	assert_int(VarietyCKit.count(w, SimEventKind.Id.CHAIN_ARC)).is_equal(1)
-	assert_int(w.arsenal.slot_heat[1]).is_equal(14)  # 14 a shot; two ticks of cooling are less than one heat
+	assert_int(w.arsenal.slot_heat[1]).is_equal(12)  # 12 a shot; two ticks of cooling are less than one heat
 
 
 # --- the turret hooks (called by TurretSystem, a file of V4-V) ---
@@ -285,15 +286,15 @@ func test_arc_pylons_chain_every_fourth_turret_shot_for_60_percent() -> void:
 	assert_float(VarietyCKit.taken(w, 1)).is_equal(0.0)
 	w.combat.shots_by_source[DamageSource.Id.TURRET_0] = 4
 	ShotHooks.on_turret_shot(w, 0, 0)
-	assert_float(VarietyCKit.taken(w, 1)).is_equal_approx(7.2, 1e-5)  # 12 x 0.6
-	assert_float(VarietyCKit.taken(w, 2)).is_equal_approx(7.2, 1e-5)
+	assert_float(VarietyCKit.taken(w, 1)).is_equal_approx(9.0, 1e-5)  # 15 x 0.6
+	assert_float(VarietyCKit.taken(w, 2)).is_equal_approx(9.0, 1e-5)
 	assert_float(VarietyCKit.taken(w, 0)).is_equal(0.0)
-	assert_float(w.combat.damage_by_source[DamageSource.Id.TURRET_0]).is_equal_approx(14.4, 1e-5)
+	assert_float(w.combat.damage_by_source[DamageSource.Id.TURRET_0]).is_equal_approx(18.0, 1e-5)
 	var two: SimWorld = ArsenalWKit.directive_world({&"arc_pylons": 2})
 	_turret_field(two)
 	two.combat.shots_by_source[DamageSource.Id.TURRET_0] = 3
 	ShotHooks.on_turret_shot(two, 0, 0)
-	assert_float(VarietyCKit.taken(two, 1)).is_equal_approx(7.2, 1e-5)  # every third shot at stack 2
+	assert_float(VarietyCKit.taken(two, 1)).is_equal_approx(9.0, 1e-5)  # every third shot at stack 2
 
 
 func test_flak_heads_splash_the_neighbours_of_the_hit_for_40_then_60_percent() -> void:
@@ -305,15 +306,15 @@ func test_flak_heads_splash_the_neighbours_of_the_hit_for_40_then_60_percent() -
 	assert_float(VarietyCKit.taken(w, 1)).is_equal(0.0)  # 1.41 m: outside 1.2
 	var near: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 10.0, 0.9)  # 0.9 m
 	ShotHooks.on_turret_hit(w, 0, 0, 12.0)
-	assert_float(VarietyCKit.taken(w, near)).is_equal_approx(4.8, 1e-5)  # 12 x 0.4
+	assert_float(VarietyCKit.taken(w, near)).is_equal_approx(6.0, 1e-5)  # 15 x 0.4 (the turret's damage)
 	var two: SimWorld = ArsenalWKit.directive_world({&"flak_heads": 2})
 	_turret_field(two)
 	var close: int = ArsenalWKit.foe(two, Ids.EN_SKITTER, 10.0, 0.9)
 	ShotHooks.on_turret_hit(two, 0, 0, 12.0)
-	assert_float(VarietyCKit.taken(two, close)).is_equal_approx(7.2, 1e-5)
+	assert_float(VarietyCKit.taken(two, close)).is_equal_approx(9.0, 1e-5)
 	two.mods.area_mul = 1.35  # a 1.62 m splash now reaches the second skitter at 1.41 m
 	ShotHooks.on_turret_hit(two, 0, 0, 12.0)
-	assert_float(VarietyCKit.taken(two, 1)).is_equal_approx(7.2, 1e-5)
+	assert_float(VarietyCKit.taken(two, 1)).is_equal_approx(9.0, 1e-5)
 
 
 func test_the_legacy_content_has_no_directives_and_no_hook_fires() -> void:
