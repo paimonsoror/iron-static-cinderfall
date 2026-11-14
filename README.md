@@ -25,7 +25,7 @@
   <img src="https://img.shields.io/badge/platform-Android%20(portrait)-3ddc84?logo=android&logoColor=white" alt="Android, portrait">
   <img src="https://img.shields.io/badge/renderer-Mobile%20%2F%20Vulkan-ac162c?logo=vulkan&logoColor=white" alt="Mobile renderer on Vulkan">
   <img src="https://img.shields.io/badge/tests-3%2C000%2B%20(GdUnit4)-2ea44f" alt="More than 3,000 tests">
-  <img src="https://img.shields.io/badge/milestone-15%20waves%20built%2C%20balance%20next-ffb000" alt="Milestone: the 15-wave game is built, the balance pass is next">
+  <img src="https://img.shields.io/badge/milestone-15%20waves%2C%20first%20balance%20pass%20done-ffb000" alt="Milestone: the 15-wave game is built and has had its first balance pass">
 </p>
 
 ## Start here
@@ -73,7 +73,7 @@ You are **Warden ASH-12**, a lone frame holding **Relay Core B-4** against CHORU
 
 **In the build today:**
 
-- **The run:** 15 waves in three acts, bosses at waves 5, 10 and 15 (a Brood Carrier or a Lance Platform, an Aegis Array or a Tremor Rig, then the Siege Hulk in one of three variants). Between waves: salvage, a one-of-three directive draft (60 directives in six families), a route choice of two threats with a modifier and a reward, a boss briefing, a breather. A run takes about 13 to 17 minutes by design (the current build runs shorter: see [Status](#status)).
+- **The run:** 15 waves in three acts, bosses at waves 5, 10 and 15 (a Brood Carrier or a Lance Platform, an Aegis Array or a Tremor Rig, then the Siege Hulk in one of three variants). Between waves: salvage, a one-of-three directive draft (60 directives in six families), a route choice of two threats with a modifier and a reward, a boss briefing, a breather. A winning run takes about 14 minutes of combat.
 - **Combat:** ten weapons in seven firing kinds (two carried, swapped by tap, each with a level-3 perk), three turret types, three abilities (EMP, Shield, Overdrive) and three calls (Deadfall Strike, Freight, Vent), and a core you can patch between waves.
 - **Enemies:** skitters, rushers and hollow Wardens, plus 8 newer types (motes in hundreds, bursters, spitters, splitters, shieldbearers, reclaimers, jammers, borers), 10 elite affixes, and up to 50 living bodies plus 40 minis at once.
 - **Chaos:** 10 events, fuel drums, mines, route modifiers and 12 threat packs, all drawn from seeded streams.
@@ -83,7 +83,7 @@ You are **Warden ASH-12**, a lone frame holding **Relay Core B-4** against CHORU
 
 ## Status
 
-The work is organised in waves ([work plan](docs/WORK_PLAN.md)). The **15-wave game is built and runs end to end** on the desktop (a bot can play a whole run headless). **Next is the balance pass**, then release QA on a real phone.
+The work is organised in waves ([work plan](docs/WORK_PLAN.md)). The **15-wave game is built and runs end to end** on the desktop (a bot can play a whole run headless). A first balance pass (values only, driven by the scorecard) is done. **Next is a playtest on a real phone**, a second pass informed by it, and then release QA.
 
 | Wave | Goal | Status |
 |---|---|---|
@@ -92,10 +92,10 @@ The work is organised in waves ([work plan](docs/WORK_PLAN.md)). The **15-wave g
 | V1 to V3 | Contract scaffold, the sim systems, the playable 5-wave slice | Done |
 | V4 | All the content: weapons, enemies, elites, bosses, events, directives, the Archive, audio and effects | Done |
 | V5 | The 15-wave game integrated, every screen fitted, an accessibility audit and 50+ screenshots | Done |
-| V5-C | Balance with the scorecard (values only) | Next |
+| V5-C | Balance with the scorecard (values only) | First pass done on bot runs; the 200-run cards are still to run |
 | V6-Q | Release QA, including a real two-process resume check and phone measurements | Planned |
 
-Measured with the scorecard on 30 seeds, before the balance pass: the `balanced` bot wins about half of its runs with the starting pool (16 of 30) and fewer with every unlock (7 of 30), and its winning runs last about 10 minutes against the 13 to 17 the design wants, so the balance pass is next. The last measurement on a phone (a Pixel 11 Pro Fold, before the V4 content) held 60 fps on the LOW tier and about 56 fps on MID and HIGH with 50 enemies; it has to be repeated on the new build ([`docs/reports/PHONE_PERF.md`](docs/reports/PHONE_PERF.md)). On the desktop the sim costs about 0.35 ms per tick (the stress tests, with 50 + 40 machines and a blast every second, stay under 1 ms).
+Measured with the scorecard on 30 seeds after the first balance pass: the `balanced` bot wins 63% of its runs with the starting pool and 67% with every unlock (it was 53% and 23%), and a win takes a median 14 minutes of combat (the design wants 13 to 17). The scorecard still shows WARN on 11 and 10 of its 19 rows and fails none: the open rows are mostly weapon variety (the bots rarely swap weapons), the weaker bots, and rows that the spec contradicts itself on; the reasons are in [`docs/reports/BALANCE_REPORT.md`](docs/reports/BALANCE_REPORT.md). A bot is not a player, so a phone playtest comes next. The last measurement on a phone (a Pixel 11 Pro Fold, before the V4 content) held 60 fps on the LOW tier and about 56 fps on MID and HIGH with 50 enemies; it has to be repeated on the new build ([`docs/reports/PHONE_PERF.md`](docs/reports/PHONE_PERF.md)). On the desktop the sim costs about 0.4 ms per tick (the stress tests, with 50 + 40 machines and a blast every second, stay under 1 ms).
 
 ## Quick start
 
