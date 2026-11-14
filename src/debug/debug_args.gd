@@ -5,7 +5,7 @@ extends RefCounted
 var has_seed: bool = false
 var run_seed: int = 0
 var autoplay: String = ""  ## "", "none" or "greedy"
-var scenario: String = ""  ## e.g. "hold50"
+var scenario: String = ""  ## e.g. "hold50"; --wave=<n> is stored as "wave:<n>" (GameLaunch.start_wave_of)
 var scenario_n: int = 0
 var debug_perf: bool = false
 var mute: bool = false
@@ -111,6 +111,9 @@ static func parse(args: PackedStringArray) -> DebugArgs:
 				a.scenario = value
 				if value.begins_with("hold") and value.substr(4).is_valid_int():
 					a.scenario_n = value.substr(4).to_int()
+			"--wave":
+				if value.is_valid_int():
+					a.scenario = "wave:" + value  # GameLaunch.SCENARIO_WAVE
 			"--debug-perf":
 				a.debug_perf = true
 			"--mute":

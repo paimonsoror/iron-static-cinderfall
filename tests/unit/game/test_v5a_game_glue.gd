@@ -38,6 +38,11 @@ func test_the_scenario_argument_names_a_start_wave_or_a_boss() -> void:
 	assert_bool(GameLaunch.wants_autostart(_args(["--scenario=boss:hulk_fed"]))).is_true()
 	assert_bool(GameLaunch.wants_autostart(_args(["--scenario=wave:1"]))).is_false()  # wave 1 is a normal start
 	assert_bool(GameLaunch.wants_autostart(_args(["--seed=4"]))).is_false()
+	# --wave=<n> is the short form of --scenario=wave:<n>
+	assert_int(GameLaunch.start_wave_of(_args(["--wave=12"]))).is_equal(12)
+	assert_bool(GameLaunch.wants_autostart(_args(["--wave=12"]))).is_true()
+	assert_int(GameLaunch.start_wave_of(_args(["--wave=x"]))).is_equal(0)
+	assert_str(_args(["--wave=x"]).scenario).is_equal("")
 
 
 func test_configure_puts_the_debug_start_into_the_sim_config() -> void:
