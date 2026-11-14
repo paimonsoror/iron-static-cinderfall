@@ -142,7 +142,7 @@ func test_strike_shows_its_charges_and_a_tap_issues_call_event() -> void:
 func test_a_vent_the_api_would_refuse_is_dim_shows_its_price_and_sends_nothing() -> void:
 	var vent: HudCallButton = _bar().vent
 	assert_bool(vent.ready_now).is_false()
-	assert_str(vent.value_label.text).is_equal(Strings.tf("hud.call.vent_price", [8]))
+	assert_str(vent.value_label.text).is_equal(Strings.tf("hud.call.vent_price", [4]))  # 4% of the core (V5-C: was 8)
 	vent.pressed.emit()
 	assert_int(_api.calls.size()).is_equal(0)
 	_api.fake_call_block[&"core_vent"] = Reason.Id.OK

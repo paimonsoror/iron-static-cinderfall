@@ -10,6 +10,7 @@
 	],
 	"expect": [
 		"arena.json: $.standoff.radii[0]: must be > approach_radius (standoff points never overlap the attack slots)",
-		"arena.json: $.standoff.radii: no ring at 10.5 m (needed by 'spitter')"
+		"arena.json: $.standoff.radii: no ring at 10.5 m (needed by 'spitter')",
+		"arena.json: $.standoff.radii: no ring at 10.5 m (needed by 'reclaimer')"
 	]
 }

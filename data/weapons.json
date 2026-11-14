@@ -6,29 +6,29 @@
   "weapons": {
     "pistol": { "tier": 1, "kind": "hitscan", "level_mult": [1.0, 1.25, 1.55], "level3": { "crit_every": 6, "crit_mult": 3 } },
     "smg": { "tier": 2, "kind": "hitscan", "level_mult": [1.0, 1.25, 1.55], "level3": { "magazine": 45 } },
-    "scattergun": { "tier": 2, "kind": "cone", "damage": 10, "shots_per_second": 1.2, "magazine": 6, "reload_seconds": 2.4, "range_m": 9,
-                    "spread_deg": 30, "pellets": 8, "knockback_m": 0.8, "level_mult": [1.0, 1.25, 1.55], "level3": { "pellets": 12 } },
-    "assault_rifle": { "tier": 3, "kind": "hitscan", "damage": 28, "shots_per_second": 4.5, "magazine": 30, "reload_seconds": 1.8, "range_m": 25,
+    "scattergun": { "tier": 2, "kind": "cone", "damage": 16, "shots_per_second": 1.2, "magazine": 6, "reload_seconds": 2.4, "range_m": 13,
+                    "spread_deg": 30, "pellets": 10, "knockback_m": 0.8, "level_mult": [1.0, 1.25, 1.55], "level3": { "pellets": 14 } },
+    "assault_rifle": { "tier": 3, "kind": "hitscan", "damage": 26, "shots_per_second": 4.5, "magazine": 30, "reload_seconds": 1.8, "range_m": 25,
                        "pierce": 1, "pierce_falloff": 0.6, "level_mult": [1.0, 1.25, 1.55], "level3": { "pierce": 2 } },
-    "hornet_rack": { "tier": 3, "kind": "missiles", "damage": 24, "shots_per_second": 0.45, "magazine": 4, "reload_seconds": 3.2, "range_m": 22,
-                     "area_m": 1.2, "salvo": 6, "flight_s": 0.5, "splash_damage": 10, "level_mult": [1.0, 1.25, 1.55], "level3": { "salvo": 8 } },
-    "lmg": { "tier": 4, "kind": "hitscan", "damage": 20, "shots_per_second": 10.0, "sps_min": 4.0, "magazine": 150, "reload_seconds": 3.8, "range_m": 25,
+    "hornet_rack": { "tier": 3, "kind": "missiles", "damage": 48, "shots_per_second": 0.5, "magazine": 4, "reload_seconds": 3.2, "range_m": 22,
+                     "area_m": 1.2, "salvo": 6, "flight_s": 0.5, "splash_damage": 18, "level_mult": [1.0, 1.25, 1.55], "level3": { "salvo": 8 } },
+    "lmg": { "tier": 4, "kind": "hitscan", "damage": 18, "shots_per_second": 10.0, "sps_min": 4.0, "magazine": 150, "reload_seconds": 3.8, "range_m": 25,
              "spread_deg": 5, "spin_up_s": 1.5, "stray_chance": 0.25, "armor_shred": 0.5, "level_mult": [1.0, 1.25, 1.55], "level3": { "spin_up_s": 0 } },
-    "slag_mortar": { "tier": 4, "kind": "shell", "damage": 80, "shots_per_second": 0.8, "magazine": 4, "reload_seconds": 2.4, "range_m": 24, "min_range_m": 6,
-                     "area_m": 2.6, "edge_frac": 0.5, "flight_s": 0.7, "pool": { "seconds": 4, "dps": 15, "slow": 0.25, "radius_m": 2.2 },
+    "slag_mortar": { "tier": 4, "kind": "shell", "damage": 150, "shots_per_second": 0.9, "magazine": 4, "reload_seconds": 2.4, "range_m": 24, "min_range_m": 6,
+                     "area_m": 3.0, "edge_frac": 0.5, "flight_s": 0.7, "pool": { "seconds": 4, "dps": 15, "slow": 0.25, "radius_m": 2.2 },
                      "level_mult": [1.0, 1.25, 1.55], "level3": { "pool_seconds": 6 } },
-    "cutting_torch": { "tier": 4, "kind": "beam", "damage": 4, "shots_per_second": 10.0, "magazine": 0, "reload_seconds": 0, "range_m": 13,
-                       "ramp_per_hit": 0.5, "ramp_cap": 16, "armor_ignore": 1.0, "heat_per_shot": 3, "cool_per_s": 25, "heat_cap": 100, "vent_s": 2.0,
-                       "level_mult": [1.0, 1.25, 1.55], "level3": { "ramp_cap": 22 } },
-    "arc_projector": { "tier": 5, "kind": "arc", "damage": 40, "shots_per_second": 1.6, "magazine": 0, "reload_seconds": 0, "range_m": 18,
+    "cutting_torch": { "tier": 4, "kind": "beam", "damage": 12, "shots_per_second": 10.0, "magazine": 0, "reload_seconds": 0, "range_m": 20,
+                       "ramp_per_hit": 1.2, "ramp_cap": 28, "armor_ignore": 1.0, "heat_per_shot": 2, "cool_per_s": 25, "heat_cap": 100, "vent_s": 2.0,
+                       "level_mult": [1.0, 1.25, 1.55], "level3": { "ramp_cap": 34 } },
+    "arc_projector": { "tier": 5, "kind": "arc", "damage": 50, "shots_per_second": 1.6, "magazine": 0, "reload_seconds": 0, "range_m": 18,
                        "chains": 4, "chain_range_m": 3.0, "chain_falloff": 0.75, "armor_ignore": 1.0, "ward_mult": 3.0, "stunned_mult": 1.5,
-                       "heat_per_shot": 14, "cool_per_s": 20, "heat_cap": 100, "vent_s": 2.5, "level_mult": [1.0, 1.25, 1.55], "level3": { "chains": 6 } },
-    "rail_lance": { "tier": 5, "kind": "line", "damage": 320, "shots_per_second": 0.45, "magazine": 3, "reload_seconds": 2.6, "range_m": 30,
-                    "pierce": -1, "area_m": 0.5, "charge_s": 1.0, "armor_ignore": 0.5, "level_mult": [1.0, 1.25, 1.55], "level3": { "magazine": 4 } }
+                       "heat_per_shot": 12, "cool_per_s": 20, "heat_cap": 100, "vent_s": 2.5, "level_mult": [1.0, 1.25, 1.55], "level3": { "chains": 6 } },
+    "rail_lance": { "tier": 5, "kind": "line", "damage": 240, "shots_per_second": 1.2, "magazine": 6, "reload_seconds": 2.0, "range_m": 30,
+                    "pierce": -1, "area_m": 1.4, "charge_s": 0.6, "armor_ignore": 0.5, "level_mult": [1.0, 1.25, 1.55], "level3": { "magazine": 8 } }
   },
   "turrets": {
-    "turret_gun": { "damage": 12, "shots_per_second": 3.0, "range_m": 17 },
-    "turret_arc": { "damage": 16, "shots_per_second": 1.2, "range_m": 12, "params": { "chains": 2, "chain_range_m": 2.5, "chain_falloff": 0.7, "armor_ignore": 1.0 } },
-    "turret_mortar": { "damage": 45, "shots_per_second": 0.4, "range_m": 22, "min_range_m": 8, "params": { "area_m": 2.0, "flight_s": 0.8 } }
+    "turret_gun": { "damage": 15, "shots_per_second": 3.0, "range_m": 17 },
+    "turret_arc": { "damage": 16, "shots_per_second": 1.2, "range_m": 14, "params": { "chains": 2, "chain_range_m": 2.5, "chain_falloff": 0.7, "armor_ignore": 1.0 } },
+    "turret_mortar": { "damage": 70, "shots_per_second": 0.5, "range_m": 22, "min_range_m": 8, "params": { "area_m": 2.0, "flight_s": 0.8 } }
   }
 }

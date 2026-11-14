@@ -12,7 +12,7 @@ const PACKS: Array[Array] = [
 	[&"pack_battery", 1, 1.0, 0, ["spitter:0.35:upper_right:0.20:1.00", "hollow_warden:0.25:right:0.10:1.00", "skitter:0.40:right:0.00:1.00"]],
 	[&"pack_brood", 2, 1.0, 0, ["splitter:0.45:right:0.10:1.00", "mote:0.25:upper_right:0.00:0.50", "skitter:0.30:right:0.30:1.00"]],
 	[&"pack_bulwark", 2, 1.0, 0, ["shieldbearer:0.30:right:0.10:1.00", "hollow_warden:0.30:right:0.15:1.00", "rusher:0.40:upper_right:0.40:0.80"]],
-	[&"pack_repair", 2, 1.0, 0, ["reclaimer:0.15:upper_right:0.00:1.00", "hollow_warden:0.45:right:0.10:1.00", "rusher:0.40:upper_right:0.30:0.80"]],
+	[&"pack_repair", 2, 1.0, 0, ["reclaimer:0.10:upper_right:0.00:1.00", "hollow_warden:0.50:right:0.10:1.00", "rusher:0.40:upper_right:0.30:0.80"]],
 	[&"pack_static", 2, 1.0, 0, ["jammer:0.20:upper_right:0.10:1.00", "rusher:0.35:right:0.30:0.80", "skitter:0.45:right:0.00:1.00"]],
 	[&"pack_undermine", 2, 1.0, 0, ["borer:0.40:breach:0.30:0.60", "skitter:0.40:right:0.00:1.00", "burster:0.20:upper_right:0.20:1.00"]],
 	[&"pack_everything", 3, 1.0, 0, [
@@ -29,9 +29,9 @@ const MODIFIERS: Array[Array] = [
 	[&"mod_rush", &"mild", [["spawn_interval_mul", "mul", 0.6]]],
 	[&"mod_twin_gate", &"mild", [["flag", "twin_gate"]]],
 	[&"mod_bounty", &"mild", [["scrap_mul", "mul", 1.5], ["enemy_hp_mul", "mul", 1.2]]],
-	[&"mod_squall", &"hot", [["range_mul", "mul", 0.7]]],
-	[&"mod_static_air", &"hot", [["ability_cd_rate_mul", "mul", 0.5]]],
-	[&"mod_low_power", &"hot", [["turret_offline_ticks", "add", 720.0]]],
+	[&"mod_squall", &"hot", [["range_mul", "mul", 0.8]]],
+	[&"mod_static_air", &"hot", [["ability_cd_rate_mul", "mul", 0.65]]],
+	[&"mod_low_power", &"hot", [["turret_offline_ticks", "add", 480.0]]],
 	[&"mod_elite_pair", &"hot", [["extra_elites", "add", 2.0]]],
 	[&"mod_no_breather", &"hot", [["flag", "no_breather"]]],
 ]
@@ -145,10 +145,10 @@ func test_every_pack_spends_its_budget_within_ten_percent_in_every_act() -> void
 
 func test_pack_hunt_is_a_smaller_wave_with_two_more_elites() -> void:
 	var hunt: PackDef = c.run.packs[c.run.pack_index(&"pack_hunt")]
-	var slot: WaveSlotDef = c.run.wave_slot(7)  # budget 92
+	var slot: WaveSlotDef = c.run.wave_slot(7)  # budget 98
 	var groups: Array[SpawnGroupDef] = WaveBuilder.build(c, slot, hunt.index, 1.0, PlanRng.stream(2, &"plan.wave:packs"))
 	var spent: float = VarietyAKit.spent(c, groups)
-	assert_float(spent).is_between(92.0 * 0.7 * 0.9, 92.0 * 0.7 * 1.1)
+	assert_float(spent).is_between(98.0 * 0.7 * 0.9, 98.0 * 0.7 * 1.1)
 	var option: RouteOption = RouteOption.new()
 	option.pack_index = hunt.index
 	assert_int(RunPlanSystem._extra_elites(c, option)).is_equal(2)
@@ -191,7 +191,7 @@ func test_the_eight_route_rewards_and_their_weights() -> void:
 		hot.append(r.weight_hot)
 	assert_array(ids).is_equal([&"rw_scrap", &"rw_patch", &"rw_reroll", &"rw_crate", &"rw_rare_draft", &"rw_charge", &"rw_double_pick", &"rw_data"])
 	assert_array(standard).is_equal([30.0, 20.0, 20.0, 20.0, 10.0, 0.0, 0.0, 0.0])
-	assert_array(hot).is_equal([10.0, 10.0, 5.0, 25.0, 20.0, 10.0, 12.0, 8.0])
+	assert_array(hot).is_equal([5.0, 10.0, 5.0, 25.0, 18.0, 10.0, 20.0, 15.0])
 
 
 func test_a_modifier_changes_exactly_the_stats_it_names() -> void:
@@ -258,17 +258,17 @@ func test_mod_volatile_skitters_blast_on_death() -> void:
 	assert_float(w.hazards.q_damage[0]).is_equal(20.0)
 
 
-func test_mod_squall_shortens_the_range_and_mod_static_air_halves_the_cooldown_rate() -> void:
+func test_mod_squall_shortens_the_range_and_mod_static_air_slows_the_cooldown_rate() -> void:
 	var squall: SimWorld = _world_with_modifier(&"mod_squall")
-	assert_float(ArsenalSystem.range_of(squall, squall.content.weapons[Ids.WP_PISTOL])).is_equal_approx(17.5, 0.00001)  # 25 x 0.7
+	assert_float(ArsenalSystem.range_of(squall, squall.content.weapons[Ids.WP_PISTOL])).is_equal_approx(20.0, 0.00001)  # 25 x 0.8
 	var air: SimWorld = _world_with_modifier(&"mod_static_air")
-	assert_float(air.mods.ability_cd_rate_mul).is_equal_approx(0.5, 0.00001)
+	assert_float(air.mods.ability_cd_rate_mul).is_equal_approx(0.65, 0.00001)
 
 
-func test_mod_low_power_takes_the_turrets_offline_for_12_seconds_at_the_wave_start() -> void:
+func test_mod_low_power_takes_the_turrets_offline_for_8_seconds_at_the_wave_start() -> void:
 	var w: SimWorld = _world_with_modifier(&"mod_low_power")
-	assert_float(w.mods.turret_offline_ticks).is_equal(720.0)
-	assert_int(w.events_state.turret_offline_ticks).is_equal(720)
+	assert_float(w.mods.turret_offline_ticks).is_equal(480.0)
+	assert_int(w.events_state.turret_offline_ticks).is_equal(480)
 	w.events_state.turret_offline_ticks = 1000  # a longer brownout is never shortened
 	ModSystem.set_wave_modifier(w, w.content.run.modifier_index(&"mod_low_power"))
 	assert_int(w.events_state.turret_offline_ticks).is_equal(1000)
@@ -305,7 +305,7 @@ func test_golden_plan_of_seeds_1_to_3_on_the_full_pool() -> void:
 			var b: RouteOption = pw.options[1]
 			got.append([a.pack_index, a.modifier_index, a.reward_index, b.pack_index, b.modifier_index, b.reward_index])
 	assert_array(got).is_equal([
-		[0, 2, 4, 2, 9, 0], [2, -1, 3, 1, 9, 4], [2, -1, 3, 0, 7, 4],
+		[0, 2, 4, 2, 9, 1], [2, -1, 3, 1, 9, 4], [2, -1, 3, 0, 7, 4],
 		[4, -1, 2, 1, 9, 3], [3, -1, 3, 2, 5, 7], [4, -1, 3, 0, 6, 6],
-		[1, -1, 0, 4, 9, 1], [4, -1, 0, 3, 7, 6], [1, -1, 3, 0, 6, 2],  # V5-A: wave 2 skips mod_elite_pair (8)
+		[1, -1, 0, 4, 9, 1], [4, -1, 0, 3, 7, 7], [1, -1, 3, 0, 6, 3],  # V5-A: wave 2 skips mod_elite_pair (8); V5-C hot weights
 	])

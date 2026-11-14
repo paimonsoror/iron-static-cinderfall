@@ -4,8 +4,8 @@ extends GdUnitTestSuite
 ## turret lobs a 2 m blast at the densest cluster between 8 and 22 m, 0.8 s in the air; the plain gun is unchanged.
 
 const ARC_DAMAGE: float = 16.0
-const MORTAR_DAMAGE: float = 45.0
-const GUN_DAMAGE: float = 12.0
+const MORTAR_DAMAGE: float = 70.0  # V5-C: was 45
+const GUN_DAMAGE: float = 15.0  # V5-C: was 12
 
 
 func _world(unlocks: PackedStringArray) -> SimWorld:
@@ -74,10 +74,10 @@ func test_the_arc_turret_ignores_armor_and_chains_to_two_neighbours() -> void:
 	assert_int(w.tick - first_tick).is_equal(50)
 
 
-func test_the_arc_turret_holds_its_fire_beyond_twelve_metres() -> void:
+func test_the_arc_turret_holds_its_fire_beyond_fourteen_metres() -> void:
 	var w: SimWorld = _world(PackedStringArray(["u_f_turret_arc"]))
 	w.turrets.active[1] = 1
-	_foe(w, Ids.EN_SKITTER, w.turrets.x[1] + 13.0, w.turrets.z[1])
+	_foe(w, Ids.EN_SKITTER, w.turrets.x[1] + 15.0, w.turrets.z[1])
 	VarietyVKit.run(w, 200)
 	assert_int(_shots(w, 1)).is_equal(0)
 
@@ -139,4 +139,4 @@ func test_the_turret_types_take_the_turret_directives() -> void:
 	var arc: TurretTypeDef = TurretTypes.special_of(w, 1)
 	assert_float(TurretTypes.damage_of(w, arc, -1, false)).is_equal_approx(ARC_DAMAGE * 1.5, 1e-5)
 	w.mods.range_mul = 0.7  # the Rain Squall
-	assert_float(TurretTypes.range_of(w, arc)).is_equal_approx(12.0 * 0.7, 1e-5)
+	assert_float(TurretTypes.range_of(w, arc)).is_equal_approx(14.0 * 0.7, 1e-5)

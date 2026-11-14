@@ -119,27 +119,27 @@ func test_rings_come_most_important_first_when_the_pool_is_full() -> void:
 	assert_int(zones.ring_count()).is_equal(12)
 
 
-func test_a_reclaimer_is_tethered_to_the_nearest_three_damaged_enemies_in_range() -> void:
+func test_a_reclaimer_is_tethered_to_the_nearest_two_damaged_enemies_in_range() -> void:
 	var rig: VfxXTestKit.Rig = VfxXTestKit.rig(self)
 	var w: SimWorld = rig.world
 	var _r: int = VfxXTestKit.enemy(w, Ids.EN_RECLAIMER, 0.0, 0.0)
 	var near_a: int = VfxXTestKit.enemy(w, Ids.EN_SKITTER, 1.0, 0.0, 0.5)
 	var _near_b: int = VfxXTestKit.enemy(w, Ids.EN_SKITTER, 0.0, 2.0, 0.5)
-	var _near_c: int = VfxXTestKit.enemy(w, Ids.EN_SKITTER, -3.0, 0.0, 0.5)
+	var _near_c: int = VfxXTestKit.enemy(w, Ids.EN_SKITTER, -3.0, 0.0, 0.5)  # damaged, in range, but the third
 	var _far: int = VfxXTestKit.enemy(w, Ids.EN_SKITTER, 5.0, 0.0, 0.5)  # damaged, in range, but the fourth
 	var _whole: int = VfxXTestKit.enemy(w, Ids.EN_SKITTER, 0.5, 0.5, 1.0)  # not damaged: nothing to heal
 	var _out: int = VfxXTestKit.enemy(w, Ids.EN_SKITTER, 9.0, 9.0, 0.5)  # out of range
 	_frame(rig)
 	var zones: FxZones = _zones(rig)
-	assert_int(zones.tethers.drawn()).is_equal(3)
+	assert_int(zones.tethers.drawn()).is_equal(2)  # V5-C: 2 tethers a reclaimer (was 3)
 	var ends: Array[float] = []
-	for k: int in 3:
+	for k: int in 2:
 		var t: Transform3D = zones.tethers.transform_of(k)
 		ends.append(snappedf(t.origin.x * 2.0, 0.01))  # a line from the reclaimer at x = 0: its centre is half of the far end's x
-	assert_array(ends).contains([1.0, 0.0, -3.0])  # the lines to the skitters at x = 1, 0 and -3
+	assert_array(ends).contains([1.0, 0.0])  # the lines to the skitters at x = 1 and 0
 	w.enemies.hp[near_a] = w.enemies.max_hp[near_a]  # healed: its tether ends, the next damaged one takes the place
 	_frame(rig)
-	assert_int(zones.tethers.drawn()).is_equal(3)
+	assert_int(zones.tethers.drawn()).is_equal(2)
 
 
 func test_a_magnetic_elite_is_tethered_to_the_shooters_within_twelve_metres() -> void:
@@ -165,8 +165,8 @@ func test_a_magnetic_elite_is_tethered_to_the_shooters_within_twelve_metres() ->
 func test_tether_lines_are_capped_by_the_tier() -> void:
 	var rig: VfxXTestKit.Rig = VfxXTestKit.rig(self)
 	var w: SimWorld = rig.world
-	for n: int in 4:
-		var _r: int = VfxXTestKit.enemy(w, Ids.EN_RECLAIMER, -6.0 + float(n) * 4.0, -10.0)
+	for n: int in 6:  # six reclaimers of two tethers (V5-C: was four of three), so the tiers cap the 12 lines
+		var _r: int = VfxXTestKit.enemy(w, Ids.EN_RECLAIMER, -6.0 + float(n) * 3.0, -10.0)
 	for n: int in 12:
 		var _d: int = VfxXTestKit.enemy(w, Ids.EN_SKITTER, -7.0 + float(n) * 1.3, -9.0, 0.4)
 	var want: Array[int] = [6, 9, 12]

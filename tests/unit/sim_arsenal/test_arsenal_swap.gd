@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 ## V2-C: two weapon slots and swapping (VARIETY_SPEC 3.1). Each slot keeps its own magazine; a swap makes the new slot
 ## active at once and nothing fires for swap_ticks (24); a holstered weapon reloads at half speed.
-## Pistol: 2 shots per second, 12 rounds, 75-tick reload. SMG: 6 per second, 30 rounds, 96-tick reload.
+## Pistol: 2.2 shots per second (V5-C: was 2), 12 rounds, 75-tick reload; its rounds leave on ticks 28, 55, 82, 110, 137,
+## 164, 191, 219, 246, 273, 300, 328. SMG: 6 per second, 30 rounds, 96-tick reload.
 
 
 func _two_weapons() -> SimWorld:
@@ -25,7 +26,7 @@ func test_a_new_world_carries_the_pistol_in_slot_0_and_nothing_in_slot_1() -> vo
 
 func test_a_swap_is_active_at_once_and_holds_fire_for_24_ticks() -> void:
 	var w: SimWorld = _two_weapons()
-	assert_array(VarietyCKit.shot_ticks(w, 60)).is_equal([30, 60])
+	assert_array(VarietyCKit.shot_ticks(w, 60)).is_equal([28, 55])
 	assert_int(VarietyCKit.swap_on_next_tick(w, 1)).is_equal(Reason.Id.OK)  # applied on tick 61
 	assert_int(w.arsenal.active).is_equal(1)
 	assert_int(w.warden.weapon_index).is_equal(Ids.WP_SMG)
@@ -109,14 +110,14 @@ func test_the_swap_command_goes_through_the_world_and_is_logged() -> void:
 
 func test_a_holstered_weapon_reloads_at_half_speed() -> void:
 	var w: SimWorld = _two_weapons()
-	VarietyCKit.run_weapon(w, 360)  # the 12th round leaves on tick 360 and the 75-tick reload starts
+	VarietyCKit.run_weapon(w, 328)  # the 12th round leaves on tick 328 and the 75-tick reload starts
 	assert_int(w.arsenal.slot_reload_left[0]).is_equal(75)
-	VarietyCKit.swap_on_next_tick(w, 1)  # tick 361: the pistol is holstered with 75 reload ticks left
-	VarietyCKit.run_weapon(w, 148)  # to tick 509
+	VarietyCKit.swap_on_next_tick(w, 1)  # tick 329: the pistol is holstered with 75 reload ticks left
+	VarietyCKit.run_weapon(w, 148)  # to tick 477
 	assert_int(w.arsenal.slot_reload_left[0]).is_equal(1)
 	assert_int(w.arsenal.slot_magazine[0]).is_equal(0)
 	assert_int(ArsenalSystem.slot_state(w, 0)).is_equal(ArsenalSystem.ST_RELOADING)
-	VarietyCKit.weapon_tick(w)  # tick 510 = 360 + 2 x 75
+	VarietyCKit.weapon_tick(w)  # tick 478 = 328 + 2 x 75
 	assert_int(w.arsenal.slot_reload_left[0]).is_equal(0)
 	assert_int(w.arsenal.slot_magazine[0]).is_equal(12)
 	assert_int(ArsenalSystem.slot_state(w, 0)).is_equal(ArsenalSystem.ST_READY)
@@ -124,18 +125,18 @@ func test_a_holstered_weapon_reloads_at_half_speed() -> void:
 
 func test_a_reload_keeps_its_progress_across_a_swap_and_back() -> void:
 	var w: SimWorld = _two_weapons()
-	VarietyCKit.run_weapon(w, 390)  # 30 of the 75 reload ticks done at the active speed
+	VarietyCKit.run_weapon(w, 358)  # 30 of the 75 reload ticks done at the active speed
 	assert_int(w.arsenal.slot_reload_left[0]).is_equal(45)
-	VarietyCKit.swap_on_next_tick(w, 1)  # tick 391
+	VarietyCKit.swap_on_next_tick(w, 1)  # tick 359
 	VarietyCKit.run_weapon(w, 39)  # 40 holstered ticks = 20 reload ticks
 	assert_int(w.arsenal.slot_reload_left[0]).is_equal(25)
-	VarietyCKit.swap_on_next_tick(w, 0)  # tick 431: active again, full speed
+	VarietyCKit.swap_on_next_tick(w, 0)  # tick 399: active again, full speed
 	assert_int(w.warden.reload_ticks_left).is_equal(24)
 	VarietyCKit.run_weapon(w, 23)
 	assert_int(w.warden.reload_ticks_left).is_equal(1)
 	assert_int(w.warden.magazine).is_equal(0)
-	# tick 455: the reload ends (24 ticks after the swap, which also covers the 24 silent ticks) and a round leaves
-	assert_array(VarietyCKit.shot_ticks(w, 1)).is_equal([455])
+	# tick 423: the reload ends (24 ticks after the swap, which also covers the 24 silent ticks) and a round leaves
+	assert_array(VarietyCKit.shot_ticks(w, 1)).is_equal([423])
 	assert_int(w.warden.magazine).is_equal(11)
 
 
@@ -143,7 +144,7 @@ func test_swapping_at_an_empty_magazine_beats_waiting_for_the_reload() -> void:
 	var w: SimWorld = _two_weapons()
 	VarietyCKit.run_weapon(w, 360)
 	VarietyCKit.swap_on_next_tick(w, 1)
-	# the SMG fires from tick 385; staying on the pistol would have fired again on tick 435
+	# the SMG fires from tick 385; staying on the pistol would have fired again on tick 403
 	var ticks: Array[int] = VarietyCKit.shot_ticks(w, 40)
 	assert_int(ticks[0]).is_equal(385)
 	assert_int(ticks.size()).is_equal(2)
@@ -181,8 +182,8 @@ func test_magazine_and_reload_follow_the_modifiers() -> void:
 	assert_int(ArsenalSystem.reload_ticks_of(w, w.content.weapons[Ids.WP_PISTOL])).is_equal(60)
 	VarietyCKit.tough(w, VarietyCKit.place_rel(w, Ids.EN_HULK, 10.0, 0.0))
 	var ticks: Array[int] = VarietyCKit.shot_ticks(w, 560)
-	assert_int(ticks[15]).is_equal(480)  # the 16th round
-	assert_int(ticks[16]).is_equal(540)  # 60 ticks of reload
+	assert_int(ticks[15]).is_equal(437)  # the 16th round
+	assert_int(ticks[16]).is_equal(497)  # 60 ticks of reload
 
 
 func test_a_shop_purchase_on_variety_content_goes_through_give_weapon() -> void:

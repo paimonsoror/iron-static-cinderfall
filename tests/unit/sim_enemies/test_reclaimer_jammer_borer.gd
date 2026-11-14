@@ -8,10 +8,10 @@ func _world() -> SimWorld:
 	return SimEnemiesKit.world()
 
 
-## A reclaimer parked on a standoff point of the 12.5 m ring. Returns its store index.
+## A reclaimer parked on a standoff point of the 10.5 m ring (V5-C: was 12.5). Returns its store index.
 func _parked_reclaimer(w: SimWorld) -> int:
 	var a: ArenaDef = w.content.arena
-	var ring: int = StandoffPoints.ring_of(a, 12.5)
+	var ring: int = StandoffPoints.ring_of(a, 10.5)
 	var best: int = -1
 	for k: int in a.standoff_points.size():
 		if a.standoff_ring[k] == ring and (best < 0 or absf(a.standoff_points[k].y - a.core_z) < absf(a.standoff_points[best].y - a.core_z)):
@@ -29,20 +29,20 @@ func _damaged(w: SimWorld, near: int, dx: float, dz: float, frac: float, type_in
 	return i
 
 
-func test_a_reclaimer_walks_in_and_parks_12_5_m_from_the_core() -> void:
+func test_a_reclaimer_walks_in_and_parks_10_5_m_from_the_core() -> void:
 	var w: SimWorld = _world()
 	var r: int = SimEnemiesKit.place_core(w, Ids.EN_RECLAIMER, 16.0, 0.0)
 	assert_int(SimEnemiesKit.run_until_attacking(w, r)).is_greater(0)
 	SimEnemiesKit.run(w, 40)
-	assert_float(SimEnemiesKit.core_dist(w, r)).is_equal_approx(12.5, 0.001)
-	assert_int(w.content.arena.standoff_ring[w.ext.anchor_point[r]]).is_equal(StandoffPoints.ring_of(w.content.arena, 12.5))
+	assert_float(SimEnemiesKit.core_dist(w, r)).is_equal_approx(10.5, 0.001)
+	assert_int(w.content.arena.standoff_ring[w.ext.anchor_point[r]]).is_equal(StandoffPoints.ring_of(w.content.arena, 10.5))
 	assert_int(w.enemies.slot[r]).is_equal(-1)
 	SimEnemiesKit.run(w, 600)
 	assert_float(w.core_hp).is_equal(w.core_max_hp)  # it never hurts the core
 	assert_int(SimEnemiesKit.events_of(w, SimEventKind.Id.DELAYED_HIT_LAUNCHED).size()).is_equal(0)
 
 
-func test_a_reclaimer_tethers_the_3_most_damaged_machines_within_6_m() -> void:
+func test_a_reclaimer_tethers_the_2_most_damaged_machines_within_6_m() -> void:
 	var w: SimWorld = _world()
 	var r: int = _parked_reclaimer(w)
 	var a: int = _damaged(w, r, 1.0, 0.0, 0.8)
@@ -53,12 +53,13 @@ func test_a_reclaimer_tethers_the_3_most_damaged_machines_within_6_m() -> void:
 	_damaged(w, r, 0.5, 0.5, 1.0)  # not damaged
 	_damaged(w, r, -0.5, 0.5, 0.1, Ids.EN_MOTE)  # a mini is not repaired
 	var targets: PackedInt32Array = PackedInt32Array()
-	assert_int(AuraFields.tether_targets(w, r, targets)).is_equal(3)
-	assert_array(Array(targets)).is_equal([b, d, c])
+	assert_int(AuraFields.tether_targets(w, r, targets)).is_equal(2)  # V5-C: 2 tethers (was 3)
+	assert_array(Array(targets)).is_equal([b, d])
 	assert_bool(targets.has(a)).is_false()
-	assert_float(AuraFields.tether_pulse(w, w.content.enemies[Ids.EN_RECLAIMER], StatusSystem.PULSE_TICKS)).is_equal_approx(7.0, 0.000001)
-	w.phase_state.act = 2  # the act tier applies: 14 x 1.35 per second
-	assert_float(AuraFields.tether_pulse(w, w.content.enemies[Ids.EN_RECLAIMER], StatusSystem.PULSE_TICKS)).is_equal_approx(9.45, 0.000001)
+	assert_bool(targets.has(c)).is_false()
+	assert_float(AuraFields.tether_pulse(w, w.content.enemies[Ids.EN_RECLAIMER], StatusSystem.PULSE_TICKS)).is_equal_approx(2.5, 0.000001)
+	w.phase_state.act = 2  # the act tier applies: 5 x 1.35 per second
+	assert_float(AuraFields.tether_pulse(w, w.content.enemies[Ids.EN_RECLAIMER], StatusSystem.PULSE_TICKS)).is_equal_approx(3.375, 0.000001)
 
 
 func test_equally_damaged_machines_are_tethered_in_id_order() -> void:
@@ -69,10 +70,10 @@ func test_equally_damaged_machines_are_tethered_in_id_order() -> void:
 		picks.append(_damaged(w, r, 1.0 + 0.5 * float(k), 0.0, 0.5))
 	var targets: PackedInt32Array = PackedInt32Array()
 	AuraFields.tether_targets(w, r, targets)
-	assert_array(Array(targets)).is_equal([picks[0], picks[1], picks[2]])
+	assert_array(Array(targets)).is_equal([picks[0], picks[1]])
 
 
-func test_a_parked_reclaimer_heals_14_hp_per_second_on_each_tether() -> void:
+func test_a_parked_reclaimer_heals_5_hp_per_second_on_each_tether() -> void:
 	if not SimEnemiesKit.heal_wired():
 		return  # DamageResolver.heal is still a stub in this checkout (needs owner, see the V4-N report)
 	var w: SimWorld = _world()
@@ -80,12 +81,12 @@ func test_a_parked_reclaimer_heals_14_hp_per_second_on_each_tether() -> void:
 	var a: int = _damaged(w, r, 1.0, 0.0, 0.2)
 	var before: float = w.enemies.hp[a]
 	SimEnemiesKit.run(w, 60)
-	assert_float(w.enemies.hp[a]).is_equal_approx(before + 14.0, 0.000001)
+	assert_float(w.enemies.hp[a]).is_equal_approx(before + 5.0, 0.000001)
 	var healed: Array[SimEvent] = SimEnemiesKit.events_of(w, SimEventKind.Id.ENEMY_HEALED)
 	assert_int(healed.size()).is_equal(2)
 	assert_int(healed[0].a).is_equal(w.enemies.id[a])
 	assert_int(healed[0].b).is_equal(w.enemies.id[r])
-	assert_float(healed[0].f).is_equal_approx(7.0, 0.000001)
+	assert_float(healed[0].f).is_equal_approx(2.5, 0.000001)
 	w.enemies.stun_ticks[r] = HELD  # a stunned reclaimer repairs nothing
 	SimEnemiesKit.run(w, 60)
 	assert_int(SimEnemiesKit.events_of(w, SimEventKind.Id.ENEMY_HEALED).size()).is_equal(2)

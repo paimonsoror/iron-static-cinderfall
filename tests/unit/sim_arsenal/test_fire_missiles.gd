@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## V4-W: the hornet rack (firing kind M, VARIETY_SPEC 3.3) and the target picks it uses (FireTargets.pick_many, the body of
-## Targeting.pick_many). A salvo of 6 missiles (8 at level 3), each to a different target, each 24 damage in a 1.2 m blast
-## that falls to 10 at the edge; flight 30 ticks; 0.45 salvos a second (the first on tick 134), 4 salvos, a 192-tick reload,
+## Targeting.pick_many). A salvo of 6 missiles (8 at level 3), each to a different target, each 48 damage in a 1.2 m blast
+## that falls to 18 at the edge (V5-C: was 24 and 10); flight 30 ticks; 0.5 salvos a second (the first on tick 120), 4 salvos, a 192-tick reload,
 ## range 22 m. With fewer targets than missiles the list repeats. Skitter: 45 hp, armor 0, radius 0.35.
 
 
@@ -31,7 +31,7 @@ func _salvo(w: SimWorld) -> void:
 func test_six_missiles_go_to_the_six_best_ranked_enemies() -> void:
 	var w: SimWorld = _rack()
 	_eight(w)
-	assert_int(ArsenalWKit.run_until_shots(w, 1)).is_equal(134)
+	assert_int(ArsenalWKit.run_until_shots(w, 1)).is_equal(120)
 	ArsenalWKit.hold_fire(w)
 	var launched: Array[SimEvent] = VarietyCKit.events_of(w, SimEventKind.Id.DELAYED_HIT_LAUNCHED)
 	assert_int(launched.size()).is_equal(6)
@@ -42,10 +42,10 @@ func test_six_missiles_go_to_the_six_best_ranked_enemies() -> void:
 		assert_float(launched[k].g).is_equal_approx(w.enemies.z[k], 1e-5)
 	assert_int(VarietyCKit.count(w, SimEventKind.Id.SHOT_FIRED)).is_equal(1)
 	ArsenalWKit.run_both(w, 29)
-	assert_float(VarietyCKit.taken(w, 0)).is_equal(0.0)  # tick 163: still in the air
-	ArsenalWKit.run_both(w, 1)  # tick 164
+	assert_float(VarietyCKit.taken(w, 0)).is_equal(0.0)  # tick 149: still in the air
+	ArsenalWKit.run_both(w, 1)  # tick 150
 	for i: int in 6:
-		assert_float(VarietyCKit.taken(w, i)).is_equal(24.0)
+		assert_float(VarietyCKit.taken(w, i)).is_equal(48.0)
 	assert_float(VarietyCKit.taken(w, 6)).is_equal(0.0)
 	assert_float(VarietyCKit.taken(w, 7)).is_equal(0.0)
 	assert_int(VarietyCKit.count(w, SimEventKind.Id.AREA_BLAST)).is_equal(6)
@@ -57,31 +57,31 @@ func test_fewer_targets_than_missiles_repeat_from_the_start_of_the_list() -> voi
 		ArsenalWKit.foe(three, Ids.EN_SKITTER, 4.0 + 5.5 * k, 0.0, k == 0)
 	_salvo(three)
 	for i: int in 3:
-		assert_float(VarietyCKit.taken(three, i)).is_equal(48.0)  # two missiles each
+		assert_float(VarietyCKit.taken(three, i)).is_equal(96.0)  # two missiles each
 	var one: SimWorld = _rack()
 	ArsenalWKit.foe(one, Ids.EN_SKITTER, 8.0, 0.0, true)
 	_salvo(one)
-	assert_float(VarietyCKit.taken(one, 0)).is_equal(144.0)  # all six
+	assert_float(VarietyCKit.taken(one, 0)).is_equal(288.0)  # all six
 	var four: SimWorld = _rack()
 	for k: int in 4:
 		ArsenalWKit.foe(four, Ids.EN_SKITTER, 4.0 + 3.5 * k, float(k) * 2.0 - 3.0, k == 0)
 	_salvo(four)
-	assert_float(VarietyCKit.taken(four, 0)).is_equal(48.0)  # 6 missiles over 4 targets: the first two get a second
-	assert_float(VarietyCKit.taken(four, 1)).is_equal(48.0)
-	assert_float(VarietyCKit.taken(four, 2)).is_equal(24.0)
-	assert_float(VarietyCKit.taken(four, 3)).is_equal(24.0)
+	assert_float(VarietyCKit.taken(four, 0)).is_equal(96.0)  # 6 missiles over 4 targets: the first two get a second
+	assert_float(VarietyCKit.taken(four, 1)).is_equal(96.0)
+	assert_float(VarietyCKit.taken(four, 2)).is_equal(48.0)
+	assert_float(VarietyCKit.taken(four, 3)).is_equal(48.0)
 
 
-func test_the_splash_falls_from_24_at_the_centre_to_10_at_1_2_metres() -> void:
+func test_the_splash_falls_from_48_at_the_centre_to_18_at_1_2_metres() -> void:
 	var w: SimWorld = _rack()
 	ArsenalWKit.foe(w, Ids.EN_SKITTER, 6.0, 0.0, true)
 	ArsenalWKit.foe(w, Ids.EN_SKITTER, 6.0, 0.9)
 	_salvo(w)
-	# 3 missiles on each: 3 x 24 of its own and 3 splashes at 0.9 m of the other's: 24 x (1 - (1 - 10 / 24) x 0.9 / 1.2)
-	var splash: float = 24.0 * (1.0 - (1.0 - 10.0 / 24.0) * 0.9 / 1.2)
-	assert_float(splash).is_equal_approx(13.5, 1e-5)
-	assert_float(VarietyCKit.taken(w, 0)).is_equal_approx(72.0 + 3.0 * 13.5, 1e-5)
-	assert_float(VarietyCKit.taken(w, 1)).is_equal_approx(72.0 + 3.0 * 13.5, 1e-5)
+	# 3 missiles on each: 3 x 48 of its own and 3 splashes at 0.9 m of the other's: 48 x (1 - (1 - 18 / 48) x 0.9 / 1.2)
+	var splash: float = 48.0 * (1.0 - (1.0 - 18.0 / 48.0) * 0.9 / 1.2)
+	assert_float(splash).is_equal_approx(25.5, 1e-5)
+	assert_float(VarietyCKit.taken(w, 0)).is_equal_approx(144.0 + 3.0 * 25.5, 1e-5)
+	assert_float(VarietyCKit.taken(w, 1)).is_equal_approx(144.0 + 3.0 * 25.5, 1e-5)
 
 
 func test_level_three_fires_eight_missiles_of_1_55_times_the_damage() -> void:
@@ -92,22 +92,22 @@ func test_level_three_fires_eight_missiles_of_1_55_times_the_damage() -> void:
 	assert_int(VarietyCKit.count(w, SimEventKind.Id.DELAYED_HIT_LAUNCHED)).is_equal(8)
 	ArsenalWKit.run_both(w, 30)
 	for i: int in 8:
-		assert_float(VarietyCKit.taken(w, i)).is_equal_approx(24.0 * 1.55, 1e-3)
+		assert_float(VarietyCKit.taken(w, i)).is_equal_approx(48.0 * 1.55, 1e-3)
 
 
 func test_level_two_scales_the_damage() -> void:
 	var w: SimWorld = _rack(2)
 	ArsenalWKit.foe(w, Ids.EN_SKITTER, 8.0, 0.0, true)
 	_salvo(w)
-	assert_float(VarietyCKit.taken(w, 0)).is_equal_approx(6.0 * 30.0, 1e-5)
+	assert_float(VarietyCKit.taken(w, 0)).is_equal_approx(6.0 * 60.0, 1e-5)
 
 
 func test_four_salvos_then_a_reload_of_192_ticks() -> void:
 	var w: SimWorld = _rack()
 	ArsenalWKit.foe(w, Ids.EN_HULK, 10.0, 0.0, true)
 	var ticks: Array[int] = ArsenalWKit.shot_ticks(w, 540)
-	assert_array(ticks).is_equal([134, 267, 400, 534])
-	assert_array(VarietyCKit.ticks_of(w, SimEventKind.Id.RELOAD_STARTED)).is_equal([534])
+	assert_array(ticks).is_equal([120, 240, 360, 480])
+	assert_array(VarietyCKit.ticks_of(w, SimEventKind.Id.RELOAD_STARTED)).is_equal([480])
 	assert_int(VarietyCKit.events_of(w, SimEventKind.Id.RELOAD_STARTED)[0].a).is_equal(192)
 
 

@@ -122,9 +122,9 @@ func test_the_last_draft_before_the_final_wave_is_known() -> void:
 
 
 func test_a_second_card_is_bought_with_scrap_that_has_no_other_use() -> void:
-	_open([&"hot_loads", &"cyclic_tuning", &"penetrator_cores"], 249)
-	assert_bool(PolicySpend.wants_buyout(w)).is_false()  # the buy-out costs 250
-	w.scrap = 250
+	_open([&"hot_loads", &"cyclic_tuning", &"penetrator_cores"], 349)
+	assert_bool(PolicySpend.wants_buyout(w)).is_false()  # the buy-out costs 350
+	w.scrap = 350
 	assert_bool(PolicySpend.wants_buyout(w)).is_true()
 	bot.act(w)
 	var cmd: SimCommand = _only()
@@ -134,9 +134,9 @@ func test_a_second_card_is_bought_with_scrap_that_has_no_other_use() -> void:
 
 func test_before_the_last_draft_a_reserve_of_150_is_kept() -> void:
 	w.wave = 2
-	_open([&"hot_loads", &"cyclic_tuning", &"penetrator_cores"], 399)
+	_open([&"hot_loads", &"cyclic_tuning", &"penetrator_cores"], 499)
 	assert_bool(PolicySpend.wants_buyout(w)).is_false()
-	w.scrap = 400
+	w.scrap = 500
 	assert_bool(PolicySpend.wants_buyout(w)).is_true()
 
 
@@ -152,9 +152,9 @@ func test_a_card_not_worth_having_is_not_bought_and_nothing_is_bought_twice() ->
 
 
 func test_a_wounded_core_is_patched_with_spare_scrap_up_to_three_times_a_draft() -> void:
-	_open([&"hot_loads", &"cyclic_tuning", &"penetrator_cores"], 180, 0.8)
+	_open([&"hot_loads", &"cyclic_tuning", &"penetrator_cores"], 220, 0.8)
 	assert_bool(PolicySpend.wants_patch(w, bot)).is_true()
-	w.scrap = 179
+	w.scrap = 219
 	assert_bool(PolicySpend.wants_patch(w, bot)).is_false()
 	w.scrap = 900
 	w.set_core_hp(w.core_max_hp * 0.95)

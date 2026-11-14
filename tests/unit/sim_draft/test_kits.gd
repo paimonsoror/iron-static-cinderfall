@@ -74,7 +74,7 @@ func test_gunline_starts_with_two_turrets_and_weaker_shots() -> void:
 	assert_int(w.turrets.active_count()).is_equal(2)
 	assert_float(w.mods.w_dmg_mul).is_equal_approx(0.75, 0.00001)
 	var i: int = DirectiveKit.place(w, Ids.EN_SKITTER, 0.0, 0.0)
-	assert_float(DamageResolver.warden_amount(w, i, w.content.weapons[Ids.WP_PISTOL], 1)).is_equal_approx(22.5, 0.0001)  # 30 x 0.75
+	assert_float(DamageResolver.warden_amount(w, i, w.content.weapons[Ids.WP_PISTOL], 1)).is_equal_approx(25.5, 0.0001)  # 34 x 0.75
 	assert_bool(EconomySystem.has_free_pad(w)).is_false()
 
 

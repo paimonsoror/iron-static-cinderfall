@@ -7,7 +7,7 @@
       "params": { "damage": 450, "radius_m": 4.0, "edge_frac": 0.5, "boss_mult": 0.5, "start_charges": 1, "charges_per_act": 1, "charge_cap": 3 } },
     { "id": "core_vent", "who": "player", "name_key": "event.core_vent.name", "warn_s": 0.5, "duration_s": 0,
       "weights": [0, 0, 0], "boss_safe": true, "harmful": false,
-      "params": { "core_cost_frac": 0.08, "block_core_frac": 0.10, "damage": 220, "radius_m": 6.0, "knockback_m": 2.0,
+      "params": { "core_cost_frac": 0.04, "block_core_frac": 0.10, "damage": 220, "radius_m": 6.0, "knockback_m": 2.0,
                   "start_charges": 1, "charges_per_wave": 1, "charge_cap": 1 } },
     { "id": "freight_call", "who": "player", "name_key": "event.freight_call.name", "warn_s": 4.0, "duration_s": 1.2,
       "weights": [0, 0, 0], "boss_safe": true, "harmful": false,

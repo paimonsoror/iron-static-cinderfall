@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 ## V4-L: NODE 5 // LANCE PLATFORM (VARIETY_SPEC 6, CONTENT 5; briefing lines boss.lance_platform.attack / .answer).
-## Plants 14 m from the core. Cycle 9 s (540 ticks): a 3 s (180 tick) charge, then a beam for 160. +50% damage taken
+## Plants 14 m from the core. Cycle 9 s (540 ticks): a 3 s (180 tick) charge, then a beam for 120 (V5-C: was 160). +50% damage taken
 ## while charging; an EMP during the charge cancels the shot and stuns for 2 s; the Shield absorbs its part.
 ## Placed 13.5 m from the core between ticks, the platform plants on tick 1 (P = 1).
 
@@ -14,7 +14,7 @@ func _planted(w: SimWorld) -> int:
 	return i
 
 
-func test_first_60_seconds_charge_at_p_plus_360_and_beam_for_160_at_p_plus_540_every_540_ticks() -> void:
+func test_first_60_seconds_charge_at_p_plus_360_and_beam_for_120_at_p_plus_540_every_540_ticks() -> void:
 	var w: SimWorld = VarietyLKit.world()
 	var i: int = _planted(w)
 	assert_bool(w.boss.has_flag(BossState.F_PLANTED)).is_true()
@@ -26,9 +26,9 @@ func test_first_60_seconds_charge_at_p_plus_360_and_beam_for_160_at_p_plus_540_e
 	for e: SimEvent in VarietyLKit.events_of(w, SimEventKind.Id.CORE_HIT):
 		assert_int(e.a).is_equal(w.enemies.id[i])
 		assert_int(e.b).is_equal(TYPE)
-		assert_float(e.f).is_equal(160.0)
+		assert_float(e.f).is_equal(120.0)
 		assert_float(e.f + e.g).is_less_equal(0.2 * w.core_max_hp)
-	assert_float(w.core_hp).is_equal(1000.0 - 6.0 * 160.0)
+	assert_float(w.core_hp).is_equal(1000.0 - 6.0 * 120.0)
 	assert_int(w.boss.phase_count).is_equal(1)
 
 
@@ -49,7 +49,7 @@ func test_the_state_shows_the_charge_counting_down_and_the_vents_open() -> void:
 	assert_float(BossSystem.damage_taken_mult(w, i)).is_equal(1.5)
 	assert_float(w.core_hp).is_equal(1000.0)
 	VarietyLKit.tick(w)  # 541: the beam
-	assert_float(w.core_hp).is_equal(840.0)
+	assert_float(w.core_hp).is_equal(880.0)
 	assert_bool(w.boss.has_flag(BossState.F_CHARGING)).is_false()
 	assert_int(w.boss.telegraph_attack).is_equal(BossState.ATK_NONE)
 	assert_float(BossSystem.damage_taken_mult(w, i)).is_equal(1.0)
@@ -111,8 +111,8 @@ func test_the_shield_absorbs_its_part_of_the_beam() -> void:
 	var hits: Array[SimEvent] = VarietyLKit.events_of(w, SimEventKind.Id.CORE_HIT)
 	assert_int(hits.size()).is_equal(1)
 	assert_float(hits[0].g).is_equal(100.0)
-	assert_float(hits[0].f).is_equal(60.0)
-	assert_float(w.core_hp).is_equal(940.0)
+	assert_float(hits[0].f).is_equal(20.0)
+	assert_float(w.core_hp).is_equal(980.0)
 
 
 func test_it_walks_to_14_m_plants_there_and_never_takes_a_slot() -> void:

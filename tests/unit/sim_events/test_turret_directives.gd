@@ -1,8 +1,9 @@
 extends GdUnitTestSuite
 ## V4-V: the directive rules of the auto turrets (CONTENT 3): sentry_link (t_inherit), overwatch, range_mul,
-## last_stand_protocol and mine_layer, as TurretSystem and EventRates apply them. Pad 0 stands at (-2.5, -1.5) and hits for 12.
+## last_stand_protocol and mine_layer, as TurretSystem and EventRates apply them. Pad 0 stands at (-2.5, -1.5) and hits for 15
+## (V5-C: was 12).
 
-const TURRET_DAMAGE: float = 12.0
+const TURRET_DAMAGE: float = 15.0
 
 
 func _pad(w: SimWorld) -> void:

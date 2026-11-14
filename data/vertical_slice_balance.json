@@ -12,14 +12,14 @@
   "intermission_seconds": 8,
   "weapons": {
     "pistol": {
-      "damage": 30,
-      "shots_per_second": 2,
+      "damage": 34,
+      "shots_per_second": 2.2,
       "magazine": 12,
       "reload_seconds": 1.25,
       "range_m": 25
     },
     "smg": {
-      "damage": 15,
+      "damage": 20,
       "shots_per_second": 6,
       "magazine": 30,
       "reload_seconds": 1.6,
@@ -84,7 +84,7 @@
       "base_cost": 350,
       "growth": 2,
       "max_level": 2,
-      "turret_damage": 12,
+      "turret_damage": 15,
       "turret_sps": 3,
       "turret_range_m": 17
     }

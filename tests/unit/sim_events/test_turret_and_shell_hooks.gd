@@ -3,9 +3,10 @@ extends GdUnitTestSuite
 ## ShotHooks.on_turret_shot after the shot is tallied, ShotHooks.on_turret_hit after the hit, the pool of a landed slag
 ## mortar shell, and the drum API that lets stray LMG rounds hit fuel drums.
 ##
-## The pad 0 of the arena stands at (-2.5, -1.5); a skitter has no armor and the turret hits for 12 (x t_dmg_mul).
+## The pad 0 of the arena stands at (-2.5, -1.5); a skitter has no armor and the turret hits for 15 (x t_dmg_mul; V5-C:
+## was 12).
 
-const TURRET_DAMAGE: float = 12.0
+const TURRET_DAMAGE: float = 15.0
 
 
 ## A pad with a target 1.5 m from it that is the best-ranked enemy, and two more skitters behind it.

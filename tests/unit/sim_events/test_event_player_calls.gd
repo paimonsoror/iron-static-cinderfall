@@ -12,7 +12,7 @@ func _vent_world() -> SimWorld:
 # --- CORE VENT ---
 
 
-func test_the_vent_costs_eight_percent_of_the_core_and_lands_half_a_second_later() -> void:
+func test_the_vent_costs_four_percent_of_the_core_and_lands_half_a_second_later() -> void:
 	var w: SimWorld = _vent_world()
 	var near: int = VarietyVKit.place(w, Ids.EN_HOLLOW, -4.0, 3.0)  # 3.5 m from the core, on the march
 	var far: int = VarietyVKit.place(w, Ids.EN_HOLLOW, 5.0, 3.0)  # 12.5 m
@@ -20,7 +20,7 @@ func test_the_vent_costs_eight_percent_of_the_core_and_lands_half_a_second_later
 	VarietyVKit.tough(w, far)
 	var before: float = w.core_hp
 	assert_int(VarietyVKit.call_on_next_tick(w, VarietyVKit.VENT)).is_equal(Reason.Id.OK)  # tick 1
-	assert_float(w.core_hp).is_equal_approx(before * 0.92, 0.001)
+	assert_float(w.core_hp).is_equal_approx(before * 0.96, 0.001)  # V5-C: 4% (was 8%)
 	assert_int(w.events_state.charges_of(VarietyVKit.VENT)).is_equal(0)
 	var warned: SimEvent = VarietyVKit.events_of(w, SimEventKind.Id.EVENT_WARNED)[0]
 	assert_int(warned.b).is_equal(30)

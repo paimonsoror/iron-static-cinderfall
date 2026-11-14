@@ -29,11 +29,11 @@ func test_how_many_enemies_one_volley_hurts() -> void:
 	var expected: Dictionary[int, int] = {
 		Ids.WP_PISTOL: 1,  # reliable sidearm
 		Ids.WP_SMG: 1,  # swarm trimmer: it wins on rate, not on reach
-		Ids.WP_SCATTERGUN: 3,  # core defense: only what stands inside 9 m
+		Ids.WP_SCATTERGUN: 4,  # core defense: 10 pellets, at most 3 a body while others remain
 		Ids.WP_ASSAULT_RIFLE: 2,  # generalist: the round passes into a second enemy
 		Ids.WP_HORNET_RACK: 6,  # six targets at once
 		Ids.WP_LMG: 1,  # suppression: one round, a stray still hurts one
-		Ids.WP_SLAG_MORTAR: 3,  # area denial: the densest clump within 2.6 m
+		Ids.WP_SLAG_MORTAR: 5,  # area denial: the densest clump within 3.0 m
 		Ids.WP_CUTTING_TORCH: 1,  # armor and boss melter
 		Ids.WP_ARC_PROJECTOR: 5,  # chain lightning: the target and 4 jumps
 		Ids.WP_RAIL_LANCE: 6,  # line execution: everything on the line
@@ -48,16 +48,16 @@ func test_how_much_one_volley_takes_off_an_armored_boss() -> void:
 	# armor 12: the pistol, SMG, rifle, LMG and the shotgun's pellets lose it from every hit; the torch and the arc lose
 	# none, the lance half; the rack's six missiles and the shell lose it too
 	var expected: Dictionary[int, float] = {
-		Ids.WP_PISTOL: 18.0,
-		Ids.WP_SMG: 3.0,
-		Ids.WP_SCATTERGUN: 8.0,  # 8 pellets of 10: 1 each after armor
-		Ids.WP_ASSAULT_RIFLE: 16.0,
-		Ids.WP_HORNET_RACK: 72.0,  # 6 missiles x (24 - 12)
-		Ids.WP_LMG: 8.0,
-		Ids.WP_SLAG_MORTAR: 68.0,
-		Ids.WP_CUTTING_TORCH: 4.0,
-		Ids.WP_ARC_PROJECTOR: 40.0,
-		Ids.WP_RAIL_LANCE: 314.0,
+		Ids.WP_PISTOL: 22.0,
+		Ids.WP_SMG: 8.0,
+		Ids.WP_SCATTERGUN: 40.0,  # 10 pellets of 16: 4 each after armor
+		Ids.WP_ASSAULT_RIFLE: 14.0,
+		Ids.WP_HORNET_RACK: 216.0,  # 6 missiles x (48 - 12)
+		Ids.WP_LMG: 6.0,
+		Ids.WP_SLAG_MORTAR: 138.0,
+		Ids.WP_CUTTING_TORCH: 12.0,
+		Ids.WP_ARC_PROJECTOR: 50.0,
+		Ids.WP_RAIL_LANCE: 234.0,
 	}
 	for weapon: int in expected:
 		var w: SimWorld = ArsenalWKit.world(weapon)
@@ -82,9 +82,9 @@ func test_only_the_heat_weapons_have_no_magazine() -> void:
 		assert_bool(def.is_heat()).is_equal(def.id in [&"cutting_torch", &"arc_projector"])
 
 
-func test_the_shotgun_is_the_only_weapon_that_cannot_fire_beyond_ten_metres() -> void:
+func test_the_shotgun_is_the_only_weapon_that_cannot_fire_beyond_fifteen_metres() -> void:
 	for def: WeaponDef in TestContent.variety().weapons:
-		assert_bool(def.range_m < 10.0).is_equal(def.id == &"scattergun")
+		assert_bool(def.range_m < 15.0).is_equal(def.id == &"scattergun")  # 13 m (V5-C: was 9 m under 10)
 
 
 func test_only_the_mortar_holds_fire_at_close_range() -> void:

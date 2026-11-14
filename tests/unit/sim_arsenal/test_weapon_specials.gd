@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 ## V4-W: the specials of the hitscan weapons around FireHitscan (VARIETY_SPEC 3.3, CONTENT 2): the LMG's spin-up, strays and
 ## armor shred, the assault rifle's second pierce at level 3, the pistol's guaranteed x3 hit at level 3 and the SMG's
-## larger magazine at level 3. Skitter: 45 hp, armor 0; Hollow Warden: 150 hp, armor 8; Siege Hulk: armor 12.
+## larger magazine at level 3. Skitter: 45 hp, armor 0; Hollow Warden: 150 hp, armor 8; Siege Hulk: armor 12. V5-C numbers:
+## LMG 18 damage, assault rifle 26, pistol 34 (were 20, 28 and 30).
 
 
 # --- LMG ---
@@ -55,7 +56,7 @@ func test_a_stray_goes_to_a_neighbour_within_1_5_metres_and_draws_only_from_the_
 	var near: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 8.5, 0.5, false)  # 0.71 m from the target
 	var far: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 8.0, 3.0, false)  # 3 m: out of reach
 	ArsenalWKit.run_until_shots(w, 1)
-	assert_float(VarietyCKit.taken(w, near)).is_equal(20.0)
+	assert_float(VarietyCKit.taken(w, near)).is_equal(18.0)
 	assert_float(VarietyCKit.taken(w, t)).is_equal(0.0)
 	assert_float(VarietyCKit.taken(w, far)).is_equal(0.0)
 	assert_int(VarietyCKit.events_of(w, SimEventKind.Id.SHOT_FIRED)[0].b).is_equal(w.enemies.id[near])
@@ -73,7 +74,7 @@ func test_a_stray_with_no_neighbour_hits_the_target_and_costs_one_draw() -> void
 	var t: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 8.0, 0.0, true)
 	ArsenalWKit.foe(w, Ids.EN_SKITTER, 8.0, 3.0)
 	ArsenalWKit.run_until_shots(w, 3)
-	assert_float(VarietyCKit.taken(w, t)).is_equal(60.0)
+	assert_float(VarietyCKit.taken(w, t)).is_equal(54.0)
 	var mirror: RandomNumberGenerator = SimRng.new(1).stream(&"aim")
 	for _n: int in 3:
 		var _roll: float = mirror.randf()
@@ -85,8 +86,8 @@ func test_a_quarter_of_the_rounds_stray_and_every_round_lands_on_one_of_the_two(
 	var t: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 8.0, 0.0, true)
 	var near: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 8.5, 0.5, false)
 	ArsenalWKit.run_until_shots(w, 150)
-	var on_target: float = VarietyCKit.taken(w, t) / 20.0
-	var strays: float = VarietyCKit.taken(w, near) / 20.0
+	var on_target: float = VarietyCKit.taken(w, t) / 18.0
+	var strays: float = VarietyCKit.taken(w, near) / 18.0
 	assert_float(on_target + strays).is_equal(150.0)
 	assert_float(strays).is_between(20.0, 60.0)  # 25% of 150 is 37.5
 	# the same seed gives the same split
@@ -104,7 +105,7 @@ func test_each_round_strips_half_an_armor_point_up_to_six() -> void:
 	ArsenalWKit.run_until_shots(w, 16)
 	var dealt: Array[float] = ArsenalWKit.dealt(w)
 	for k: int in 16:
-		assert_float(dealt[k]).is_equal_approx(minf(14.0, 8.0 + 0.5 * float(k)), 1e-5)  # 20 less armor 12, 11.5, ... 6
+		assert_float(dealt[k]).is_equal_approx(minf(12.0, 6.0 + 0.5 * float(k)), 1e-5)  # 18 less armor 12, 11.5, ... 6
 	assert_int(w.ext.shred_milli[hulk]).is_equal(6000)
 	assert_float(DamageResolver.effective_armor(w, hulk, 0)).is_equal(6.0)
 
@@ -122,15 +123,15 @@ func test_the_assault_rifle_passes_into_a_second_enemy_and_at_level_three_a_thir
 	var one: SimWorld = ArsenalWKit.world(Ids.WP_ASSAULT_RIFLE)
 	_line_of_three(one)
 	VarietyCKit.run_weapon(one, 14)
-	assert_float(VarietyCKit.taken(one, 0)).is_equal(28.0)
-	assert_float(VarietyCKit.taken(one, 1)).is_equal_approx(16.8, 1e-5)
+	assert_float(VarietyCKit.taken(one, 0)).is_equal(26.0)
+	assert_float(VarietyCKit.taken(one, 1)).is_equal_approx(15.6, 1e-5)
 	assert_float(VarietyCKit.taken(one, 2)).is_equal(0.0)
 	var three: SimWorld = ArsenalWKit.world(Ids.WP_ASSAULT_RIFLE, 3)
 	_line_of_three(three)
 	VarietyCKit.run_weapon(three, 14)
-	assert_float(VarietyCKit.taken(three, 0)).is_equal_approx(28.0 * 1.55, 1e-3)
-	assert_float(VarietyCKit.taken(three, 1)).is_equal_approx(28.0 * 1.55 * 0.6, 1e-3)
-	assert_float(VarietyCKit.taken(three, 2)).is_equal_approx(28.0 * 1.55 * 0.36, 1e-3)
+	assert_float(VarietyCKit.taken(three, 0)).is_equal_approx(26.0 * 1.55, 1e-3)
+	assert_float(VarietyCKit.taken(three, 1)).is_equal_approx(26.0 * 1.55 * 0.6, 1e-3)
+	assert_float(VarietyCKit.taken(three, 2)).is_equal_approx(26.0 * 1.55 * 0.36, 1e-3)
 	assert_int(VarietyCKit.count(three, SimEventKind.Id.SHOT_FIRED)).is_equal(1)
 
 
@@ -142,7 +143,7 @@ func test_the_pistol_at_level_three_hits_for_triple_on_every_sixth_shot() -> voi
 	assert_int(dealt.size()).is_equal(18)
 	for k: int in 18:
 		var crit: bool = (k + 1) % 6 == 0
-		assert_float(dealt[k]).is_equal_approx(30.0 * 1.55 * (3.0 if crit else 1.0), 1e-3)
+		assert_float(dealt[k]).is_equal_approx(34.0 * 1.55 * (3.0 if crit else 1.0), 1e-3)
 
 
 func test_the_triple_hit_meets_the_armor_once() -> void:
@@ -150,8 +151,8 @@ func test_the_triple_hit_meets_the_armor_once() -> void:
 	ArsenalWKit.foe(w, Ids.EN_HOLLOW, 8.0, 0.0, true)
 	ArsenalWKit.run_until_shots(w, 6)
 	var dealt: Array[float] = ArsenalWKit.dealt(w)
-	assert_float(dealt[0]).is_equal_approx(30.0 * 1.55 - 8.0, 1e-3)
-	assert_float(dealt[5]).is_equal_approx(30.0 * 1.55 * 3.0 - 8.0, 1e-3)  # not three hits of 38.5
+	assert_float(dealt[0]).is_equal_approx(34.0 * 1.55 - 8.0, 1e-3)
+	assert_float(dealt[5]).is_equal_approx(34.0 * 1.55 * 3.0 - 8.0, 1e-3)  # not three hits of 44.7
 
 
 func test_the_pistol_has_no_triple_hit_below_level_three() -> void:
@@ -159,7 +160,7 @@ func test_the_pistol_has_no_triple_hit_below_level_three() -> void:
 	ArsenalWKit.foe(w, Ids.EN_SKITTER, 8.0, 0.0, true)
 	ArsenalWKit.run_until_shots(w, 12)
 	for f: float in ArsenalWKit.dealt(w):
-		assert_float(f).is_equal_approx(37.5, 1e-5)
+		assert_float(f).is_equal_approx(42.5, 1e-5)
 	assert_int(w.arsenal.shots_since_proc).is_equal(0)
 
 

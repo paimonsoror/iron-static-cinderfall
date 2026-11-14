@@ -46,7 +46,7 @@ func test_the_mini_rule_a_body_in_the_same_eta_bucket_outranks_a_mini() -> void:
 func test_a_parked_standoff_enemy_that_does_not_fire_is_not_an_attacker() -> void:
 	var w: SimWorld = _world()
 	var a: ArenaDef = w.content.arena
-	var ring: int = StandoffPoints.ring_of(a, 12.5)
+	var ring: int = StandoffPoints.ring_of(a, 10.5)  # the reclaimer's ring (V5-C: was 12.5)
 	var at: int = a.standoff_ring.find(ring)
 	var r: int = SimEnemiesKit.place(w, Ids.EN_RECLAIMER, a.standoff_points[at].x, a.standoff_points[at].y)
 	assert_int(SimEnemiesKit.run_until_attacking(w, r, 10)).is_greater(0)

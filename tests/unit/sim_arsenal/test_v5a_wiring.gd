@@ -3,7 +3,7 @@ extends GdUnitTestSuite
 ## arsenal and the damage path, the Core Surge and bottomless rules of the magazine, strays on fuel drums, shards inside
 ## the blast that broke their splitter, the two new sim events, the defeat check and the wave-clear effects.
 
-const PISTOL_DAMAGE: float = 30.0
+const PISTOL_DAMAGE: float = 34.0  # V5-C: was 30
 const PISTOL_RELOAD_TICKS: int = 75
 
 

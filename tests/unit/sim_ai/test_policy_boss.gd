@@ -45,9 +45,10 @@ func _act() -> void:
 
 
 func test_the_pistol_and_the_arc_are_worth_what_the_data_says_against_a_boss() -> void:
-	# pistol: (30 - 12 armor) x 2 shots/s x (6 s of a 12-round magazine in 7.25 s); arc: 40 x 1.6 x (5 s of 8 shots in 7.5 s)
-	assert_float(PolicyDps.vs(w, 0, boss)).is_equal_approx(18.0 * 2.0 * 6.0 / 7.25, 0.05)
-	assert_float(PolicyDps.vs(w, 1, boss)).is_equal_approx(40.0 * 1.6 * 5.0 / 7.5, 0.05)
+	# pistol: (34 - 12 armor) x 2.2 shots/s x (a 12-round magazine over that plus a 1.25 s reload); arc: 50 x 1.6 x (9 shots
+	# of 12 heat in 5.625 s, then a 2.5 s vent)
+	assert_float(PolicyDps.vs(w, 0, boss)).is_equal_approx(22.0 * 2.2 * (12.0 / 2.2) / (12.0 / 2.2 + 1.25), 0.05)
+	assert_float(PolicyDps.vs(w, 1, boss)).is_equal_approx(50.0 * 1.6 * 5.625 / 8.125, 0.05)
 	assert_float(PolicyDps.vs(w, 1, boss)).is_greater(PolicyDps.vs(w, 0, boss))
 
 
