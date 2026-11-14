@@ -95,7 +95,7 @@ The work is organised in waves ([work plan](docs/WORK_PLAN.md)). The **15-wave g
 | V5-C | Balance with the scorecard (values only) | Next |
 | V6-Q | Release QA, including a real two-process resume check and phone measurements | Planned |
 
-Measured with the scorecard on 30 seeds, before the balance pass: the `balanced` bot wins about half of its runs with the starting pool (16 of 30) and fewer with every unlock (7 of 30), and its winning runs last about 10 minutes against the 13 to 17 the design wants, so the balance pass is next. The last measurement on a phone (a Pixel 11 Pro Fold, before the V4 content) held 60 fps on the LOW tier and about 56 fps on MID and HIGH with 50 enemies; it has to be repeated on the new build ([`docs/reports/PHONE_PERF.md`](docs/reports/PHONE_PERF.md)). On the desktop the sim costs about 0.4 ms per tick.
+Measured with the scorecard on 30 seeds, before the balance pass: the `balanced` bot wins about half of its runs with the starting pool (16 of 30) and fewer with every unlock (7 of 30), and its winning runs last about 10 minutes against the 13 to 17 the design wants, so the balance pass is next. The last measurement on a phone (a Pixel 11 Pro Fold, before the V4 content) held 60 fps on the LOW tier and about 56 fps on MID and HIGH with 50 enemies; it has to be repeated on the new build ([`docs/reports/PHONE_PERF.md`](docs/reports/PHONE_PERF.md)). On the desktop the sim costs about 0.35 ms per tick (the stress tests, with 50 + 40 machines and a blast every second, stay under 1 ms).
 
 ## Quick start
 
