@@ -212,8 +212,17 @@ The headline: balanced wins 63% on base and 67% on full (both inside 40% to 70%)
 values (the scratch harness `build/v5c/exp_run.gd`, the scorecard's job code with a policy filter) gave 63% / 834 s on base and
 58% / 857 s on full.
 
-NOT RUN on the final values (section 3.9): `scorecard_run -Runs 200` (both pools), `sim_run -Runs 20`, `balance_run -Runs 20`,
-`check.ps1`, and the test groups after the re-recorded numbers.
+`tools\sim_run.ps1 -Seed 1 -Policy balanced -Runs 20` (base pool, same `b093f3f` data), `SIM SUMMARY: runs=20 victories=13 defeats=7`:
+
+| | Before (V5-A) | After |
+|---|---|---|
+| Wins | 11 | 13 |
+| Win length (`seconds`) | 574 to 669 s, mean 621 s | 766 to 923 s, mean 877 s |
+| Losses by death wave | 5 (1), 6 (3), 10 (3), 11 (2), 14 (1), 15 (2) | 11 (1), 12 (2), 13 (1), 14 (1), 15 (2) |
+| Speed | 0.35 ms a tick | 0.382 ms a tick (375 s wall for 20 runs) |
+
+NOT RUN on the final values (section 3.9): `scorecard_run -Runs 200` (both pools), `balance_run -Runs 20`, `check.ps1`, and the
+test groups after the re-recorded numbers.
 
 ## 3.2 Method
 
@@ -399,10 +408,10 @@ These were recorded from each test's failure output on the final data, but the g
 ## 3.9 NOT RUN on the final values
 
 The machine ran short of memory during the final evidence; the harness stopped the test-group run (during `integration/sim`)
-and the evidence script, and asked not to restart them unasked. The two 30-run cards of 3.1 had finished or were already
-running (the full-pool card's processes outlived the script and completed; both ran on a `git archive` copy of `b093f3f`, the
-final data). Not run: `scorecard_run -Runs 200` (base, full);
-`sim_run -Seed 1 -Policy balanced -Runs 20`; `balance_run -Runs 20` (on the shipped data it also judges S4, S6, S7, S16 and S17,
+and the evidence script, and asked not to restart them unasked. The evidence script's own process outlived that stop and went
+on to the full-pool card and `sim_run` (both in 3.1; all runs used a `git archive` copy of `b093f3f`, the final data); V5-C
+ended it before `balance_run` and the 200-run cards could start. Not run: `scorecard_run -Runs 200` (base, full);
+`balance_run -Runs 20` (on the shipped data it also judges S4, S6, S7, S16 and S17,
 so S7 and S17 may show as WARN there); `check.ps1`; every test group after the re-recorded numbers; `integration/sim`,
 `integration/game`, `integration/e2e` and `stress` on the final values at all. Run on the final data before the re-pins:
 `unit/sim_flow`, `sim_nav`, `sim_combat`, `game`, `save`, `core`, `shared` passed (0 failures); the failures of the other unit
