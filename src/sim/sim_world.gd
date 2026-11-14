@@ -295,8 +295,10 @@ func spawn_enemy(type_index: int, x: float, z: float, affix_mask: int = 0) -> in
 	return i
 
 
-## Room under the caps of VARIETY_SPEC 5.5: bodied enemies (the store kept 8 spare rows above enemy_cap before the
-## variety milestone, and still does), minis (swarm_cap), the type's alive_cap, and elites alive.
+## Room under the caps of VARIETY_SPEC 5.5: bodied enemies (`enemy_cap`), minis (`swarm_cap`), the type's alive_cap, and
+## elites alive. The store keeps its 8 spare rows above enemy_cap, but no spawn uses them any more (V5-A: a Floor Breach
+## put 6 borers into a full field, 56 bodied, a broken cap of scorecard S17): a body without room waits in the spawn
+## queue (breach borers, splitter children, a boss's `send`) or stays owed by its boss script (`send_now`).
 func _has_room(def: EnemyDef, elite: bool) -> bool:
 	var mini: bool = def.is_mini()
 	var of_class: int = 0
@@ -311,7 +313,7 @@ func _has_room(def: EnemyDef, elite: bool) -> bool:
 			of_type += 1
 		if ext.is_elite(j):
 			elites += 1
-	if of_class >= (content.mission.swarm_cap if mini else content.mission.enemy_cap + 8):
+	if of_class >= (content.mission.swarm_cap if mini else content.mission.enemy_cap):
 		return false
 	if def.alive_cap > 0 and of_type >= def.alive_cap:
 		return false

@@ -155,7 +155,7 @@ func test_it_ran_five_minutes_in_one_wave() -> void:
 
 func test_both_caps_were_held() -> void:
 	var counted: int = TICKS - WARM_UP
-	assert_int(bodied_max).is_less_equal(content.mission.enemy_cap + 8)  # the store keeps 8 spare rows above the cap
+	assert_int(bodied_max).is_less_equal(content.mission.enemy_cap)  # SPEC 5.5: no spawn uses the store's 8 spare rows
 	assert_int(minis_max).is_equal(content.mission.swarm_cap)
 	assert_int(ticks_bodied_at_cap).is_greater(floori(float(counted) * 0.9))  # 50 bodied, give or take the two that just died
 	assert_int(ticks_minis_near_cap).is_greater(floori(float(counted) * 0.9))  # 40 minis
