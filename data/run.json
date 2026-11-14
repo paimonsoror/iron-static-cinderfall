@@ -68,8 +68,8 @@
       ] },
     { "id": "pack_repair", "name_key": "pack.repair.name", "min_act": 2, "budget_mult": 1.0, "extra_elites": 0,
       "groups": [
-        { "enemy": "reclaimer", "share": 0.15, "region": "upper_right", "start": 0.0, "tempo": 1.0 },
-        { "enemy": "hollow_warden", "share": 0.45, "region": "right", "start": 0.1, "tempo": 1.0 },
+        { "enemy": "reclaimer", "share": 0.10, "region": "upper_right", "start": 0.0, "tempo": 1.0 },
+        { "enemy": "hollow_warden", "share": 0.50, "region": "right", "start": 0.1, "tempo": 1.0 },
         { "enemy": "rusher", "share": 0.40, "region": "upper_right", "start": 0.3, "tempo": 0.8 }
       ] },
     { "id": "pack_static", "name_key": "pack.static.name", "min_act": 2, "budget_mult": 1.0, "extra_elites": 0,
