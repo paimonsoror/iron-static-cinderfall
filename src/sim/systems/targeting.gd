@@ -15,6 +15,9 @@ extends RefCounted
 ## - MAGNETIC: while a MAGNETIC elite is in range and within EliteSystem.MAGNETIC_RANGE_M of the shooter, the shooter
 ##   must target a MAGNETIC elite (the best ranked one): `pick` returns it and `is_valid` drops any other target
 ##   (`is_valid` looks for one only while NavState.magnets, counted by StatusSystem every tick, is not 0).
+## - a ward pylon is ranked by the urgency of its boss (rules 1 and 2 read the boss), then its `priority_class` puts it
+##   ahead of the boss (CONTENT 5: "pylons are priority targets"). V5-A: a pylon has speed 0, so on its own it had the
+##   last ETA bucket and was never picked while its boss lived; the Warden shot the Aegis Array at x0.2 damage.
 
 const NO_BUCKET: int = 1 << 30  ## ETA bucket of an enemy that can never arrive (speed 0)
 const MAGNETIC_SQ: float = EliteSystem.MAGNETIC_RANGE_M * EliteSystem.MAGNETIC_RANGE_M
@@ -89,12 +92,14 @@ static func compare(world: SimWorld, i: int, j: int, from_x: float, from_z: floa
 	if i == j:
 		return false
 	var store: EnemyStore = world.enemies
-	var i_attacking: bool = store.state[i] == EnemyStore.ST_ATTACKING and _strikes(world, i)
-	var j_attacking: bool = store.state[j] == EnemyStore.ST_ATTACKING and _strikes(world, j)
+	var i_lead: int = _lead(world, i)
+	var j_lead: int = _lead(world, j)
+	var i_attacking: bool = store.state[i_lead] == EnemyStore.ST_ATTACKING and _strikes(world, i_lead)
+	var j_attacking: bool = store.state[j_lead] == EnemyStore.ST_ATTACKING and _strikes(world, j_lead)
 	if i_attacking != j_attacking:
 		return i_attacking
-	var i_bucket: int = eta_bucket(world, i)
-	var j_bucket: int = eta_bucket(world, j)
+	var i_bucket: int = eta_bucket(world, i_lead)
+	var j_bucket: int = eta_bucket(world, j_lead)
 	if i_bucket != j_bucket:
 		return i_bucket < j_bucket
 	var i_mini: bool = (world.ext.flags[i] & EnemyExtState.F_MINI) != 0
@@ -204,6 +209,15 @@ static func _targetable(world: SimWorld, index: int, d2: float) -> bool:
 		return false
 	var mask: int = ext.affix_mask[index]
 	return mask == 0 or d2 <= SHROUD_SQ or (mask & world.nav.aff[EliteSystem.A_SHROUD]) == 0
+
+
+## The store index whose urgency (attacking, ETA bucket) ranks enemy `index`: the living boss for a ward pylon, else the
+## enemy itself.
+static func _lead(world: SimWorld, index: int) -> int:
+	if world.enemies.type[index] != Ids.EN_WARD_PYLON or world.boss == null or world.boss.boss_id == 0:
+		return index
+	var boss: int = world.enemies.index_of(world.boss.boss_id)
+	return boss if boss >= 0 else index
 
 
 ## True when an enemy in ST_ATTACKING really is attacking the core: a slot-taker and a planted boss always, another

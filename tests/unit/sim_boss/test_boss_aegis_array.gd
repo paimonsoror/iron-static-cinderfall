@@ -173,3 +173,25 @@ func test_the_pylons_die_with_the_boss_and_the_state_returns_to_neutral() -> voi
 	w.boss.hash_into(now)
 	assert_str(now.finish()).is_equal(neutral.finish())
 	assert_float(BossSystem.damage_taken_mult(w, i)).is_equal(1.0)
+
+
+## V5-A: the pylons are the priority targets of CONTENT 5. A pylon has speed 0 (its boss carries it), so it once had the
+## last ETA bucket and the Warden shot the Array at a fifth of its damage; now a pylon takes its boss's urgency and its
+## priority class puts it first, while the Array walks in and once it strikes the core.
+func test_the_warden_and_the_turrets_shoot_the_pylons_before_the_array() -> void:
+	var w: SimWorld = VarietyLKit.world()
+	var i: int = _array(w)
+	VarietyLKit.run_to(w, 100)
+	var pylons: Array[int] = VarietyLKit.living(w, PYLON)
+	assert_int(pylons.size()).is_equal(3)
+	var x: float = w.warden.x
+	var z: float = w.warden.z
+	assert_bool(Targeting.compare(w, pylons[0], i, x, z)).is_true()
+	assert_bool(Targeting.compare(w, i, pylons[0], x, z)).is_false()
+	var picked: int = Targeting.pick(w, x, z, 60.0)
+	assert_int(w.enemies.type[w.enemies.index_of(picked)]).is_equal(PYLON)
+	w.enemies.state[i] = EnemyStore.ST_ATTACKING  # the Array strikes the core
+	picked = Targeting.pick(w, x, z, 60.0)
+	assert_int(w.enemies.type[w.enemies.index_of(picked)]).is_equal(PYLON)
+	_kill_pylons(w)
+	assert_int(Targeting.pick(w, x, z, 60.0)).is_equal(w.enemies.id[i])  # exposed: the Array itself
