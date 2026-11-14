@@ -117,12 +117,12 @@ static func _route_options(content: ContentSet, slot: WaveSlotDef, run_seed: int
 	var a: RouteOption = RouteOption.new()
 	a.hot = both_hot
 	a.pack_index = _pick_pack(stream, packs, -1)
-	a.modifier_index = _pick_modifier(run, stream, a.hot)
+	a.modifier_index = _pick_modifier(run, stream, a.hot, slot.index)
 	a.reward_index = PlanRng.weighted(stream, _reward_weights(run, a.hot))
 	var b: RouteOption = RouteOption.new()
 	b.hot = true
 	b.pack_index = _pick_pack(stream, packs, a.pack_index)
-	b.modifier_index = _pick_modifier(run, stream, true)
+	b.modifier_index = _pick_modifier(run, stream, true, slot.index)
 	b.reward_index = PlanRng.weighted(stream, _reward_weights(run, true))
 	var both: Array[RouteOption] = [a, b]
 	for n: int in both.size():
@@ -157,8 +157,11 @@ static func _pick_pack(stream: RandomNumberGenerator, packs: PackedInt32Array, e
 
 
 ## Two draws (the chance roll and the pick). A hot option always gets a modifier (from the hot list, else the mild one);
-## a standard option gets a mild one with MILD_MODIFIER_CHANCE. -1 = none.
-static func _pick_modifier(run: RunDef, stream: RandomNumberGenerator, hot: bool) -> int:
+## a standard option gets a mild one with MILD_MODIFIER_CHANCE. -1 = none. Before wave PlanElites.FIRST_ELITE_WAVE a
+## modifier that adds elites (`mod_elite_pair`) is passed over for the next one of its list (V5-A: elites appear from
+## wave 3, VARIETY_SPEC 2.3; a hot wave 2 of MARKED PAIR killed the reference player before wave 3, scorecard S8). The
+## draws stay the same, so no other pick moves.
+static func _pick_modifier(run: RunDef, stream: RandomNumberGenerator, hot: bool, wave_index: int) -> int:
 	var mild: PackedInt32Array = PackedInt32Array()
 	var heat: PackedInt32Array = PackedInt32Array()
 	for m: ModifierDef in run.modifiers:
@@ -175,7 +178,12 @@ static func _pick_modifier(run: RunDef, stream: RandomNumberGenerator, hot: bool
 		return -1
 	if pool.is_empty():
 		return -1
-	return pool[roll_pick % pool.size()]
+	var at: int = roll_pick % pool.size()
+	for step: int in pool.size():
+		var m: int = pool[(at + step) % pool.size()]
+		if wave_index >= PlanElites.FIRST_ELITE_WAVE or WaveBuilder.stat(run.modifiers[m].ops, &"extra_elites", 0.0) <= 0.0:
+			return m
+	return -1
 
 
 static func _reward_weights(run: RunDef, hot: bool) -> PackedFloat64Array:

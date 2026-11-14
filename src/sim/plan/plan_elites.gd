@@ -22,8 +22,8 @@ const DEFAULT_TWO_CHANCE: float = 0.5
 static func count_for(content: ContentSet, slot: WaveSlotDef, hot: bool, extra: int, stream: RandomNumberGenerator) -> int:
 	var act_def: ActDef = content.run.act(slot.act)
 	var draw: int = PlanRng.index(stream, act_def.elites_max - act_def.elites_min + 1)
-	if slot.kind != WaveSlotDef.Kind.NORMAL:
-		return 0
+	if slot.kind != WaveSlotDef.Kind.NORMAL or slot.index < FIRST_ELITE_WAVE:
+		return 0  # V5-A: the extra elites of a pack or a modifier wait for wave 3 too
 	var n: int = extra
 	if slot.index >= FIRST_ELITE_WAVE:
 		n += act_def.elites_min + mini(draw, act_def.elites_max - act_def.elites_min)

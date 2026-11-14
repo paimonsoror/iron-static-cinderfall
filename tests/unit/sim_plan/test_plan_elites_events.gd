@@ -84,7 +84,10 @@ func test_a_pack_or_modifier_can_add_elites() -> void:
 	for s: int in range(1, 31):
 		var plan: RunPlan = RunPlanSystem.build_for(c, s)
 		assert_int(plan.wave(4).options[1].elites.size()).is_greater_equal(2)  # act I hot: 0 to 1 plus the pair
-		assert_int(plan.wave(2).options[1].elites.size()).is_equal(2)  # even before wave 3: the modifier says so
+		# V5-A: elites appear from wave 3 (SPEC 2.3, CONTENT 1.1), the modifier's too; wave 2 does not get the modifier
+		# that would promise them (it was a hot wave 2 of MARKED PAIR that killed the reference player, scorecard S8)
+		assert_int(plan.wave(2).options[1].elites.size()).is_equal(0)
+		assert_int(plan.wave(2).options[1].modifier_index).is_equal(-1)  # the pair is the only hot modifier here
 
 
 func test_the_affix_count_is_one_in_act_one_two_in_act_three_and_either_in_act_two() -> void:
