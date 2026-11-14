@@ -8,6 +8,7 @@ var _h: GameHarness
 
 
 func after_test() -> void:
+	Game.run = null  # the autoload's run (set by the one test that needs the live-run link of GameRewards)
 	if _h != null:
 		_h.dispose()
 		_h = null
@@ -58,6 +59,8 @@ func test_a_real_victory_lists_its_milestones_and_same_seed_starts_that_seed_aga
 	_menu().start_pressed.emit()
 	(_h.find_in("ScreenRoot", &"BriefingScreen") as BriefingScreen).deploy_pressed.emit()
 	_h.freeze()
+	# GameRewards.launch_of asks the Game autoload for the live run (kit, daily); the harness has its own Game node
+	Game.run = _h.rc()
 	assert_bool(_h.rc().sim.config.is_debug()).is_false()
 	assert_int(_h.frames_until_over(20000)).is_greater(0)
 	assert_int(_h.state()).is_equal(GameState.Id.VICTORY)
@@ -155,5 +158,6 @@ func test_a_debug_boss_through_the_game_starts_at_its_boss_wave() -> void:
 	_h.frames(_h.content.mission.prepare_ticks + 60)
 	assert_int(sim.wave).is_equal(10)
 	assert_int(_h.events_log.count(&"boss_spawned")).is_equal(1)
-	assert_array(_h.events_log.first_args(&"boss_spawned")).contains([&"tremor_rig"])
+	var spawned: Array = _h.events_log.first_args(&"boss_spawned")  # [id, kind]
+	assert_str(str(spawned[1])).is_equal("tremor_rig")
 	await _h.settle(get_tree(), 2)

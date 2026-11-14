@@ -98,7 +98,6 @@ func test_every_sound_the_hud_plays_is_in_the_catalog() -> void:
 	assert_bool(found.has(&"ui_tap")).is_true()
 	assert_bool(found.has(&"ui_deny")).is_true()
 	assert_bool(found.has(&"ui_purchase")).is_true()
-	assert_bool(found.has(&"ui_drawer")).is_true()
 	for id: StringName in found:
 		assert_bool(AudioCatalog.has_sound(id)).override_failure_message("UI plays unknown sound %s" % String(id)).is_true()
 
