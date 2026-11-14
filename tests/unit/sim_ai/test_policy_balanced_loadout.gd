@@ -165,7 +165,7 @@ func test_the_crowd_is_only_looked_at_every_sixth_tick_and_not_during_a_swap() -
 
 func test_enemies_far_from_the_core_are_not_a_crowd() -> void:
 	_armed(0)
-	VarietyHKit.crowd(w, 12, 14.0)
+	VarietyHKit.crowd(w, 12, 16.0)  # about 14 m from the Warden, beyond the 13 m of the scattergun
 	w.tick = 600
 	bot.act(w)
 	assert_array(VarietyHKit.kinds(w)).not_contains([SimCommand.Kind.SWAP_WEAPON])

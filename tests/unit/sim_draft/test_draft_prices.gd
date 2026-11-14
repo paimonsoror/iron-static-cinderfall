@@ -135,9 +135,9 @@ func test_no_breather_from_the_modifier_of_the_cleared_wave() -> void:
 	assert_int(DraftSystem.reroll(w, 1)).is_equal(Reason.Id.LOCKED_BY_EVENT)
 
 
-func test_buyout_prices_are_250_350_450() -> void:
+func test_buyout_prices_are_350_500_650() -> void:
 	var w: SimWorld = _rich(3000)
-	var want: Array[int] = [250, 350, 450]
+	var want: Array[int] = [350, 500, 650]
 	for n: int in want.size():
 		assert_int(DraftSystem.buyout_cost(w)).is_equal(want[n])
 		var before: int = w.scrap
@@ -156,7 +156,7 @@ func test_buyout_takes_the_slot_at_once_and_the_draft_stays_open() -> void:
 	assert_int(w.draft.offer[1]).is_equal(-1)
 	assert_bool(w.draft.open).is_true()
 	assert_int(w.phase_state.awaiting).is_equal(PhaseState.Await.DRAFT)
-	assert_int(w.scrap).is_equal(250)
+	assert_int(w.scrap).is_equal(150)
 	var picked: Array[SimEvent] = VarietyBKit.events_of(w, SimEventKind.Id.DIRECTIVE_PICKED)
 	assert_int(picked[0].a).is_equal(bought)
 	var kept: int = w.draft.offer[2]
@@ -170,7 +170,7 @@ func test_a_buyout_is_allowed_once_per_draft() -> void:
 	assert_int(DraftSystem.buy_out(w, 1, 1)).is_equal(Reason.Id.OK)
 	assert_bool(w.draft.bought_out).is_true()
 	assert_int(DraftSystem.buy_out(w, 2, 2)).is_equal(Reason.Id.INVALID_CHOICE)
-	assert_int(w.scrap).is_equal(2750)
+	assert_int(w.scrap).is_equal(2650)
 	assert_int(DraftSystem.pick(w, 3, 0)).is_equal(Reason.Id.OK)
 	VarietyBKit.open_draft(w)
 	assert_bool(w.draft.bought_out).is_false()  # a new draft, a new right
@@ -178,7 +178,7 @@ func test_a_buyout_is_allowed_once_per_draft() -> void:
 
 
 func test_a_buyout_needs_the_scrap_a_live_slot_and_another_pick_to_make() -> void:
-	var w: SimWorld = _rich(249)
+	var w: SimWorld = _rich(349)
 	var before: String = w.state_hash()
 	assert_int(DraftSystem.buy_out(w, 1, 1)).is_equal(Reason.Id.INSUFFICIENT_SCRAP)
 	assert_int(DraftSystem.buy_out(w, 2, 5)).is_equal(Reason.Id.INVALID_CHOICE)
@@ -199,13 +199,13 @@ func test_a_reroll_is_refused_once_a_slot_was_taken() -> void:
 	var w: SimWorld = _rich(1000)
 	assert_int(DraftSystem.buy_out(w, 1, 1)).is_equal(Reason.Id.OK)
 	assert_int(DraftSystem.reroll(w, 2)).is_equal(Reason.Id.INVALID_CHOICE)
-	assert_int(w.scrap).is_equal(750)
+	assert_int(w.scrap).is_equal(650)
 
 
-func test_patch_prices_are_180_270_360_and_repair_a_tenth() -> void:
+func test_patch_prices_are_220_330_440_and_repair_a_tenth() -> void:
 	var w: SimWorld = _rich(3000)
 	w.set_core_hp(400.0)
-	var want: Array[int] = [180, 270, 360]
+	var want: Array[int] = [220, 330, 440]
 	for n: int in want.size():
 		assert_int(DraftSystem.patch_cost(w)).is_equal(want[n])
 		var before: int = w.scrap
@@ -222,7 +222,7 @@ func test_a_patch_is_capped_at_the_core_maximum_but_costs_full_price() -> void:
 	w.set_core_hp(950.0)
 	assert_int(DraftSystem.patch_core(w, 1)).is_equal(Reason.Id.OK)
 	assert_float(w.core_hp).is_equal(1000.0)
-	assert_int(w.scrap).is_equal(820)
+	assert_int(w.scrap).is_equal(780)
 	var healed: Array[SimEvent] = VarietyBKit.events_of(w, SimEventKind.Id.CORE_HEALED)
 	assert_float(healed[0].f).is_equal_approx(50.0, 0.001)
 	assert_float(healed[0].g).is_equal(1000.0)
@@ -237,11 +237,11 @@ func test_a_patch_at_a_full_core_is_refused() -> void:
 
 func test_a_patch_needs_the_scrap() -> void:
 	var w: SimWorld = VarietyBKit.draft_world(c)
-	w.add_scrap(179)
+	w.add_scrap(219)
 	w.set_core_hp(100.0)
 	assert_int(DraftSystem.patch_core(w, 1)).is_equal(Reason.Id.INSUFFICIENT_SCRAP)
 	assert_float(w.core_hp).is_equal(100.0)
-	assert_int(w.scrap).is_equal(179)
+	assert_int(w.scrap).is_equal(219)
 
 
 func test_the_patch_follows_the_core_maximum_of_the_build() -> void:

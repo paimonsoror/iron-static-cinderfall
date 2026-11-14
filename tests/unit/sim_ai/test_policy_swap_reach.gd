@@ -41,7 +41,7 @@ func _act() -> Array[int]:
 func test_the_crowd_radius_is_the_reach_of_the_area_weapon_and_never_under_ten_meters() -> void:
 	assert_float(PolicyLoadout.crowd_radius(w)).is_equal(18.0)  # the arc projector
 	VarietyHKit.carry(w, 1, &"scattergun")
-	assert_float(PolicyLoadout.crowd_radius(w)).is_equal(PolicyLoadout.CROWD_RADIUS_M)  # 9 m reach: the floor
+	assert_float(PolicyLoadout.crowd_radius(w)).is_equal(13.0)  # the scattergun's 13 m (V5-C: was 9 m, the floor)
 	VarietyHKit.carry(w, 1, &"slag_mortar")
 	assert_float(PolicyLoadout.crowd_radius(w)).is_equal(24.0)
 	w.arsenal.slot_weapon[1] = -1
@@ -57,8 +57,8 @@ func test_twelve_enemies_in_reach_of_the_arc_are_a_crowd_although_they_are_far_f
 
 func test_the_same_crowd_is_not_one_for_a_scattergun() -> void:
 	VarietyHKit.carry(w, 1, &"scattergun")
-	VarietyHKit.crowd(w, 12, 14.0)
-	assert_array(_act()).is_empty()  # out of the 10 m a 9 m weapon can use
+	VarietyHKit.crowd(w, 12, 16.0)
+	assert_array(_act()).is_empty()  # about 14 m from the Warden: out of the 13 m of the scattergun
 	VarietyHKit.crowd(w, 12, 3.0)
 	assert_array(_act()).is_equal([1])
 

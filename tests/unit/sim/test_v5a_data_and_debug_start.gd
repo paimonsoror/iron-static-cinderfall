@@ -64,17 +64,17 @@ func test_the_act_bosses_bank_30_and_45_and_the_last_boss_nothing() -> void:
 	assert_array(Array(w.stats.boss_ids)).is_equal([Ids.EN_BROOD_CARRIER, Ids.EN_TREMOR_RIG, Ids.EN_HULK, Ids.EN_LANCE_PLATFORM])
 
 
-func test_rw_data_banks_fifteen_when_its_wave_is_cleared() -> void:
+func test_rw_data_banks_twenty_five_when_its_wave_is_cleared() -> void:
 	var w: SimWorld = _world()
 	var reward: RewardDef = w.content.run.route_rewards[w.content.run.reward_index(&"rw_data")]
 	ModSystem.grant(w, reward.ops)
-	assert_int(w.stats.data).is_equal(15)
+	assert_int(w.stats.data).is_equal(25)
 	# through the flow: a route whose reward is rw_data pays at the wave clear, before the first await
 	var flow: SimWorld = _world(3)
 	_clear_waves(flow, 1)
 	flow.plan.wave(2).options[0].reward_index = flow.content.run.reward_index(&"rw_data")
 	_clear_waves(flow, 2)
-	assert_int(flow.stats.data).is_equal(6 + 6 + 15)
+	assert_int(flow.stats.data).is_equal(6 + 6 + 25)
 
 
 func test_a_victory_adds_100_and_up_to_50_for_the_core() -> void:
@@ -99,7 +99,7 @@ func test_a_whole_run_banks_the_table() -> void:
 	var extra: int = 0
 	for wave_number: int in range(2, 15):
 		var option: RouteOption = w.plan.option(wave_number)
-		extra += 15 if option != null and option.reward_index == rw_data else 0
+		extra += 25 if option != null and option.reward_index == rw_data else 0
 	assert_int(w.stats.data).is_equal(15 * 6 + 30 + 45 + extra)
 	assert_int(w.data_reward()).is_equal(w.stats.data + 150)  # the core was never hit
 

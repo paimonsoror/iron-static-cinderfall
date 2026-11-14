@@ -33,7 +33,7 @@ func test_weapon_stat_directives_change_exactly_their_stats() -> void:
 	DirectiveKit.give(w, &"heavy_barrel", 2)
 	assert_float(w.mods.w_dmg_mul).is_equal_approx(1.7, 0.00001)
 	assert_float(w.mods.w_rate_mul).is_equal_approx(0.8, 0.00001)
-	assert_int(ArsenalSystem.sps_milli(w, _pistol())).is_equal(1600)  # 2000 x 0.8
+	assert_int(ArsenalSystem.sps_milli(w, _pistol())).is_equal(1760)  # 2200 x 0.8
 	DirectiveKit.give(w, &"overpressure", 2)
 	assert_float(w.mods.area_mul).is_equal_approx(1.7, 0.00001)
 
@@ -42,12 +42,12 @@ func test_first_strike_only_boosts_the_first_hit_on_a_full_hp_enemy() -> void:
 	DirectiveKit.give(w, &"first_strike", 1)
 	assert_float(w.mods.w_full_hp_mul).is_equal_approx(1.5, 0.00001)
 	var i: int = _fresh_skitter()
-	assert_float(DamageResolver.warden_amount(w, i, _pistol(), 1)).is_equal_approx(45.0, 0.0001)  # 30 x 1.5
+	assert_float(DamageResolver.warden_amount(w, i, _pistol(), 1)).is_equal_approx(51.0, 0.0001)  # 34 x 1.5
 	w.enemies.hp[i] = w.enemies.max_hp[i] - 1.0
-	assert_float(DamageResolver.warden_amount(w, i, _pistol(), 1)).is_equal_approx(30.0, 0.0001)
+	assert_float(DamageResolver.warden_amount(w, i, _pistol(), 1)).is_equal_approx(34.0, 0.0001)
 	DirectiveKit.give(w, &"first_strike", 1)
 	w.enemies.hp[i] = w.enemies.max_hp[i]
-	assert_float(DamageResolver.warden_amount(w, i, _pistol(), 1)).is_equal_approx(60.0, 0.0001)  # 30 x 2.0
+	assert_float(DamageResolver.warden_amount(w, i, _pistol(), 1)).is_equal_approx(68.0, 0.0001)  # 34 x 2.0
 
 
 func test_executioner_bonus_does_not_stack_but_its_threshold_does() -> void:
@@ -56,15 +56,15 @@ func test_executioner_bonus_does_not_stack_but_its_threshold_does() -> void:
 	assert_float(w.mods.w_low_hp_threshold).is_equal_approx(0.30, 0.00001)
 	var i: int = _fresh_skitter()  # 45 hp
 	w.enemies.hp[i] = 9.0  # 20%
-	assert_float(DamageResolver.warden_amount(w, i, _pistol(), 1)).is_equal_approx(48.0, 0.0001)  # 30 x 1.6
+	assert_float(DamageResolver.warden_amount(w, i, _pistol(), 1)).is_equal_approx(54.4, 0.0001)  # 34 x 1.6
 	w.enemies.hp[i] = 15.75  # 35%
-	assert_float(DamageResolver.warden_amount(w, i, _pistol(), 1)).is_equal_approx(30.0, 0.0001)
+	assert_float(DamageResolver.warden_amount(w, i, _pistol(), 1)).is_equal_approx(34.0, 0.0001)
 	DirectiveKit.give(w, &"executioner", 1)
 	assert_float(w.mods.w_low_hp_mul).is_equal_approx(1.6, 0.00001)  # the bonus stays +60%
 	assert_float(w.mods.w_low_hp_threshold).is_equal_approx(0.40, 0.00001)
-	assert_float(DamageResolver.warden_amount(w, i, _pistol(), 1)).is_equal_approx(48.0, 0.0001)  # 35% is below 40%
+	assert_float(DamageResolver.warden_amount(w, i, _pistol(), 1)).is_equal_approx(54.4, 0.0001)  # 35% is below 40%
 	w.enemies.hp[i] = 20.25  # 45%
-	assert_float(DamageResolver.warden_amount(w, i, _pistol(), 1)).is_equal_approx(30.0, 0.0001)
+	assert_float(DamageResolver.warden_amount(w, i, _pistol(), 1)).is_equal_approx(34.0, 0.0001)
 
 
 func test_turret_stat_directives() -> void:
@@ -117,7 +117,7 @@ func test_ability_stat_directives() -> void:
 	var i: int = _fresh_skitter()
 	w.enemies.stun_ticks[i] = 60
 	var stunned: float = DamageResolver.warden_amount(w, i, _pistol(), 1)
-	assert_float(stunned).is_equal_approx(30.0 * _pistol().stunned_mult * 1.5, 0.0001)
+	assert_float(stunned).is_equal_approx(34.0 * _pistol().stunned_mult * 1.5, 0.0001)
 	DirectiveKit.give(w, &"emp_capacitor", 3)
 	assert_float(w.mods.emp_cd_mul).is_equal_approx(0.55, 0.00001)
 
