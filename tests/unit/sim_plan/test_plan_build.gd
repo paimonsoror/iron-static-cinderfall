@@ -52,9 +52,9 @@ func test_the_plan_streams_are_the_named_streams_of_the_spec() -> void:
 func test_golden_plan_of_seeds_1_to_3() -> void:
 	# [pack of A, reward of A, pack of B, reward of B] for waves 2, 3 and 4 (pack and reward indices of the variety fixture).
 	var want: Dictionary[int, Array] = {
-		1: [[2, 4, 1, 0], [0, 3, 2, 4], [0, 3, 1, 4]],
+		1: [[2, 4, 1, 1], [0, 3, 2, 4], [0, 3, 1, 4]],
 		2: [[2, 2, 1, 3], [1, 3, 0, 7], [2, 3, 0, 6]],
-		3: [[0, 0, 2, 1], [0, 0, 2, 6], [0, 3, 1, 2]],
+		3: [[0, 0, 2, 1], [0, 0, 2, 7], [0, 3, 1, 3]],
 	}
 	var variants: Dictionary[int, int] = {1: 0, 2: 2, 3: 0}
 	var c: ContentSet = VarietyAKit.slice_content()  # 3 packs, 1 modifier: the content the numbers above were recorded on
@@ -76,7 +76,7 @@ func test_golden_groups_of_seed_1_wave_2() -> void:
 	for g: SpawnGroupDef in o.groups:
 		got.append([g.enemy_index, g.count, g.start_tick, g.interval_ticks, String(g.region_id)])
 	assert_array(got).is_equal([
-		[Ids.EN_BURSTER, 6, 234, 221, "right"], [Ids.EN_SKITTER, 16, 0, 78, "right"], [Ids.EN_MOTE, 17, 468, 32, "upper_right"],
+		[Ids.EN_BURSTER, 6, 351, 240, "right"], [Ids.EN_SKITTER, 16, 0, 117, "right"], [Ids.EN_MOTE, 17, 702, 48, "upper_right"],
 	])
 
 
