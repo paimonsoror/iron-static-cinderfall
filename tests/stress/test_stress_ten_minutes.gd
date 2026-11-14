@@ -134,7 +134,7 @@ func test_the_arena_was_held_at_the_cap_with_a_queue_behind_it() -> void:
 func test_enemies_kept_spawning_and_dying() -> void:
 	assert_int(spawned).is_greater(300)
 	assert_int(killed).is_greater(200)
-	assert_int(blasts).is_greater(20)  # bursters went off (and chained) all along
+	assert_int(blasts).is_greater(10)  # bursters went off (and chained) all along (V5-C: 20 in the tuned run, was more)
 	assert_int(minis_max).is_between(20, content.mission.swarm_cap)  # the swarm rode on top of the bodied cap
 	assert_int(world.next_enemy_id - 1).is_equal(spawned)  # every id handed out is an ENEMY_SPAWNED event
 

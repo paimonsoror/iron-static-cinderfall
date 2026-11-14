@@ -100,9 +100,9 @@ func test_swapping_away_from_a_venting_weapon_keeps_the_vent_running() -> void:
 	VarietyCKit.run_weapon(w, 338)  # overheated on tick 338
 	assert_int(VarietyCKit.swap_on_next_tick(w, 1)).is_equal(Reason.Id.OK)  # tick 339
 	assert_int(w.arsenal.slot_vent_left[0]).is_equal(149)
-	# the pistol speaks while the projector vents: its accumulator starts at 0 on tick 339, so the 24 silent ticks of
-	# the swap cost nothing and the first round leaves after the usual 28 ticks (2.2 shots a second), the next 27 later
-	assert_array(VarietyCKit.shot_ticks(w, 60)).is_equal([366, 393])
+	# the pistol speaks while the projector vents: the cadence accumulator is the Warden's one and swapping does not reset
+	# it, so the pistol (2.2 shots a second since V5-C: a round every 27 or 28 ticks) fires on tick 365, the next 28 later
+	assert_array(VarietyCKit.shot_ticks(w, 60)).is_equal([365, 393])
 	VarietyCKit.run_weapon(w, 89)  # tick 488
 	assert_int(w.arsenal.slot_vent_left[0]).is_equal(0)
 	assert_int(w.arsenal.slot_heat[0]).is_equal(0)

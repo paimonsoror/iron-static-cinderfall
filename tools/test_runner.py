@@ -289,9 +289,10 @@ def main() -> int:
     ap.add_argument("--suite", help="suite file name (without .gd) inside --path, or a res:// path")
     ap.add_argument("--canary", action="store_true", help="prove the runner detects failures")
     ap.add_argument("--self-test", action="store_true", help="run parser unit checks")
-    # Per Godot invocation; only a hang guard. The full suite (stress and seed-sweep tests included) needs ~200 s
-    # and keeps growing, so the original 300 s left too little margin.
-    ap.add_argument("--timeout", type=int, default=1800)
+    # Per Godot invocation; only a hang guard. The full suite (stress, whole-run and seed-sweep tests included) needed
+    # ~200 s once; with the 15-wave game (861 s of simulated time per run) it takes 30 to 40 minutes on a quiet machine,
+    # so 1800 s fired (wave V5-C). A hung run still ends, an hour later.
+    ap.add_argument("--timeout", type=int, default=3600)
     a = ap.parse_args()
     if a.self_test:
         return self_test()

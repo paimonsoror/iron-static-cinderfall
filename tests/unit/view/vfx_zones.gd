@@ -165,11 +165,12 @@ func test_a_magnetic_elite_is_tethered_to_the_shooters_within_twelve_metres() ->
 func test_tether_lines_are_capped_by_the_tier() -> void:
 	var rig: VfxXTestKit.Rig = VfxXTestKit.rig(self)
 	var w: SimWorld = rig.world
-	for n: int in 6:  # six reclaimers of two tethers (V5-C: was four of three), so the tiers cap the 12 lines
-		var _r: int = VfxXTestKit.enemy(w, Ids.EN_RECLAIMER, -6.0 + float(n) * 3.0, -10.0)
+	assert_array(VisualQuality.TETHER_CAP).is_equal([6, 9, 12])  # the caps of the three tiers
+	for n: int in 4:  # four reclaimers (their alive cap) of two tethers each (V5-C: was three): 8 lines to draw
+		var _r: int = VfxXTestKit.enemy(w, Ids.EN_RECLAIMER, -6.0 + float(n) * 4.0, -10.0)
 	for n: int in 12:
 		var _d: int = VfxXTestKit.enemy(w, Ids.EN_SKITTER, -7.0 + float(n) * 1.3, -9.0, 0.4)
-	var want: Array[int] = [6, 9, 12]
+	var want: Array[int] = [6, 8, 8]  # LOW is capped at 6; MID (9) and HIGH (12) draw all 8
 	for t: int in VfxXTestKit.TIERS:
 		rig.vfx.set_quality(t)
 		_frame(rig)
