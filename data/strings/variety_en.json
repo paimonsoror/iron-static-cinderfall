@@ -290,6 +290,8 @@
   "lore.threat.reclaimer": "Repairs what you damage. Kill it first.",
   "lore.threat.jammer": "Slows your turrets and your triggers while it stands.",
   "lore.threat.borer": "Comes up through the yard floor. Watch for cracks.",
+  "lore.threat.shard": "What a splitter leaves behind. Quick, small, one hit each.",
+  "lore.threat.ward_pylon": "Orbits the Aegis Array and holds its ward up. Break them all and the Array opens.",
 
   "archive.title": "ARCHIVE",
   "archive.sub": "Recovered Data opens what the Combine left behind.",
