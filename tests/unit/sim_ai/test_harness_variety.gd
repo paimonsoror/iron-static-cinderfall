@@ -154,6 +154,33 @@ func test_a_generated_victory_needs_every_planned_wave_cleared_and_nothing_alive
 	assert_array(ok.violations).is_empty()
 
 
+func _event(kind: int, a: int = 0, b: int = 0) -> SimEvent:
+	var e: SimEvent = SimEvent.new()
+	e.kind = kind
+	e.a = a
+	e.b = b
+	return e
+
+
+## V5-A: three bosses in a run; the boss time is the latest boss's, never the act I kill measured from the act II spawn.
+func test_the_boss_ticks_belong_to_the_latest_boss() -> void:
+	var w: SimWorld = VarietyHKit.world()
+	var chk: HarnessChecker = HarnessChecker.new(w)
+	w.tick = 100
+	chk.after_step(w, [_event(SimEventKind.Id.BOSS_SPAWNED), _event(SimEventKind.Id.ENEMY_SPAWNED, 7, Ids.EN_HULK)])
+	w.tick = 400
+	chk.after_step(w, [_event(SimEventKind.Id.ENEMY_KILLED, 7)])
+	assert_int(chk.boss_spawn_tick).is_equal(100)
+	assert_int(chk.boss_kill_tick).is_equal(400)
+	w.tick = 900
+	chk.after_step(w, [_event(SimEventKind.Id.BOSS_SPAWNED), _event(SimEventKind.Id.ENEMY_SPAWNED, 9, Ids.EN_HULK)])
+	assert_int(chk.boss_spawn_tick).is_equal(900)
+	assert_int(chk.boss_kill_tick).is_equal(-1)  # the second boss has not died
+	w.tick = 1500
+	chk.after_step(w, [_event(SimEventKind.Id.ENEMY_KILLED, 9)])
+	assert_int(chk.boss_kill_tick - chk.boss_spawn_tick).is_equal(600)
+
+
 func test_minis_beyond_the_bodied_cap_fit_under_the_variety_cap() -> void:
 	var w: SimWorld = VarietyHKit.world()
 	for k: int in w.content.mission.enemy_cap + 10:
