@@ -93,7 +93,7 @@
     "by_act": [ { "two_chance": 0.0 }, { "two_chance": 0.4 }, { "two_chance": 1.0 } ]
   },
   "bosses": {
-    "siege_hulk": { "pool_act": 3, "hp": 9000, "behaviour": { "enrage_frac": 0.25, "enrage_period_mult": 0.7 },
+    "siege_hulk": { "pool_act": 3, "hp": 10000, "behaviour": { "enrage_frac": 0.25, "enrage_period_mult": 0.7 },
                     "escorts": [ { "pack": "pack_everything" } ] },
     "brood_carrier": { "pool_act": 1, "hp": 2100,
                        "escorts": [ { "enemy": "skitter", "share": 0.6 }, { "enemy": "mote", "share": 0.4 } ] },
