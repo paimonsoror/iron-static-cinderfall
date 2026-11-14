@@ -147,15 +147,11 @@ func test_quit_from_the_pause_overlay_abandons_the_run_without_a_reward() -> voi
 	assert_object(_h.find_in("ScreenRoot", &"MainMenuScreen")).is_not_null()
 
 
-func test_the_back_gesture_closes_the_drawer_first_then_pauses_then_resumes() -> void:
+func test_the_back_gesture_pauses_then_resumes() -> void:
 	_deployed()
 	_h.frames(_h.content.mission.prepare_ticks + 30)
-	_h.hud().open_drawer()
-	assert_bool(_h.hud().is_drawer_open()).is_true()
-	_h.call_game(&"request_back")
-	assert_bool(_h.hud().is_drawer_open()).is_false()
-	assert_int(_h.state()).is_equal(GameState.Id.SPAWNING)  # the first back only closed the drawer
-	_h.call_game(&"request_back")
+	assert_int(_h.state()).is_equal(GameState.Id.SPAWNING)
+	_h.call_game(&"request_back")  # there is no drawer to close first any more (V5-A): the first back pauses
 	assert_int(_h.state()).is_equal(GameState.Id.PAUSED)
 	_h.call_game(&"request_back")
 	assert_int(_h.state()).is_equal(GameState.Id.SPAWNING)

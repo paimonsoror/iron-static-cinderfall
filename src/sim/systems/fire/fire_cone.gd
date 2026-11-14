@@ -8,14 +8,11 @@ extends RefCounted
 ## `damage` (armor applies per pellet). One SHOT_FIRED per shot.
 ## Knockback (`knockback_m`): every enemy the shot hit and left alive is shoved that far along the line from the Warden
 ## to it, if its mass is below KNOCKBACK_MAX_MASS and it is neither attacking the core (MovementSystem holds attackers on
-## their slot) nor ANCHORED. The shove advances in steps of 0.1 m and stops before a step that would end inside a prop,
-## the core cage or outside the yard.
-## Deviation from ARCH 6.6 (one writer of enemy positions is MovementSystem): the shove writes enemies.x and z itself,
-## because MovementSystem has no knockback call point yet (see the V4-W report, "needs owner").
+## their slot) nor ANCHORED. The move is MovementSystem.knockback, which fences it like a walk (props, the core cage,
+## the yard) and moves a body above MovementSystem.KNOCKBACK_FULL_MASS proportionally less.
 
 const PELLET_CAP: int = 3
 const KNOCKBACK_MAX_MASS: float = 3.0
-const SHOVE_STEP_M: float = 0.1
 
 
 static func fire(world: SimWorld, slot: int, def: WeaponDef, source: int) -> bool:
@@ -91,46 +88,13 @@ static func deal(count: int, pellets: int) -> PackedInt32Array:
 
 
 ## Shoves the enemy at store index `i` up to `dist_m` along the line from (ox, oz) to it; see the header for who stays put.
+## The move itself is MovementSystem.knockback (the one writer of enemy positions: fenced like a walk, and scaled down
+## for a body heavier than MovementSystem.KNOCKBACK_FULL_MASS).
 static func shove(world: SimWorld, i: int, ox: float, oz: float, dist_m: float) -> void:
 	var store: EnemyStore = world.enemies
 	if store.alive[i] == 0 or store.state[i] == EnemyStore.ST_ATTACKING:
 		return
 	var def: EnemyDef = world.content.enemies[store.type[i]]
-	if def.mass >= KNOCKBACK_MAX_MASS or _anchored(world, i):
+	if def.mass >= KNOCKBACK_MAX_MASS:
 		return
-	var dx: float = store.x[i] - ox
-	var dz: float = store.z[i] - oz
-	var len_m: float = sqrt(dx * dx + dz * dz)
-	if len_m < 0.0001:
-		return
-	dx /= len_m
-	dz /= len_m
-	var moved: float = 0.0
-	while moved < dist_m - 0.000001:
-		var step: float = minf(SHOVE_STEP_M, dist_m - moved)
-		if _blocked(world, store.x[i] + dx * (moved + step), store.z[i] + dz * (moved + step), def.radius):
-			break
-		moved += step
-	store.x[i] += dx * moved
-	store.z[i] += dz * moved
-
-
-static func _anchored(world: SimWorld, i: int) -> bool:
-	var bit: int = world.content.affix_index(&"anchored")
-	return bit >= 0 and (world.ext.affix_mask[i] & (1 << bit)) != 0
-
-
-## True when a body of `radius` at (x, z) would stand in a prop, in the core cage or outside the yard.
-static func _blocked(world: SimWorld, x: float, z: float, radius: float) -> bool:
-	var arena: ArenaDef = world.content.arena
-	if x < arena.min_x + radius or x > arena.max_x - radius or z < arena.min_z + radius or z > arena.max_z - radius:
-		return true
-	var cx: float = x - arena.core_x
-	var cz: float = z - arena.core_z
-	var reach: float = arena.core_radius + radius
-	if cx * cx + cz * cz < reach * reach:
-		return true
-	for prop: ObstacleDef in arena.obstacles:
-		if prop.contains(x, z, radius):
-			return true
-	return false
+	var _moved: float = MovementSystem.knockback(world, i, store.x[i] - ox, store.z[i] - oz, dist_m)

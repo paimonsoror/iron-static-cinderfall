@@ -97,6 +97,7 @@ func shutdown() -> void:
 	Game.args = null
 	Game.content = null
 	Game.last_summary = null
+	Game.sim_config_hook = Callable()
 	Game.machine = GameStateMachine.new()
 	var used_ids: Dictionary[String, bool] = {}
 	Game.set(&"_used_run_ids", used_ids)

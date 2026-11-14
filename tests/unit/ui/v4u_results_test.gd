@@ -90,7 +90,7 @@ func test_a_generated_run_shows_the_act_line_the_recap_the_seed_and_the_archive_
 	await V4uKit.settle(get_tree())
 	assert_bool(s.act_label.visible).is_true()
 	assert_str(s.act_label.text).contains("ACT I")
-	assert_str(s.act_label.text).contains("WAVE 4 OF 5")  # a defeat in the fourth wave of the slice's five
+	assert_str(s.act_label.text).contains("WAVE 4 OF 15")  # a defeat in the fourth wave of the fifteen
 	assert_str(s.act_label.text).contains("9:42")
 	assert_bool(s.recap.visible).is_true()
 	assert_str(s.recap.broke_lines[0].text).contains("skitter 412")
@@ -109,7 +109,7 @@ func test_a_victory_counts_the_wave_it_finished_and_names_nothing_that_broke() -
 	s.core_damage_by_type = PackedFloat64Array()
 	s.core_damage_by_type.resize(_cs.enemies.size())
 	var screen: ResultsScreen = _results(s, V4uKit.profile(0))
-	assert_str(screen.act_label.text).contains("WAVE 5 OF 5")
+	assert_str(screen.act_label.text).contains("WAVE 5 OF 15")
 	assert_str(screen.recap.broke_lines[0].text).is_equal(Strings.t("results.broke_held"))
 
 

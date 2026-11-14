@@ -9,6 +9,6 @@
 		}
 	],
 	"expect": [
-		"enemies.json: $.bosses: no boss has pool_act 1 (needed by wave 5)"
+		"enemies.json: $.bosses: no boss has pool_act 3 (needed by wave 15)"
 	]
 }

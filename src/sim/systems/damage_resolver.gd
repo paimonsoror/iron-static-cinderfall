@@ -78,7 +78,8 @@ static func effective_armor(world: SimWorld, enemy_index: int, flags: int) -> fl
 
 
 ## Damage before armor of one Warden hit of `def` at weapon level `level` (1..3) on `enemy_index`: weapon damage x
-## level_mult x (1 + per_level x damage level) x w_dmg_mul x the conditional multipliers (full HP, low HP, stunned).
+## level_mult x (1 + per_level x damage level) x w_dmg_mul x ModRules.damage_mul (scrap_rounds, the_tally) x the
+## conditional multipliers (full HP, low HP, stunned).
 static func warden_amount(world: SimWorld, enemy_index: int, def: WeaponDef, level: int) -> float:
 	var store: EnemyStore = world.enemies
 	var mods: ModState = world.mods
@@ -86,6 +87,8 @@ static func warden_amount(world: SimWorld, enemy_index: int, def: WeaponDef, lev
 	var amount: float = def.damage * float(def.level_mult[clampi(level, 1, def.level_mult.size()) - 1])
 	amount *= 1.0 + damage_up.per_level * float(world.upgrade_levels[Ids.UP_DAMAGE])
 	amount *= mods.w_dmg_mul
+	if world.content.run != null:
+		amount *= ModRules.damage_mul(world)  # scrap_rounds, the_tally
 	var hp: float = store.hp[enemy_index]
 	var max_hp: float = store.max_hp[enemy_index]
 	if hp >= max_hp:

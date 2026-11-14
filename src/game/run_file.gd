@@ -68,10 +68,11 @@ static func header(config: SimConfig, run_id: String) -> Dictionary:
 		"unlocked": Array(config.unlocked),
 		"daily": config.daily,
 	}
-	if config.debug_invulnerable_core or config.debug_damage_mult != 1.0 or config.debug_start_scrap != 0:
+	if config.is_debug():
 		doc["debug"] = {
 			"invulnerable": config.debug_invulnerable_core, "damage_mult": config.debug_damage_mult,
-			"start_scrap": config.debug_start_scrap,
+			"start_scrap": config.debug_start_scrap, "start_wave": config.debug_start_wave,
+			"boss": String(config.debug_boss),
 		}
 	return doc
 
@@ -144,6 +145,8 @@ static func config_from(doc: Dictionary, content: ContentSet) -> SimConfig:
 		config.debug_invulnerable_core = typeof(invulnerable) == TYPE_BOOL and invulnerable == true
 		config.debug_damage_mult = SnapUtil.num(d.get("damage_mult", 1.0))
 		config.debug_start_scrap = whole(d.get("start_scrap"), 0)
+		config.debug_start_wave = whole(d.get("start_wave"), 0)
+		config.debug_boss = StringName(text(d.get("boss")))
 	return config
 
 
@@ -195,11 +198,36 @@ static func target_tick(doc: Dictionary) -> int:
 	return at
 
 
-## The Recovered Data of a run that cannot be resumed: a defeat at the last saved wave (VARIETY_SPEC 2.8).
+## The Recovered Data of a run that cannot be resumed: a defeat at the last saved wave (VARIETY_SPEC 2.8, CONTENT 10).
+## A generated run is paid what it had banked at its boundary (`state.stats.data`: waves, act bosses, `rw_data`,
+## data_siphon), never more than a whole run of this content could bank, and `reward.per_wave` per saved wave when the
+## snapshot does not say. The legacy content pays Formulas.data_reward.
 static func closing_reward(doc: Dictionary, content: ContentSet) -> int:
 	var wave_count: int = content.run.waves.size() if content.run != null else content.waves.size()
 	var waves: int = mini(waves_cleared(doc), maxi(content.waves.size(), wave_count))
-	return Formulas.data_reward(RunResult.Id.DEFEAT, waves, 0.0, content.mission)
+	if content.run == null:
+		return Formulas.data_reward(RunResult.Id.DEFEAT, waves, 0.0, content.mission)
+	var per_wave: int = content.run.reward_per_wave * waves
+	var state: Variant = boundary_of(doc).get("state")
+	if typeof(state) == TYPE_DICTIONARY:
+		var state_doc: Dictionary = state
+		var stats: Variant = state_doc.get("stats")
+		if typeof(stats) == TYPE_DICTIONARY:
+			var stats_doc: Dictionary = stats
+			var banked: int = whole(stats_doc.get("data"), -1)
+			if banked >= 0:
+				return mini(banked, closing_cap(content))
+	return per_wave
+
+
+## The most a run of `content` can bank before its end: every wave, every act boss, and a generous allowance for
+## `rw_data` and data_siphon (a damaged or edited run file cannot pay more than this).
+static func closing_cap(content: ContentSet) -> int:
+	var run: RunDef = content.run
+	var cap: int = run.waves.size() * (run.reward_per_wave + 30)
+	for amount: int in run.reward_boss_by_act:
+		cap += amount
+	return cap
 
 
 ## A whole number from a JSON value (numbers arrive as float), else `fallback`.

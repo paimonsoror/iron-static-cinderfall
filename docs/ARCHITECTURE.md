@@ -672,8 +672,9 @@ new randomness never reuses them.
 | `kit` | tick 0 | Random items of `k_gambler` |
 | `draft:<n>` | when offer n is made, and on its rerolls | The directives offered |
 | `crate:<n>` | when crate n is secured | Its contents |
-| `aim` | per shot that needs it | LMG strays, pellet scatter ties |
+| `aim` | per shot that needs it | LMG strays (among the neighbours of the target and the fuel drums in reach), pellet scatter ties |
 | `proc` | per trigger | `unstable_munitions`, `mine_layer` placement, reload jams |
+| `event.place:<w>` | when a world event of wave w needs a place (V4-V) | Drop point, breach points, the rail line of a freight car |
 
 Bots never touch a sim stream: the `random` bot owns an RNG seeded from `hash(seed, "bot")` outside the world.
 
@@ -790,7 +791,11 @@ combat; AbilitySystem runs in every non-terminal phase). Each new system documen
 **(V) Awaiting.** `step()` returns before `tick += 1` when `phase_state.awaiting != NONE` and the command queue is empty. When a
 command is queued it advances one tick, applies it, and stops again if still awaiting. Bots therefore answer on the next tick
 and the tick count never depends on thinking time. `state_hash` adds the new states in a fixed order after the existing ones.
-Store capacity is `enemy_cap + swarm_cap + 8` (98 with the shipped values 50, 40).
+Store capacity is `enemy_cap + swarm_cap + 8` (98 with the shipped values 50, 40). **(V5-A)** The 8 spare rows are only
+headroom of the store: `spawn_enemy` on variety content refuses a bodied enemy at `enemy_cap` alive and a mini at `swarm_cap`
+(SPEC 5.5), for every caller; a Floor Breach's borers and a splitter's children then join the spawn queue, a boss's
+`BossEffects.send` queues and `send_now` keeps the body owed (before V5-A a direct spawn could use the spare rows: a
+breach into a full field gave 56 bodied, a broken cap of scorecard S17).
 
 ### 6.3 Config, commands, events, hashing, RNG
 
@@ -805,6 +810,11 @@ var debug_start_scrap: int = 0
 var kit_index: int = 0                          # index into the kits of unlocks.json; 0 = k_standard
 var unlocked: PackedStringArray                 # sorted ids of the unlocks in force (the pool of the run)
 var daily: bool = false                         # the Daily Run: full pool, fixed kit
+# (V5-A) appended: the debug starts of section 11, applied by DebugStart at tick 0
+var debug_start_wave: int = 0                   # > 1: begin at this wave with a scripted build
+var debug_boss: StringName = &""                # a BossDef or Node 9 variant id: begin at its boss wave
+func has_unlock(unlock_id: String) -> bool      # daily or in `unlocked`
+func is_debug() -> bool                         # any debug switch on: the run leaves no trace in the Archive
 static func create(content_set: ContentSet, seed_value: int) -> SimConfig    # (V) keeps working: base pool, standard kit
 
 class_name SimCommand extends RefCounted
@@ -928,6 +938,8 @@ and `SimWorld.state_hash()` calls them in a fixed order. A field that affects ou
 | `CORE_HEALED` | | | amount | | ModSystem, HazardSystem |
 | `CHARGES_CHANGED` | event index | charges | | | EventSystem |
 | `COMMAND_REJECTED` | command id | Reason | | | CommandSystem |
+| **(V5-A)** `WEAPON_CHARGING` | slot | wind-up ticks | line end x | line end z | FireLine.begin (the rail lance's charge starts) |
+| **(V5-A)** `TURRET_REMOVED` | pad | | | | ModSystem (`single_point` takes the turrets away) |
 
 **(V)** The existing kinds and their payloads are unchanged. Payload meanings given in SPEC 13.2 (`AREA_BLAST`, `CHAIN_ARC`,
 `DELAYED_HIT_LAUNCHED`, `ELITE_SPAWNED`, `EVENT_WARNED`, `BOSS_TELEGRAPH`, `COMMAND_REJECTED`) are exact; the others follow the
@@ -1012,6 +1024,14 @@ var scrap_earned: int; var scrap_spent: int; var data_reward: int
 its own `*State` class, which is what the variety milestone does). `RunStats` and `RunSummary` gain, appended: `act_reached`,
 `combat_ticks`, `directives: PackedInt32Array` (stacks per directive index), `weapons: PackedInt32Array`, `route_choices`,
 `core_damage_by_type`, `damage_by_source` (size 7, indexed by `DamageSource.Id`), `events_seen`, `crates_secured`, `boss_ids`.
+**(V5-A)** `RunStats.data: int` is the Recovered Data the run has banked (CONTENT 10: `reward.per_wave` and
+`ModState.data_per_wave` at every wave cleared, `reward.boss_by_act` when an act boss dies, `rw_data` with the route
+rewards; `RunStats.add_data` is the writer's door). It is not hashed (it changes no outcome) and the boundary snapshot carries
+it with the rest of `RunStats`. `SimWorld.data_reward()` is the run's worth now: `stats.data`, plus `victory_base +
+floor(victory_core_bonus x core / core max)` on a victory; `summary().data_reward` is that number, `GameRewards` pays it
+unchanged, and a run file that cannot be resumed is closed with the `stats.data` of its boundary (`RunFile.closing_reward`).
+The legacy content keeps `Formulas.data_reward`. `ArsenalState` gains `kill_chain_stacks` and `kill_chain_ticks` (hashed; the
+kill chain no longer shares the bits of `shots_since_proc`).
 `WardenState.weapon_index`, `magazine` and `reload_ticks_left` stay and mirror the active weapon slot, so the HUD, the view and
 the old tests keep reading them.
 
@@ -1123,6 +1143,24 @@ signatures and TODO bodies that compile and do nothing.
 | `events_state` | EventSystem |
 | `boss` | BossSystem |
 | `enemies.hp` stays written only by `DamageResolver` (heals included, through `DamageResolver.heal`) | DamageResolver |
+| **(V5-A)** `stats.data` (Recovered Data banked, 6.4 RunStats) | `RunStats.add_data`, called by PhaseAwaits (a wave cleared), DeathHooks (an act boss killed) and ModSystem.grant (`rw_data`) |
+| `arsenal.kill_chain_stacks`, `kill_chain_ticks`, `shots_since_proc` | ShotHooks (the kill chain and the pistol's perk counter; ArsenalSystem ticks them) |
+| The active magazine emptied by a Tremor Rig stomp | ArsenalFire.dump_magazine (BossEffects asks for it) |
+| `events_state.turret_offline_ticks` | EventSystem.take_turrets_offline (the brownout, `mod_low_power` through ModSystem, the stomp through BossEffects) |
+| `turrets.active` cleared by `single_point` | ModSystem (pushes `TURRET_REMOVED` per pad); EconomySystem.sync_turrets deploys |
+
+**(V) Stated exceptions to the one-writer rule** (each is one class that owns the moment; nothing else writes these fields
+at that time):
+
+| Fields | Second writer | When, and why it is safe |
+|---|---|---|
+| A boss body and its parts in `enemies`: `state`, `attack_cd`, `x`, `z`, `face_*`, `path_dist`, `stun_ticks` | `BossEffects` (`park`, `carry`, `advance`, `extend_stun`, `cap_attack_cd`, `restart_attack`) | Tick step 13, after movement and core attacks. A parked body counts as attacking with no slot, so MovementSystem and the stuck recovery leave it alone; the Lance Platform's standoff parking and the Aegis pylons' orbit are the boss script's, never the standoff code's |
+| `enemies.x/z` of a pushed enemy, and `state`, `attack_cd` of a pushed attacker | `EventPush.away` (Core Vent, Runaway Freight) | Inside the event's own tick; the full distance for every mass (CONTENT 6), clamped to the yard. An attacker thrown back keeps its slot and walks to it again |
+| `enemies.x/z` of the squatters of an Accord Drop | `EventSupplyDrop.steer` (HazardSystem.step) | After MovementSystem in the same tick: the squatter's position of this tick is replaced by a step toward the crate ring |
+| `enemies.x/z` of a body shoved by the scattergun, the Core Vent's and the freight's other callers | `MovementSystem.knockback` | The owner's own call point: `FireCone.shove` gates (mass below 3, not attacking, not ANCHORED) and calls it |
+
+The boss, squatter and push writes were found by the V4 reviews; V5-A moved what was cheap to the owner (the magazine dump,
+the turret outage, the scattergun shove) and records the rest here instead of hiding it.
 | `core_hp` gains two writers, both through `set_core_hp` | HazardSystem (the Core Vent price), ModSystem (max changes, repairs) |
 
 **Nav and spawn (task W1-A)**
@@ -1288,6 +1326,9 @@ class_name AreaDamage
 static func blast(world: SimWorld, x: float, z: float, radius: float, damage: float, edge_frac: float, flags: int, source: int) -> void
 class_name HazardSystem           # the delayed-effect queue, pools, mines, drums; step(world)
 class_name StatusSystem           # slow, burn, ward regeneration, auras, reclaimer tethers; step(world)
+# (V5-A) The jammer's two rates reach the game ONCE, through EventRates (ability cooldown tick: AbilitySystem; turret cadence:
+# EventRates.turret_rate_milli, which TurretSystem reads). StatusSystem.cooldown_rate / turret_rate_mult are the same numbers as
+# plain queries (only unit tests call them): no system multiplies by them, so nothing is applied twice.
 class_name DeathHooks / CoreHooks / ShotHooks    # one function per HOOK directive of CONTENT 3 (e.g. DeathHooks.on_killed)
 class_name EliteSystem            # applies affixes at spawn; aura and leech rules
 class_name EventSystem            # sim/systems/event_system.gd + events/event_<id>.gd (10 files); step(world)
@@ -1295,6 +1336,9 @@ class_name BossSystem             # sim/systems/boss_system.gd + bosses/boss_<id
 class_name SalvageSystem          # crates on the field, the bank, crate contents; step(world)
 
 # Targeting: the signatures of 6.6 "Combat" are FROZEN. is_valid and compare read world.ext for MAGNETIC, SHROUDED and the mini rule.
+# (V5-A) compare ranks a ward_pylon by the urgency of its living boss (rules 1 and 2 read the boss), so its priority_class
+# puts it ahead of the Aegis Array (CONTENT 5 "pylons are priority targets"); on its own a pylon (speed 0) had the last ETA
+# bucket and nothing aimed at it while the Array lived.
 class_name Targeting
 static func pick_cluster(world: SimWorld, x: float, z: float, min_range: float, max_range: float, radius: float) -> Vector2
 static func pick_many(world: SimWorld, x: float, z: float, range_m: float, n: int, out: PackedInt32Array) -> int
@@ -1419,6 +1463,9 @@ signal charges_changed(id: StringName, n: int)
 signal command_rejected(command_id: int, reason: int)
 signal unlock_purchased(id: StringName)                           # emitted by Save/Game, not by the sim
 signal burster_armed(id: int)                                     # the relay makes it from ENEMY_REACHED_SLOT of an enemy with fuse_s
+# (V5-A) appended
+signal weapon_charging(slot: int)                                 # WEAPON_CHARGING: the rail lance began its wind-up (audio: rail_charge)
+signal turret_removed(pad: int)                                   # TURRET_REMOVED: single_point took the turret of that pad
 ```
 
 `RunController` is the only emitter of the gameplay signals. It drains `sim.events` after the ticks of each
@@ -1503,7 +1550,20 @@ func draft_buyout_used() -> bool
 func draft_actions_locked() -> bool
 func crate_status() -> Dictionary
 func wave_route() -> Dictionary
+# (V5-A) appended: the readers of the Archive's field options
+func has_unlock(id: StringName) -> bool         # the run counts this unlock (every unlock in a Daily Run); the UI gates
+                                                # u_f_boss_intel (show act_boss() at the act start) and u_f_preview on it
+func act_boss() -> Dictionary                   # the boss of the act the player is in (between waves: the next wave's act),
+                                                # in the shape of boss_brief(); {} when the act has none
+func route_preview(i: int) -> Dictionary        # option i of the wave after next, in the shape of route_option(); {} for a
+                                                # boss wave or past the end
 ```
+
+**(V5-A) Field options in the sim** (`SimConfig.has_unlock`): `u_f_reroll` gives one free reroll and `u_f_third_sling` opens
+the third weapon slot at tick 0 (`ModSystem.init_world`, before the kit's grants); `u_f_turret_arc` and `u_f_turret_mortar`
+decide the turret type of each pad (`TurretTypes.id_of`: one of them puts its type on the second pad, both put the arc turret
+on the first and the mortar turret on the second; the "one more tap" of CONTENT 8 is not built). `ability_cooldown_total`
+answers with `AbilitySystem.cooldown_ticks_of` (the cooldown with the directive stats, as the one that starts).
 
 **(V)** The old upgrade queries (`upgrade_level`, `upgrade_cost`, `purchase_block_reason`, ...) stay and return the legacy values
 (the stat directives feed the same levels). `wave_count()` returns 15 in the shipped game. `FakeRunApi` mirrors every addition
@@ -1605,10 +1665,20 @@ only) call `Game.pause_run()` and `Save.flush()`; on `NOTIFICATION_WM_GO_BACK_RE
 `Game.request_back()`. The game stays paused after returning until the player taps RESUME. **(V)** `MobileShell` also writes
 the run file (7.5) on app pause, together with `Save.flush()`.
 
-`BackPolicy` (pure): `static func decide(state: int, drawer_open: bool, overlay_open: bool) -> int` returning
-`enum Action { CLOSE_OVERLAY, CLOSE_DRAWER, PAUSE, RESUME, TO_MENU, CONFIRM_QUIT, NONE }`. **(V)** Back on a choice overlay
-(salvage, draft, route, boss briefing) means PAUSE: a choice can never be dismissed. Back on the Archive means CLOSE_OVERLAY.
-New parameters, if the policy needs them, are appended with defaults; the drawer branch stays until task V5-A removes it.
+`BackPolicy` (pure): `static func decide(state: int, overlay_open: bool) -> int` returning
+`enum Action { CLOSE_OVERLAY, PAUSE, RESUME, TO_MENU, CONFIRM_QUIT, NONE }`. **(V)** Back on a choice overlay
+(salvage, draft, route, boss briefing) means PAUSE: a choice can never be dismissed. Back on the Archive means CLOSE_OVERLAY:
+`Game.request_back` first asks the screen on show to close an overlay of its own (`MainMenuScreen.close_overlay()`,
+`ResultsScreen.close_overlay()`, through `GameRunFlow.close_screen_overlay`) and passes the result as `overlay_open`.
+**(V5-A)** The upgrade drawer of the legacy HUD is gone, and with it the `drawer_open` argument and the `CLOSE_DRAWER` action.
+
+**(V5-A) Launches.** `GameRunFlow` holds the variety entry points of `Game`: `apply_launch` (kit: the one asked for, else
+`--kit`, else `Save.profile.kit`; a Daily Run always takes `GameLaunch.DAILY_KIT`), `start_daily` (the menu's DAILY RUN:
+`GameLaunch.daily_seed(GameLaunch.utc_date())`, the full pool), `start_same_seed` (the results screen's SAME SEED: the seed and
+the kit of the run that ended, never a Daily Run), `setup_results` (`ResultsScreen.show_milestones` with the `milestones` of
+`Save.last_reward`), `setup_menu` (`set_resume_wave`, `set_daily_today`) and `resume_from_disk` (plays `resume_link`; a
+finished run found on resume is paid with its Archive facts). Debug starts: `--scenario=wave:<n>` and
+`--scenario=boss:<id>` set `SimConfig.debug_start_wave` and `debug_boss` (11).
 
 **(V) `GameStateMachine` stays frozen.** The draft, route, salvage and boss-briefing screens are HUD overlays inside
 INTERMISSION (their lifecycle is owned by `Game`, not by an application state); the Archive is an overlay on MENU. The sim-side
@@ -1670,16 +1740,25 @@ enum LoadStatus { OK, NEW_PROFILE, RECOVERED_FROM_BACKUP, RESET_AFTER_CORRUPTION
 var profile: Profile
 var last_load_status: int
 func use_fs(fs: SaveFs) -> void                               # tests inject MemorySaveFs, then call load_profile()
+func use_content(content: ContentSet) -> void                 # (V) tests inject the content the Archive rules read; null = Content.db
+func content_set() -> ContentSet                              # (V) the injected content, else Content.db (the unlock tree, kits, milestones)
+var last_reward: Dictionary                                   # (V) what the latest grant added: { run_id, run_data, milestones: [{id, data}],
+                                                              # milestone_data, total, daily: "" | "rewarded" | "practice" }; {} after a load
 func load_profile() -> int
 func flush() -> bool                                          # write tmp, verify by re-reading, keep previous as .bak, rename
 func profile_dirty() -> bool                                  # W3-A: true while the profile in memory has changes no successful flush wrote
 func grant_run_reward(run_id: String, result: int, data_amount: int, core_hp: int, extras: Dictionary = {}) -> bool
     # false and no change if run_id is already in awarded_run_ids; otherwise adds data, updates
     # missions_completed (victory), best_core_hp (victory, max), runs_played, appends run_id, flushes, emits profile_changed
-    # (V) `extras` (optional 5th parameter): milestones, best wave, boss kills, daily flags; a milestone is granted in the same
-    # flush as the run that earned it (the `claimed` list), so a run is rewarded once however often it is resumed
+    # (V) `extras` (optional 5th parameter; RewardLedger.apply, built by GameRewards.extras_of): "best_wave": int,
+    # "act_reached": int, "boss_kills": [boss ids], "kit": String, "primary_weapon": String, "weapons": [weapon ids],
+    # "daily": { "date": "YYYY-MM-DD" } for a Daily Run. Every key is optional; {} is the plain Data grant (no facts, no
+    # milestone). A milestone is granted in the same flush as the run that earned it (the `claimed` list), so a run is
+    # rewarded once however often it is resumed. A debug run (SimConfig.is_debug) is granted with {}.
 func purchase_unlock(id: StringName) -> int                   # (V) a Reason.Id; atomic: tier gate, not owned, funds; debit; add the id;
-                                                              # flush; emit profile_changed (and Events.unlock_purchased)
+                                                              # flush; emit profile_changed (and Events.unlock_purchased). Reasons:
+                                                              # UNKNOWN_ID, DUPLICATE_COMMAND = owned, PREREQ_NOT_MET = its tier is
+                                                              # closed, INSUFFICIENT_SCRAP = not enough Data
 func has_unlock(id: StringName) -> bool                       # (V)
 func set_kit(id: StringName) -> void                          # (V)
 func save_run(doc: Dictionary) -> bool                        # (V) writes user://run_v1.json (atomic, as the profile)
@@ -1689,6 +1768,8 @@ func get_setting(key: StringName) -> Variant
 func set_setting(key: StringName, value: Variant) -> void     # validates key and type, flushes, emits settings_changed
 func mark_hint_seen(key: String) -> void
 func has_seen_hint(key: String) -> bool
+func mark_codex_seen(key: String) -> void                     # (V) an Archive or threat entry was read (`codex_seen`), flushes
+func has_codex_seen(key: String) -> bool
 ```
 
 Load order: main file; if missing, `NEW_PROFILE`; if unreadable or invalid, try `.bak`
@@ -1717,7 +1798,7 @@ command tail (6.7):
   "boundary": { "wave": 6, "tick": 21480, "state_hash": "<sha256>", "state": { "...": "to_dict of every state class" } },
   "log": [ { "tick": 12, "id": 3, "kind": 1, "arg": 0 } ],
   "tail": [ { "tick": 21481, "id": 311, "kind": 3, "arg": 1 } ], "resume_tick": 22950,
-  "debug": { "invulnerable": false, "damage_mult": 1.0, "start_scrap": 0 } }
+  "debug": { "invulnerable": false, "damage_mult": 1.0, "start_scrap": 0, "start_wave": 0, "boss": "" } }
 ```
 
 `log` is every command up to `boundary.tick`; `debug` is optional and only written by debug runs. `boundary.wave` is the number
@@ -1854,17 +1935,26 @@ cosmetic extras, and **a telegraph, a danger zone or an enemy projectile is neve
   health bar. New modules: `actors/enemy_meshes_2.gd`, `boss_meshes.gd`, `weapon_meshes.gd` (the 8 new weapons),
   `crate_view.gd`; `arena/rail_lines.gd`, `freight_view.gd`, `drum_view.gd`; `vfx/fx_blasts.gd`, `fx_arcs.gd`, `fx_beams.gd`,
   `fx_lobs.gd`, `fx_zones.gd` (pools, wards, telegraphs, elite rings, tethers), `fx_strike.gd`, `fx_cosmetic.gd` (scorch, ghost
-  swarm, embers). `VfxLayer` gets one `setup` call per new module and stays under 400 lines by delegating.
+  swarm, embers), `fx_weapon_shots.gd` (V5-B, `FxWeaponShots`: the look of each gun's shot on top of the tracer and the
+  muzzle star: the scattergun's fan of 8 streaks and muzzle dust, the assault rifle's line through the first target, the LMG's
+  two extra sparks per hit and its Brass pool; it draws into the layer's tracer, spark and dust pools and owns only the
+  brass). `VfxLayer` gets one `setup` call per new module and stays under 400 lines by delegating.
   `BattleView` signatures stay FROZEN. The ground material gains two faint rail lines, kept low-contrast (GDD 12.3).
 - **Materials.** All new enemy materials are the existing `ceramic`, `dark_frame`, `gunmetal`, `hazard`, `emit_red`: no new
   material variant, so no new pipeline to warm. New effect materials reuse `add_cyan`, `add_amber`, `add_red`, `add_white`; the one
   new material is the red hatch for danger decals (unshaded, alpha), which is added to `ShaderWarmup`.
 - **Triangle budgets.** 8 new weapons 350 each; `mote`, `shard` 40 each; `burster`, `spitter`, `borer`, `jammer` 400 each;
-  `splitter`, `shieldbearer`, `reclaimer` 500 each; `ward_pylon` 150; the 4 new bosses 900 each (the Hulk's budget when the spec was written; `TRI_BUDGET` has since raised the Hulk to 1,500 in W3-D, and the owner of `TRI_BUDGET` fixes the bosses' budget; one pooled node each); crate
+  `splitter`, `shieldbearer`, `reclaimer` 500 each; `ward_pylon` 150; the 4 new bosses **1,500 each**, like the Hulk (V4-R,
+  approved by the owner on 2026-11-13; the spec's 900 was the Hulk's budget before W3-D raised it; one pooled node each); crate
   200, freight car 600, fuel drum 80, strike beacon 100. **The Warden budget** `ActorMeshes.TRI_BUDGET[&"warden"]` is 2,500 today
   (700, then 2,000, then 2,500 in W3-C; it uses 2,448 triangles with the pistol and 2,472 with the SMG) and a long weapon does not
   fit. SPEC Q4 proposes a body budget of 2,300 plus a separate weapon budget of 350; the body must lose about 150 triangles or
   the budget rises to 2,650. The owner of `TRI_BUDGET` decides after a look at the captures; until then 2,500 stands.
+- **Warden weapon mounts (V4-R).** The Warden keeps **three** weapon mounts under its hand: `Pistol`, `Smg` and a third one
+  that shows the model of whichever other weapon is in the active slot (`WeaponMeshes.model_index` picks the mesh and the
+  muzzle point per weapon). The holstered weapon is a `MeshInstance3D` **sibling** of the Warden under the `ActorLayer` (it
+  follows the Warden's back; up to 3 extra draw calls on MID and HIGH, none on LOW). `look_dev_view_test` pins the 12
+  mesh-instance names of the Warden.
 - **Readability rules** are tests, not prose: one red optic per enemy and nothing else on an enemy glows; the colour roles of
   GDD 12.1; red hatched decals for everything that hurts the player's side; at most 3 ticker lines and 1 banner; no damage
   numbers; a flash over 5% of the screen lasts at most 0.25 s and Reduced Flash removes it; friendly beams and arcs are drawn
@@ -1913,8 +2003,8 @@ instantiates them, connects the signals and frees them.
 | **(V)** `run/build_list.gd` (not a scene) | `BuildList` | `setup(api: RunApi, content: ContentSet)` | `closed`; the list of directives and weapons held |
 | **(V)** `screens/kit_selector.gd` (not a scene) | `KitSelector` | `setup(profile: Profile, content: ContentSet)` | `kit_selected(id)` |
 
-`CombatHud` also has `func is_drawer_open() -> bool`, `func close_drawer() -> void`,
-`func top_band_px() -> float`, `func bottom_band_px() -> float`.
+`CombatHud` also has `func top_band_px() -> float`, `func bottom_band_px() -> float`. (**V5-A** removed
+`is_drawer_open()` and `close_drawer()` with the upgrade drawer.)
 
 **(V) Combat HUD changes** (GDD 10.1). The upgrade tab and the drawer are gone from the shipped HUD; the bottom band grows from
 23% to 26% (`visual_tokens.json` `bottom_controls_fraction`; `CameraFit` already takes the band heights as inputs, and the
@@ -1924,9 +2014,8 @@ VENTING text, level chevrons), `hud_call_button.gd` (STRIKE and VENT 150 x 150; 
 `hud_threat_ticker.gd` (up to 3 lines of icon + text + bar, owns all event text) and `hud_edge_arrows.gd`; `hud_boss_bar.gd`
 gains phase pips and `hud_top_bar.gd` shows act and wave of 15. `results_screen.gd`, `main_menu_screen.gd`,
 `briefing_screen.gd` and `pause_overlay.gd` are extended (RESUME RUN, ARCHIVE, DAILY RUN, kit selector, build recap, SAME SEED,
-the seed line and BUILD button). `CombatHud.is_drawer_open()` returns false and `close_drawer()` does nothing until the cleanup
-task V5-A removes them together with `BackPolicy`'s drawer branch; `hud_upgrade_drawer.gd` and `hud_upgrade_card.gd` are deleted
-there, not before, so the legacy HUD tests can be migrated in one place. The signatures of the (V) rows above are derived from
+the seed line and BUILD button). **V5-A** deleted `hud_upgrade_drawer.gd`, `hud_upgrade_card.gd`, the drawer members of
+`CombatHud` and `BackPolicy`'s drawer branch, and migrated the legacy HUD tests of the drawer. The signatures of the (V) rows above are derived from
 the layering rule (the UI talks to the sim only through `RunApi`) and are confirmed by tasks V2-E and V4-U, which own `src/ui/`.
 Icons in `assets/icons/`: 8 tag glyphs x 4 rarity frames plus a category corner mark (about 20 SVGs) and the 10 weapon
 silhouettes; the 60 directive icons are not hand-authored.
@@ -1958,6 +2047,20 @@ Sound ids (files `assets/audio/sfx/<id>.wav`): `shot_pistol`, `shot_smg`, `shot_
 `core_low`, `boss_stinger`, `victory`, `defeat`. Loops: `assets/audio/loops/ambience.wav`, `combat_drone.wav`.
 
 The director's internal router subscribes to `Events`. UI code calls `Sfx.play(&"ui_tap")` directly.
+
+**(V) Routes of the variety milestone** (V2-G, V4-A). `AudioEventRouter` merges two tables of `signal name -> handler`:
+`AudioVarietyRoutes.wiring()` (the weapons, blasts, drafts, crates, the run flow; since V5-A also
+`weapon_charging -> on_weapon_charging`, the rail lance's `rail_charge`) and, inside it, `AudioThreatRoutes.wiring()` (the
+chaos events with `warn_harm` / `warn_help` and their own sounds, the boss telegraphs and phases, elites, wards, borers).
+Every handler is public and read-only; neither class touches the sim. `AudioCatalog.LOOP_IDS` (`lmg_spin`, `torch_loop`)
+lists the one-shot files that a held voice loops (`AudioDirector.hold` through `AudioLoopPad.looped_copy`); every looping
+stream of the game is one of the two beds or one of these, and a test pins that each is padded. The combat drone follows
+the **threat budget**: `AudioVarietyRoutes.intensity_for_act` places the wave inside its act by its budget
+(`WAVE_BUDGETS`, a mirror of `data/run.json` `waves[].budget` that a test pins; the boss wave is the top of its act), so
+the drone rises through an act instead of by the wave number. **Wards** (`AudioThreatRoutes.on_ward_changed`): a ward that
+comes back hums (`ward_hum`), a ward that goes down breaks (`ward_break`), a hit that only drains it is silent, and since V5-B
+the **first** `ward_changed` of an enemy is silent too (a shieldbearer reports its full pool on its first tick, so a hum there
+would sound at every spawn).
 
 **Looping beds on a phone (`AudioLoopPad`, `src/audio/audio_loop_pad.gd`).** When a looping WAV wraps, the mixer's interpolation
 reads a few frames past `loop_end`. With the loop end at the very end of the data that read leaves the buffer: on a phone (the
@@ -2001,8 +2104,9 @@ User arguments come after `--`. On Android they are baked through the preset opt
 | `--scenario=hold<N>` | Debug run: invulnerable core, hold N enemies alive (perf) |
 | **(V)** `--scenario=hold<N>+<M>` | As `hold<N>` with M minis as well (N bodied + M minis; `hold50+40` is the perf scenario) |
 | **(V)** `--scenario=chain` | A burster line and a strike, for perf and the legibility capture |
-| **(V)** `--scenario=event:<id>`, `--scenario=boss:<id>` | One event or one boss on its own, for the view tasks and captures |
-| **(V)** `--wave=<n>` | Start at wave n with a scripted build |
+| **(V)** `--scenario=event:<id>` | One event on its own, for the view tasks and captures (not built: the puppet scenarios of the sandboxes cover it) |
+| **(V5-A)** `--scenario=boss:<id>` | The real game starts at the boss wave of that boss with a scripted build: a `BossDef` id (`brood_carrier`, `lance_platform`, `aegis_array`, `tremor_rig`, `siege_hulk`) or a Node 9 variant (`hulk_plated`, `hulk_fed`, `hulk_overclocked`). `SimConfig.debug_boss`, applied by `DebugStart` |
+| **(V5-A)** `--wave=<n>`, or its long form `--scenario=wave:<n>` (`DebugArgs` stores `--wave=<n>` as that scenario) | Start at wave n with a scripted build (`DebugStart.BUILD`: one base directive per skipped wave, a second weapon from wave 3). `SimConfig.debug_start_wave`. Skips the menus like `--autoplay` |
 | **(V)** `--kit=<id>` | Start with that kit |
 | **(V)** `--unlock=all\|none\|<ids>` | The unlocked pool of the run (`all` for a debug victory path) |
 | **(V)** `--daily` | Start the Daily Run |
@@ -2049,7 +2153,7 @@ V2-P owns `src/debug/`.
 | `capture.ps1 -Scene <res> -Out <png> [-Size 1080x2400] [-Frames 90]` | desktop screenshot through the real renderer (not headless) | exit 0, PNG exists, not blank |
 | `sim_run.ps1 -Seed n -Policy greedy\|none [-Runs k]` (W2-D) | headless full runs, prints result, duration, peaks, hashes. (V) `-Policy` accepts all 8 policies of 6.7 and the run also prints the build signature and the death wave | exit 0, line `SIM SUMMARY: ...` |
 | `balance_run.ps1 -Runs k` (W2-D) | compares runs with the targets in GAME_DESIGN 8.4. (V) Reads the redefined targets of GDD 8.4; `-Data res://tests/fixtures/data_baseline` runs the legacy fixture | exit 0 PASS or WARN, 1 FAIL |
-| **(V)** `scorecard_run.ps1 -Runs n [-Pool base\|full]` | the predictability scorecard S1 to S18 (GDD 8.4): `n` seeds x 8 policies (the gate version is `-Runs 30`, the full card `-Runs 200`) | exit 0; last line `SCORECARD: PASS\|WARN\|FAIL rows=.. pass=.. warn=.. fail=.. runs=..`; exit 1 on FAIL |
+| **(V)** `scorecard_run.ps1 -Runs n [-Pool base\|full] [-Jobs k]` | the predictability scorecard (GDD 8.4): `n` seeds x 8 policies, plus 3 more `balanced` runs per seed for the route rows S14 and the pool row S15 (the gate version is `-Runs 30`, the full card `-Runs 200`). **19 rows**: an `integrity` row in front (a run that did not finish, or broke an invariant of the harness checker, is a structural break and a FAIL) and S1 to S18. S8 is WARN when any policy but `none` falls before wave 3 (or more than 2% before wave 4) and FAIL only when `balanced`, the reference player, falls before wave 3. `-Jobs k` plays the card in `k` Godot processes at once (shards of the job list) and joins their records in one more process; the verdict is the same as with `-Jobs 1` | exit 0; last line `SCORECARD: PASS\|WARN\|FAIL rows=19 pass=.. warn=.. fail=.. runs=..`; exit 1 on FAIL |
 | **(V)** `plan_dump.ps1 -Seed n` | prints a seed's whole plan (bosses, both options of every wave, events) for bug reports and design review | exit 0 |
 | `run_emulator.ps1`, `deploy_android.ps1`, `smoke_android.ps1` (W1-H) | emulator boot; export, install, launch; log and screenshot checks | `== RUNNING (pid n)`; `SMOKE OK` |
 
@@ -2133,7 +2237,7 @@ New pools, allocated once at `setup`; exhaustion drops the oldest visual and nev
 | Blast flashes (BILLBOARD) | 0 / 8 / 12 | 1 | every blast (not on LOW) |
 | Arc segments (SEGMENT) | 18 / 30 / 45 | 1 | arc projector, shock rounds, pylons, core lash |
 | Beam segments | 2 / 2 / 3 | 1 | torch, lance charge and shot, Lance Platform beam |
-| Lobbed projectiles (BILLBOARD) | 12 / 18 / 24 | 1 | mortar shells, spitter bolts, hornets |
+| Lobbed projectiles (LOB), three pools with one colour each (V4-X): shells 4 + hornets up to 20, together 12 / 18 / 24; spitter bolts 12 on every tier (an enemy projectile is never tier-gated) | 12 / 18 / 24 + 12 | 3 | mortar shells (amber balls), hornets (cyan streaks: since V5-B a ribbon 0.95 m long along the flight, `VfxPool.streak_len`, not a ball), spitter bolts (red balls) |
 | Ground pools (FLAT) | 6 / 8 / 10 | 1 | slag, burn |
 | Telegraph decals (FLAT, hatched) | 8 / 8 / 8 | 1 | lanes, rings, cracks |
 | Ward and aura rings (FLAT) | 8 / 10 / 12 | 1 | shieldbearer, warded, overclocker, jammer |
@@ -2141,12 +2245,14 @@ New pools, allocated once at `setup`; exhaustion drops the oldest visual and nev
 | Tether lines (SEGMENT) | 6 / 9 / 12 | 1 | reclaimer, magnetic |
 | Scorch marks (FLAT, persistent ring) | 0 / 8 / 16 | 1 | after blasts |
 | Ghost swarm (cosmetic) | 0 / 40 / 80 | 1 | outside the playable rectangle |
+| Brass (DEBRIS, V5-B `FxWeaponShots.BRASS_BY_TIER`) | 0 / 8 / 16 | 1 on MID and HIGH, none on LOW | the LMG's spent cases |
 | Crate, strike column, freight car, drums | 1 + 1 + 1 + 3 nodes | 6 to 8 | events |
-| Existing: tracers 48, sparks 64, bursts 24, texts 24 | unchanged | - | - |
+| Existing: tracers 48, sparks 64, bursts 24, texts 24 | unchanged | - | - (the scattergun fan and the rifle's through-line draw into the tracers, the LMG's extra sparks into the sparks) |
 
 The existing EMP ring pool is 2 (SPEC 10.3 lists "2 to 6" for it; V2-F fixes the final number together with the blast rings).
 Worst-case addition: about 22 draw calls on LOW and 28 on HIGH. With the measured 137 on HIGH that is about 165: over the 150
-target, under the 220 limit. That is the number task V2-P measures first on the phone (including `--scenario=hold50+40` and
+target, under the 220 limit. **Measured by V5-B on the desktop** at `--scenario=hold50+40`: 118 / 118 / 124 draw calls on LOW /
+MID / HIGH, inside the 150 target. That is the number task V2-P measures first on the phone (including `--scenario=hold50+40` and
 `--scenario=chain`); if it does not hold, the cut order is: ghost swarm, scorch marks, flashes, tether lines, then the optional
 task V4-X2 (draw **all** enemies of a type as one transform-only MultiMesh, which would cut about 50 to 100 draw calls but
 replaces the material-swap hit flash with a transform pop and needs the hard-surface look ported). Per-effect guesses to be
@@ -2154,7 +2260,7 @@ measured at the cap on HIGH: minis 0.3 ms; a 6-blast chain 0.4 ms for 0.3 s; 45 
 overdraw is the risk: pools are small and never stacked more than 2 deep by a view rule); ghost swarm 0.2 ms; bloom is unchanged.
 
 Audio budget: 16 voices stay; 3 are reserved for the alert class and the weapon class may use at most 8 (section 10).
-Stress: `test_stress_ten_minutes` gets a variant at 50 + 40 with blasts every second (limit 1.0 ms per tick on the desktop).
+Stress: `test_stress_ten_minutes` (the flood of the generated run) and its variant `test_stress_chain` (V5-A: 50 bodied and 40 minis held alive with a blast every second) both hold the limit of 1.0 ms per tick on the desktop. They are wall-clock benchmarks: on a loaded machine they are run again, their budget is never edited.
 
 ---
 

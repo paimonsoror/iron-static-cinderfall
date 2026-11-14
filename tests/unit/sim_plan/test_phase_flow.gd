@@ -21,7 +21,7 @@ func test_a_new_variety_world_waits_for_nothing_and_starts_in_act_one() -> void:
 	assert_int(w.phase_state.act).is_equal(1)
 	assert_bool(w.phase_state.breather).is_false()
 	assert_int(w.phase).is_equal(GameState.Id.PREPARING)
-	assert_int(PhaseSystem.wave_count(w)).is_equal(5)
+	assert_int(PhaseSystem.wave_count(w)).is_equal(15)
 
 
 func test_wave_one_announces_the_act_and_its_planned_count() -> void:

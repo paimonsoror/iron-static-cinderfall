@@ -14,7 +14,7 @@ func _rect(c: Control) -> Rect2:
 	return Rect2(c.global_position, c.size)
 
 
-## Opens everything that can be open: the drawer, the intermission panel and a hint.
+## Opens everything that can be open: the intermission panel and a hint.
 func _open_everything(hud: CombatHud) -> void:
 	_api.fake_phase = GameState.Id.INTERMISSION
 	_api.fake_phase_ticks_left = 300
@@ -33,7 +33,7 @@ func _assert_touch_targets(hud: CombatHud) -> void:
 			seen += 1
 			assert_float(b.size.x).is_greater_equal(132.0)
 			assert_float(b.size.y).is_greater_equal(132.0)
-	assert_int(seen).is_greater_equal(11)  # pause, tab, 3 abilities, 5 cards, continue
+	assert_int(seen).is_greater_equal(6)  # pause, tab, 3 abilities, continue (the 5 upgrade cards went with the drawer)
 
 
 func test_every_interactive_control_is_at_least_132_by_132() -> void:
@@ -99,12 +99,11 @@ func test_nothing_overlaps_with_everything_open() -> void:
 	await CombatHudTestKit.wait(get_tree(), 0.35)
 	var top_edge: float = hud.top_band_px()
 	var bottom_edge: float = hud.size.y - hud.bottom_band_px()
-	var stack: Array[Control] = [hud.drawer, hud.intermission]
+	var stack: Array[Control] = [hud.intermission]
 	for c: Control in stack:
 		assert_bool(c.visible).is_true()
 		assert_float(_rect(c).position.y).is_greater_equal(top_edge)
 		assert_float(_rect(c).end.y).is_less_equal(bottom_edge + 0.5)
-	assert_bool(_rect(hud.drawer).intersects(_rect(hud.intermission))).is_false()
 	assert_bool(_rect(hud.bottom.tab_button).intersects(_rect(hud.bottom.ammo))).is_false()
 	assert_bool(_rect(hud.bottom.tab_button).intersects(_rect(hud.bottom.abilities))).is_false()
 	assert_bool(_rect(hud.bottom.ammo).intersects(_rect(hud.bottom.abilities))).is_false()
@@ -113,13 +112,6 @@ func test_nothing_overlaps_with_everything_open() -> void:
 		var a: Rect2 = _rect(hud.bottom.abilities.buttons[ids[i]])
 		var b: Rect2 = _rect(hud.bottom.abilities.buttons[ids[i + 1]])
 		assert_bool(a.intersects(b)).is_false()
-	var prev: Rect2 = Rect2()
-	for id: StringName in Ids.UPGRADES:
-		var r: Rect2 = _rect(hud.drawer.cards[id])
-		if prev.size != Vector2.ZERO:
-			assert_bool(prev.intersects(r)).is_false()
-		assert_float(r.end.x).is_less_equal(1080.0)
-		prev = r
 
 
 func test_the_hud_issues_no_command_by_itself() -> void:

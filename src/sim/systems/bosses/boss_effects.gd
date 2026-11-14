@@ -2,12 +2,11 @@ class_name BossEffects
 extends RefCounted
 ## Everything a boss script does to the world outside BossState, in one place (VARIETY_SPEC 6, 13.2 "boss motion
 ## hooks"). Where the owning system has a public function the effect goes through it (spawn_enemy, SpawnSystem.enqueue,
-## kill_enemy, DamageResolver.heal). Where it has none yet, the function here writes the one field itself and names
-## the owner, so the integration task can replace the body by the owner's call without touching a boss file:
-##   - the boss's own body and its parts in EnemyStore: `state`, `attack_cd`, `x`, `z`, `face_*`, `path_dist`,
-##     `stun_ticks` (MovementSystem, CoreAttackSystem and AbilitySystem own these for every other enemy);
-##   - `EventState.turret_offline_ticks` (EventSystem; the field is documented as "brownout, low power, stomp");
-##   - the active slot's magazine in ArsenalState and its mirror in WardenState (ArsenalSystem).
+## kill_enemy, DamageResolver.heal, EventSystem.take_turrets_offline, ArsenalFire.dump_magazine). The one exception,
+## recorded in the ownership table of ARCH 6.6: this class is the writer of the boss's own body and of its parts in
+## EnemyStore (`state`, `attack_cd`, `x`, `z`, `face_*`, `path_dist`, `stun_ticks`) while a boss script drives them;
+## MovementSystem, CoreAttackSystem and AbilitySystem own these fields for every other enemy and leave a parked boss
+## body alone.
 ## Every function runs at tick step 13, after movement, weapons and core attacks of the tick.
 
 ## Attack timer of a parked part that never hits the core (CoreAttackSystem counts one off per tick).
@@ -127,25 +126,15 @@ static func restart_attack(world: SimWorld, enemy_index: int, period: int) -> vo
 	world.enemies.attack_cd[enemy_index] = maxi(1, period)
 
 
-## Turrets go offline for `ticks` (never shortens an outage that already runs). Owner: EventSystem.
+## Turrets go offline for `ticks` (never shortens an outage that already runs). Done by the owner (EventSystem).
 static func turrets_offline(world: SimWorld, ticks: int) -> void:
-	var st: EventState = world.events_state
-	st.turret_offline_ticks = maxi(st.turret_offline_ticks, ticks)
+	EventSystem.take_turrets_offline(world, ticks)
 
 
 ## Empties the magazine of the weapon in the Warden's hands; the arsenal starts the reload on its next step. A heat
-## weapon has no magazine and keeps firing. True when rounds were lost. Owner: ArsenalSystem.
+## weapon has no magazine and keeps firing. True when rounds were lost. Done by the owner (ArsenalFire.dump_magazine).
 static func dump_magazine(world: SimWorld) -> bool:
-	var a: ArsenalState = world.arsenal
-	var slot: int = a.active
-	if slot < 0 or slot >= a.slot_magazine.size():
-		return false
-	var def: WeaponDef = ArsenalSystem.weapon_of(world, slot)
-	if def == null or def.is_heat() or a.slot_magazine[slot] <= 0:
-		return false
-	a.slot_magazine[slot] = 0
-	world.warden.magazine = 0
-	return true
+	return ArsenalFire.dump_magazine(world)
 
 
 ## Repairs the boss by `amount` hit points (DamageResolver stays the only writer of enemies.hp).

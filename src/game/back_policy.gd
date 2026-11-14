@@ -1,18 +1,20 @@
 class_name BackPolicy
 extends RefCounted
-## What the Android back gesture does in each state (pure; GDD 10.2: "closes the open drawer or overlay; else pauses
+## What the Android back gesture does in each state (pure; GDD 10.2: "closes the open overlay; else pauses
 ## during combat; else goes one screen back; on the menu it asks to quit").
 ##
-## `overlay_open` means an overlay on top of the current screen that the gesture may dismiss (the settings screen);
-## it does NOT include the pause overlay itself, because in PAUSED the gesture means RESUME.
-## `drawer_open` is the combat HUD's upgrade drawer.
-## `choice_open` (variety milestone) means a choice overlay is up (salvage, draft, route, boss briefing): a choice can
-## never be dismissed, so the gesture pauses.
+## `overlay_open` means an overlay on top of the current screen that the gesture dismisses: the settings screen, or an
+## overlay the screen itself opened (the Archive over the menu or the results screen; `Game.request_back` has closed
+## that one already when it asks, through GameRunFlow.close_screen_overlay, and CLOSE_OVERLAY then has nothing left to
+## do). It does NOT include the pause overlay itself, because in PAUSED the gesture means RESUME.
+## A choice overlay of a generated run (salvage, draft, route, boss briefing) can never be dismissed: the gesture
+## pauses, as in any run phase. (The upgrade drawer of the legacy HUD, its CLOSE_DRAWER action and the `drawer_open`
+## and `choice_open` arguments went with the drawer in V5-A.)
 
-enum Action { CLOSE_OVERLAY, CLOSE_DRAWER, PAUSE, RESUME, TO_MENU, CONFIRM_QUIT, NONE }
+enum Action { CLOSE_OVERLAY, PAUSE, RESUME, TO_MENU, CONFIRM_QUIT, NONE }
 
 
-static func decide(state: int, drawer_open: bool, overlay_open: bool, choice_open: bool = false) -> int:
+static func decide(state: int, overlay_open: bool) -> int:
 	if state == GameState.Id.BOOT:
 		return Action.NONE
 	if overlay_open:
@@ -25,5 +27,5 @@ static func decide(state: int, drawer_open: bool, overlay_open: bool, choice_ope
 		GameState.Id.PAUSED:
 			return Action.RESUME
 		GameState.Id.PREPARING, GameState.Id.SPAWNING, GameState.Id.CLEARING, GameState.Id.INTERMISSION:
-			return Action.CLOSE_DRAWER if drawer_open and not choice_open else Action.PAUSE
+			return Action.PAUSE  # also on a choice overlay: a choice is never dismissed
 	return Action.NONE

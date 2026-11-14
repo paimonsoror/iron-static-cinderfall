@@ -145,10 +145,10 @@ func test_the_type_cap_and_the_bodied_cap() -> void:
 	for n: int in 24:
 		assert_int(w.spawn_enemy(Ids.EN_HOLLOW, 7.0, float(n) * 0.1)).is_greater_equal(0)
 	assert_int(w.spawn_enemy(Ids.EN_HOLLOW, 7.0, 0.0)).is_equal(-1)  # alive_cap 24
-	var room: int = (c.mission.enemy_cap + 8) - w.alive_count()
+	var room: int = c.mission.enemy_cap - w.alive_count()
 	for n: int in room:
 		assert_int(w.spawn_enemy(Ids.EN_SKITTER, 8.0, float(n) * 0.1)).is_greater_equal(0)
-	assert_int(w.spawn_enemy(Ids.EN_SKITTER, 8.0, 0.0)).is_equal(-1)  # bodied rows: enemy_cap + 8, as before
+	assert_int(w.spawn_enemy(Ids.EN_SKITTER, 8.0, 0.0)).is_equal(-1)  # bodied: enemy_cap (SPEC 5.5; V5-A, was cap + 8)
 	assert_int(w.spawn_enemy(Ids.EN_MOTE, 8.0, 0.0)).is_greater_equal(0)  # minis have their own room
 
 

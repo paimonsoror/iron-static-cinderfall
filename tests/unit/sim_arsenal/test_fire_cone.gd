@@ -146,15 +146,22 @@ func test_an_enemy_the_shot_killed_is_not_shoved_and_no_one_else_moves() -> void
 	assert_float(w.enemies.x[bystander]).is_equal(before)
 
 
-func test_a_shove_stops_at_the_edge_of_the_yard() -> void:
+func test_a_shove_never_leaves_the_grid() -> void:
 	var w: SimWorld = _gun()
-	# 4 m toward +z and 2 m toward +x: the radial direction is (0.447, 0.894); the yard ends at z = 12, less the radius 0.35
+	# 4 m toward +z and 2 m toward +x: the radial direction is (0.447, 0.894). The shove is MovementSystem.knockback
+	# (V5-A): it is fenced like a walk, so the body goes its 0.8 m unless the grid ends first, and never past the grid.
 	var edge: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 2.0, 4.0, true)
 	var z0: float = w.enemies.z[edge]
 	_shoot(w)
 	var moved: float = (w.enemies.z[edge] - z0) / 0.894427191
-	assert_float(moved).is_equal_approx(0.7, 1e-5)
-	assert_float(w.enemies.z[edge]).is_less_equal(w.content.arena.max_z - 0.35)
+	assert_float(moved).is_between(0.0, 0.8 + 1e-6)
+	assert_float(w.enemies.z[edge]).is_less_equal(w.nav.bound_max_z)
+	# a body right at the end of the grid stays inside it
+	var last: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 0.0, 0.0)
+	w.enemies.x[last] = w.warden.x
+	w.enemies.z[last] = w.nav.bound_max_z - 0.2
+	FireCone.shove(w, last, w.warden.x, w.warden.z, 0.8)
+	assert_float(w.enemies.z[last]).is_equal_approx(w.nav.bound_max_z, 1e-6)
 
 
 func test_a_shove_stops_before_the_core_cage() -> void:
@@ -184,21 +191,18 @@ func test_a_shove_stops_at_a_prop() -> void:
 	var light: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 5.5, 0.0, true)  # 0.9 m from the prop's face, body 0.35
 	_shoot(w)
 	# the body may travel until its edge touches the prop: 6.9 - 0.5 - 0.35 = 6.05 m from the Warden
-	assert_float(w.enemies.x[light]).is_less_equal(w.warden.x + 6.05 + 1e-9)
+	assert_float(w.enemies.x[light]).is_less_equal(w.warden.x + 6.05 + 1e-3)  # the fence leaves a hair (PUSH_EPS)
 	assert_float(w.enemies.x[light]).is_greater(w.warden.x + 5.9)  # it did move, 0.5 m
 
 
 func test_attackers_heavy_and_anchored_enemies_stay_put() -> void:
 	var w: SimWorld = _gun()
-	var content: ContentSet = w.content
-	var anchored_def: AffixDef = AffixDef.new()
-	anchored_def.id = &"anchored"
-	anchored_def.index = content.affixes.size()
-	content.affixes.append(anchored_def)
+	var anchored_bit: int = w.nav.aff[EliteSystem.A_ANCHORED]  # the mask of the ANCHORED affix (aff_anchored)
+	assert_int(anchored_bit).is_not_equal(0)
 	var attacker: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 5.0, 0.0)
 	w.enemies.state[attacker] = EnemyStore.ST_ATTACKING
 	var anchored: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 5.0, 1.0)
-	w.ext.affix_mask[anchored] = 1 << anchored_def.index
+	w.ext.affix_mask[anchored] = anchored_bit
 	var hulk: int = ArsenalWKit.foe(w, Ids.EN_HULK, 7.0, 0.0)
 	var free: int = ArsenalWKit.foe(w, Ids.EN_SKITTER, 5.0, -1.0)
 	var starts: Array[float] = [w.enemies.x[attacker], w.enemies.x[anchored], w.enemies.x[hulk], w.enemies.x[free]]

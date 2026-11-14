@@ -1,19 +1,36 @@
 class_name VarietyAKit
 extends RefCounted
-## Helpers of the V2-A suites (run plan, wave builder, phase flow). Content is TestContent.variety() (WORK_PLAN rule 5);
-## `long_content` stretches the slice to the 15 waves and 3 acts of CONTENT 1.1 so act and late-wave rules can be tested.
+## Helpers of the V2-A suites (run plan, wave builder, phase flow). Content is TestContent.variety() (WORK_PLAN rule 5),
+## which is the 15-wave game since V5-A: `long_content` is that fixture as it is (three acts, the boss pools of
+## enemies.json), `slice_content` cuts it back to the vertical slice the first goldens were recorded on.
 
 
 static func content() -> ContentSet:
 	return TestContent.variety()
 
 
-## The vertical slice of the variety fixture: its first 3 packs and its first modifier (the content the goldens of
-## V2-A were recorded on). The full fixture holds all 12 packs and 10 modifiers.
+## The vertical slice of the variety fixture (the content the goldens of V2-A were recorded on): act I only (waves 1
+## to 5), its first 3 packs and its first modifier, and the Siege Hulk standing in as the act I boss with its slice
+## numbers (2,800 hit points, skitter and mote escorts). The full fixture holds 15 waves, 12 packs and 10 modifiers.
 static func slice_content() -> ContentSet:
-	var c: ContentSet = TestContent.variety()
+	var c: ContentSet = act_one_content()
 	c.run.packs.resize(3)
 	c.run.modifiers.resize(1)
+	var hulk: BossDef = _boss(c, Ids.EN_HULK, 1)
+	hulk.hp = 2800.0
+	hulk.behaviour = {&"enrage_frac": 0.25, &"enrage_period_mult": 0.7}
+	hulk.escort_enemy = PackedInt32Array([Ids.EN_SKITTER, Ids.EN_MOTE])
+	hulk.escort_share = PackedFloat32Array([0.6, 0.4])
+	c.bosses.clear()
+	c.bosses.append(hulk)
+	return c
+
+
+## The fixture cut to its first act: waves 1 to 5 (the boss wave takes a boss of the act I pool). A short generated run
+## for tests that play to the end.
+static func act_one_content() -> ContentSet:
+	var c: ContentSet = TestContent.variety()
+	c.run.waves.resize(5)
 	return c
 
 
@@ -21,26 +38,9 @@ static func world(run_seed: int = 1, c: ContentSet = null) -> SimWorld:
 	return SimWorld.new(SimConfig.create(c if c != null else content(), run_seed))
 
 
-## The slice content with waves 6 to 15 added (acts II and III, bosses at 10 and 15) and a boss pool for each act.
+## The 15 waves and 3 acts of CONTENT 1.1 (bosses at 5, 10 and 15, a boss pool for each act): the fixture itself.
 static func long_content() -> ContentSet:
-	var c: ContentSet = content()
-	var budgets: Array[float] = [78.0, 92.0, 108.0, 124.0, 70.0, 140.0, 156.0, 172.0, 190.0, 120.0]
-	var windows: Array[float] = [30.0, 32.0, 34.0, 36.0, 50.0, 36.0, 38.0, 40.0, 42.0, 60.0]
-	for n: int in range(6, 16):
-		var s: WaveSlotDef = WaveSlotDef.new()
-		s.index = n
-		s.act = 2 if n <= 10 else 3
-		s.kind = WaveSlotDef.Kind.BOSS if n % 5 == 0 else WaveSlotDef.Kind.NORMAL
-		s.budget = budgets[n - 6]
-		s.window_ticks = roundi(windows[n - 6] * 60.0)
-		s.peak_bodied = 40
-		s.peak_minis = 20
-		s.event_slots = 2 if n >= 12 and n <= 14 else 1
-		c.run.waves.append(s)
-	c.bosses.append(_boss(c, Ids.EN_AEGIS_ARRAY, 2))
-	c.bosses.append(_boss(c, Ids.EN_HULK, 3))
-	c.bosses[0].pool_act = 1
-	return c
+	return content()
 
 
 static func _boss(c: ContentSet, enemy_index: int, pool_act: int) -> BossDef:
@@ -49,6 +49,8 @@ static func _boss(c: ContentSet, enemy_index: int, pool_act: int) -> BossDef:
 	b.enemy_index = enemy_index
 	b.pool_act = pool_act
 	b.hp = c.enemies[enemy_index].hp
+	b.name_key = "boss.%s.name" % String(b.id)
+	b.banner_key = "boss.%s.banner" % String(b.id)
 	b.escort_enemy = PackedInt32Array([Ids.EN_SKITTER, Ids.EN_RUSHER])
 	b.escort_share = PackedFloat32Array([0.6, 0.4])
 	return b

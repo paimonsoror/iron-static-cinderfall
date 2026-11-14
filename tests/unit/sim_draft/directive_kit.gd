@@ -8,11 +8,22 @@ const CORE_X: float = -7.5
 const CORE_Z: float = 3.0
 
 
-## A variety world on the fixture (or on `c`) in a combat phase of wave `wave_number`, act `act`. The full pool is open
-## (daily) so any directive can be offered; picks go through DraftSystem.grant_stack either way.
+## Every unlock of `c` that opens content (weapons, directive packs, kits) and none of the field options: the full pool
+## without the free reroll, the third sling and the turret types, so a directive test measures the directive.
+static func content_unlocks(c: ContentSet) -> PackedStringArray:
+	var out: PackedStringArray = PackedStringArray()
+	for u: UnlockDef in c.unlocks:
+		if u.branch != UnlockDef.Branch.FIELD:
+			out.append(String(u.id))
+	out.sort()
+	return out
+
+
+## A variety world on the fixture (or on `c`) in a combat phase of wave `wave_number`, act `act`. The full content pool is
+## open (`content_unlocks`) so any directive can be offered; picks go through DraftSystem.grant_stack either way.
 static func world(run_seed: int = 1, wave_number: int = 3, act: int = 1, c: ContentSet = null) -> SimWorld:
 	var cfg: SimConfig = SimConfig.create(c if c != null else TestContent.variety(), run_seed)
-	cfg.daily = true
+	cfg.unlocked = content_unlocks(cfg.content)
 	var w: SimWorld = SimWorld.new(cfg)
 	w.phase = GameState.Id.SPAWNING
 	w.wave = wave_number
@@ -84,7 +95,7 @@ static func add_kit(c: ContentSet, id: StringName, ops: Array[OpDef]) -> int:
 static func kit_world(c: ContentSet, kit_index: int, run_seed: int = 1) -> SimWorld:
 	var cfg: SimConfig = SimConfig.create(c, run_seed)
 	cfg.kit_index = kit_index
-	cfg.daily = true
+	cfg.unlocked = content_unlocks(c)
 	return SimWorld.new(cfg)
 
 

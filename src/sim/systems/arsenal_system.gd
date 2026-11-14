@@ -48,7 +48,6 @@ static func step(world: SimWorld) -> void:
 	for s: int in a.slot_count:
 		if s != a.active and a.slot_weapon[s] >= 0:
 			_tick_holstered(world, a, s)
-	ArsenalFire.start_landing_pools(world)
 	var slot: int = a.active
 	var def: WeaponDef = effective_of(world, slot)
 	_tick_active(world, a, slot, def)
@@ -138,6 +137,11 @@ static func level_up(world: SimWorld, slot: int) -> void:
 		_mirror(world)
 
 
+## Opens weapon slots up to `count` (the third sling), never fewer than the Warden has.
+static func open_slots(world: SimWorld, count: int) -> void:
+	world.arsenal.slot_count = clampi(count, world.arsenal.slot_count, ArsenalState.MAX_SLOTS)
+
+
 ## The weapon in `slot`; the pistol for an empty slot.
 static func weapon_of(world: SimWorld, slot: int) -> WeaponDef:
 	var a: ArsenalState = world.arsenal
@@ -213,12 +217,19 @@ static func heat_cap_of(world: SimWorld, slot: int) -> int:
 	return maxi(1, roundi(float(def.heat_cap) * world.mods.w_heat_cap_mul))
 
 
+## Ticks of a reload that starts now: the weapon's time x ModState.w_reload_mul x last_stand_protocol (ModRules); one
+## tick during a Core Surge ("reload and vent are instant", CONTENT 6).
 static func reload_ticks_of(world: SimWorld, def: WeaponDef) -> int:
-	return maxi(1, roundi(float(def.reload_ticks) * world.mods.w_reload_mul))
+	if EventRates.surge_active(world):
+		return 1
+	return maxi(1, roundi(float(def.reload_ticks) * world.mods.w_reload_mul * ModRules.last_stand_reload_mul(world)))
 
 
+## Ticks of a vent that starts now (the same factors as a reload).
 static func vent_ticks_of(world: SimWorld, def: WeaponDef) -> int:
-	return maxi(1, roundi(float(def.vent_ticks) * world.mods.w_reload_mul))
+	if EventRates.surge_active(world):
+		return 1
+	return maxi(1, roundi(float(def.vent_ticks) * world.mods.w_reload_mul * ModRules.last_stand_reload_mul(world)))
 
 
 static func swap_ticks(world: SimWorld) -> int:
@@ -233,19 +244,23 @@ static func range_of(world: SimWorld, def: WeaponDef) -> float:
 
 
 ## Shots per second x 1000 of `def` for this tick: the weapon's rate with the fire_rate level, the overdrive
-## multiplier while it is active (Formulas.sps_milli) and ModState.w_rate_mul.
+## multiplier while it is active (Formulas.sps_milli), ModState.w_rate_mul and the static_pact rate (ModRules.rate_mul).
 static func sps_milli(world: SimWorld, def: WeaponDef) -> int:
 	var rate_up: UpgradeDef = world.content.upgrades[Ids.UP_FIRE_RATE]
 	var mult_milli: int = 1000
 	if world.abilities.is_active(Ids.AB_OVERDRIVE):
 		mult_milli = world.content.abilities[Ids.AB_OVERDRIVE].fire_rate_mult_milli
 	var sps: int = Formulas.sps_milli(def.sps_milli, world.upgrade_levels[Ids.UP_FIRE_RATE], rate_up.per_level, mult_milli)
-	if world.mods.w_rate_mul != 1.0:
-		sps = maxi(0, roundi(float(sps) * world.mods.w_rate_mul))
+	var rate: float = world.mods.w_rate_mul
+	if world.content.run != null:
+		rate *= ModRules.rate_mul(world)
+	if rate != 1.0:
+		sps = maxi(0, roundi(float(sps) * rate))
 	return sps
 
 
 static func _tick_active(world: SimWorld, a: ArsenalState, slot: int, def: WeaponDef) -> void:
+	ArsenalFire.surge(world, a, slot)
 	if def.is_heat():
 		if a.slot_vent_left[slot] > 0:
 			a.slot_vent_left[slot] -= 1
@@ -266,6 +281,7 @@ static func _tick_active(world: SimWorld, a: ArsenalState, slot: int, def: Weapo
 ## A holstered weapon reloads at holster_reload_mult, cools and vents at full speed, and pushes no events.
 static func _tick_holstered(world: SimWorld, a: ArsenalState, slot: int) -> void:
 	var def: WeaponDef = weapon_of(world, slot)
+	ArsenalFire.surge(world, a, slot)
 	if def.is_heat():
 		if a.slot_vent_left[slot] > 0:
 			a.slot_vent_left[slot] -= 1
@@ -321,7 +337,9 @@ static func _fire(world: SimWorld, a: ArsenalState, slot: int, def: WeaponDef, r
 	w.shots_fired += 1
 	world.combat.shots_by_source[DamageSource.Id.WARDEN] += 1
 	ShotHooks.on_warden_shot(world, slot, target_index)
-	if def.is_heat():
+	if ArsenalFire.free_ammo(world):
+		pass  # bottomless: Overdrive shots cost nothing
+	elif def.is_heat():
 		a.slot_cool_acc[slot] = 0
 		a.slot_heat[slot] += def.heat_per_shot
 		var cap: int = heat_cap_of(world, slot)

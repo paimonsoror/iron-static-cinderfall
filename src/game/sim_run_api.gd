@@ -11,9 +11,6 @@ func bind(run_controller: RunController) -> void:
 	controller = run_controller
 
 
-# --- commands ---
-
-
 func purchase_upgrade(command_id: int, upgrade_id: StringName) -> void:
 	if controller != null:
 		controller.submit_purchase(command_id, upgrade_id)
@@ -37,9 +34,6 @@ func pause() -> void:
 func resume() -> void:
 	if controller != null:
 		controller.set_paused(false)
-
-
-# --- queries ---
 
 
 func is_paused() -> bool:
@@ -148,7 +142,7 @@ func ability_cooldown_total(id: StringName) -> int:
 	var i: int = Ids.ability_index(id)
 	if w == null or i < 0:
 		return 0
-	return w.content.abilities[i].cooldown_ticks
+	return AbilitySystem.cooldown_ticks_of(w, i)  # with the directive stats, as the cooldown that starts
 
 
 func ability_active_left(id: StringName) -> int:
@@ -209,9 +203,8 @@ func boss_max_hp() -> float:
 	return w.enemies.max_hp[i] if i >= 0 else 0.0
 
 
-# ================================================================ variety milestone (VARIETY_SPEC 13.4)
-# Commands become SimCommands through the controller (refused with `Events.command_rejected` while paused or after
-# the end). Queries read the variety state; on the legacy content (and with no run) they give the base defaults.
+# --- variety milestone (VARIETY_SPEC 13.4): commands become SimCommands through the controller (refused with
+# `Events.command_rejected` while paused or after the end); queries give the base defaults with no variety run ---
 
 
 func pick_directive(command_id: int, slot: int) -> void:
@@ -292,23 +285,19 @@ func free_rerolls() -> int:
 
 
 func route_option_count() -> int:
-	var w: SimWorld = _variety()
-	return SimRunQueries.route_option_count(w) if w != null else super.route_option_count()
+	return SimRunQueries.route_option_count(_variety())
 
 
 func route_option(i: int) -> Dictionary:
-	var w: SimWorld = _variety()
-	return SimRunQueries.route_option(w, i) if w != null else super.route_option(i)
+	return SimRunQueries.route_option(_variety(), i)
 
 
 func boss_brief() -> Dictionary:
-	var w: SimWorld = _variety()
-	return SimRunQueries.boss_brief(w) if w != null else super.boss_brief()
+	return SimRunQueries.boss_brief(_variety())
 
 
 func salvage_offer() -> Dictionary:
-	var w: SimWorld = _variety()
-	return SimRunQueries.salvage_offer(w) if w != null else super.salvage_offer()
+	return SimRunQueries.salvage_offer(_variety())
 
 
 func weapon_slot_count() -> int:
@@ -339,8 +328,7 @@ func call_block_reason(id: StringName) -> int:
 
 
 func active_events() -> Array[Dictionary]:
-	var w: SimWorld = _world()
-	return SimRunQueries.active_events(w) if w != null else super.active_events()
+	return SimRunQueries.active_events(_world())
 
 
 func directive_stacks(id: StringName) -> int:
@@ -349,8 +337,7 @@ func directive_stacks(id: StringName) -> int:
 
 
 func build_tags() -> Dictionary:
-	var w: SimWorld = _variety()
-	return SimRunQueries.build_tags(w) if w != null else super.build_tags()
+	return SimRunQueries.build_tags(_variety())
 
 
 func boss_phase() -> int:
@@ -382,6 +369,19 @@ func crate_status() -> Dictionary:
 
 func wave_route() -> Dictionary:
 	return SimRunQueries.wave_route(_variety())
+
+
+func has_unlock(id: StringName) -> bool:
+	var w: SimWorld = _variety()
+	return w != null and w.config.has_unlock(String(id))
+
+
+func act_boss() -> Dictionary:
+	return SimRunQueries.act_boss(_variety())
+
+
+func route_preview(i: int) -> Dictionary:
+	return SimRunQueries.route_preview(_variety(), i)
 
 
 func _send(command_id: int, kind: int, arg: int) -> void:

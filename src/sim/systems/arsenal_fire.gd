@@ -9,7 +9,7 @@ extends RefCounted
 ## magazine not empty; ArsenalState.spin_ticks) and starts over after SPIN_IDLE_RESET_TICKS without it (idle_ticks);
 ## `stray_chance` of the shots (the `aim` stream) go to a random other enemy within STRAY_REACH_M of the target, and every
 ## hit strips `armor_shred` armor from its victim, up to SHRED_CAP_MILLI (EnemyExtState.shred_milli, which
-## DamageResolver.effective_armor already subtracts). Fuel drums as stray victims wait for the drums of V4-V.
+## DamageResolver.effective_armor already subtracts). A fuel drum within the same reach is a stray victim too (HazardDrums.hit).
 ## twin_link: the holstered weapon (the lowest other filled slot) fires at OFFHAND_RATE_MILLI of its rate at the
 ## Warden's target, if that is in the weapon's range, with its own magazine or heat, as DamageSource.WARDEN_OFFHAND.
 ## Only the kinds that resolve in one call fire from the holster (not the rail lance, which needs its charge, nor the
@@ -81,30 +81,32 @@ static func shoot(world: SimWorld, a: ArsenalState, slot: int, def: WeaponDef, s
 	return fired
 
 
-## Starts the pool of every mortar shell that HazardSystem will land on this tick (it runs after the weapon step). The
-## queue is sorted by (due, sequence) and at most RunDef.max_blasts_per_tick hits land per tick, so the first entries that
-## are due and of kind K_SHELL from the Warden are exactly the shells landing now. The pool has the numbers of the mortar
-## in the Warden's slots (its level counts), else of the plain data entry. Stand-in for a landing hook in HazardSystem.
-static func start_landing_pools(world: SimWorld) -> void:
-	var h: HazardState = world.hazards
-	if h.q_due.is_empty():
+## True while Overdrive runs with the `od_free_ammo` flag (bottomless): a shot takes no round and adds no heat.
+static func free_ammo(world: SimWorld) -> bool:
+	return world.abilities.is_active(Ids.AB_OVERDRIVE) and world.mods.has_flag(&"od_free_ammo")
+
+
+## A Core Surge ends a reload or a vent that is running (CONTENT 6: "reload and vent are instant"): it finishes on this tick.
+static func surge(world: SimWorld, a: ArsenalState, slot: int) -> void:
+	if world.content.run == null or not EventRates.surge_active(world):
 		return
-	var run: RunDef = world.content.run
-	var limit: int = run.max_blasts_per_tick if run != null else HazardSystem.DEFAULT_MAX_PER_TICK
-	for k: int in mini(limit, h.q_due.size()):
-		if h.q_due[k] > world.tick:
-			break
-		var from_warden: bool = h.q_source[k] == DamageSource.Id.WARDEN or h.q_source[k] == DamageSource.Id.WARDEN_OFFHAND
-		if h.q_kind[k] != HazardState.K_SHELL or not from_warden:
-			continue
-		var slot: int = ArsenalSystem.slot_of(world, Ids.WP_SLAG_MORTAR)
-		var def: WeaponDef = world.content.weapons[Ids.WP_SLAG_MORTAR]
-		if slot >= 0:
-			def = ArsenalSystem.effective_of(world, slot)
-		if def.pool_ticks > 0:
-			var _pool: int = HazardSystem.add_pool(
-				world, h.q_x[k], h.q_z[k], def.pool_radius_m * world.mods.area_mul, def.pool_ticks, def.pool_dps, def.pool_slow
-			)
+	a.slot_reload_left[slot] = mini(a.slot_reload_left[slot], 1)
+	a.slot_vent_left[slot] = mini(a.slot_vent_left[slot], 1)
+
+
+## Empties the magazine of the weapon in the Warden's hands (the Tremor Rig's stomp); the reload starts on the next
+## arsenal step. A heat weapon has no magazine and keeps firing. True when rounds were lost.
+static func dump_magazine(world: SimWorld) -> bool:
+	var a: ArsenalState = world.arsenal
+	var slot: int = a.active
+	if slot < 0 or slot >= a.slot_magazine.size():
+		return false
+	var def: WeaponDef = ArsenalSystem.weapon_of(world, slot)
+	if def == null or def.is_heat() or a.slot_magazine[slot] <= 0:
+		return false
+	a.slot_magazine[slot] = 0
+	world.warden.magazine = 0
+	return true
 
 
 ## The holstered weapon fires (twin_link). Called once per tick after the active weapon.
@@ -146,6 +148,8 @@ static func _ready(a: ArsenalState, slot: int, def: WeaponDef) -> bool:
 
 ## A round or heat for the holstered weapon; an empty magazine starts a reload (at the holster speed, no event).
 static func _pay_offhand(world: SimWorld, a: ArsenalState, slot: int, def: WeaponDef) -> void:
+	if free_ammo(world):
+		return
 	if def.is_heat():
 		a.slot_cool_acc[slot] = 0
 		a.slot_heat[slot] += def.heat_per_shot
@@ -191,8 +195,17 @@ static func _suppressor(world: SimWorld, slot: int, def: WeaponDef, source: int)
 			var self_at: int = near.find(target)
 			if self_at >= 0:
 				near.remove_at(self_at)
-			if not near.is_empty():
-				victim_id = store.id[near[rng.randi_range(0, near.size() - 1)]]
+			var drums: PackedInt32Array = PackedInt32Array()
+			var _d: int = HazardDrums.standing_near(world, store.x[target], store.z[target], STRAY_REACH_M, drums)
+			var choices: int = near.size() + drums.size()
+			if choices > 0:
+				var pick: int = rng.randi_range(0, choices - 1)
+				if pick >= near.size():  # the round hits a fuel drum: no enemy is hurt, the shot is spent
+					world.events.push(SimEventKind.Id.SHOT_FIRED, source, target_id)
+					var level: int = clampi(world.arsenal.slot_level[slot], 1, def.level_mult.size())
+					HazardDrums.hit(world, drums[pick - near.size()], def.damage * float(def.level_mult[level - 1]))
+					return true
+				victim_id = store.id[near[pick]]
 	w.target_id = victim_id
 	var fired: bool = FireHitscan.fire(world, slot, def, source)
 	w.target_id = target_id

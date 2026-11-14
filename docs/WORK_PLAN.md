@@ -740,7 +740,7 @@ danger decals (unshaded, alpha), which must be added to `ShaderWarmup`. Models a
 | `burster`, `spitter`, `borer`, `jammer` | V2-F (burster), V4-R (the rest) | 400 each | One mesh, 3 surfaces, pooled like today's enemies |
 | `splitter`, `shieldbearer`, `reclaimer` | V4-R | 500 each | Same |
 | `ward_pylon` | V4-R | 150 | Orbits the Aegis Array |
-| 4 new bosses (`brood_carrier`, `lance_platform`, `aegis_array`, `tremor_rig`) | V4-R | 900 each (SPEC 12.2) | The Hulk's budget when the spec was written; `TRI_BUDGET` has since raised the Hulk to 1,500 (W3-D), so V4-R fixes the budget of the new bosses with the owner of `TRI_BUDGET`; one pooled node each |
+| 4 new bosses (`brood_carrier`, `lance_platform`, `aegis_array`, `tremor_rig`) | V4-R | 1,500 each (as built; SPEC 12.2 said 900) | 900 was the Hulk's budget when the spec was written; `TRI_BUDGET` raised the Hulk to 1,500 (W3-D) and V4-R gave the new bosses the same 1,500, approved by the owner on 2026-11-13 (ARCH 8); one pooled node each |
 | Crate (with its ring), freight car, fuel drum, strike beacon | V2-F (crate), V4-X (the rest) | 200, 600, 80, 100 | Arena props; the rail lines are faint ground marks |
 | About 20 tag, rarity and category icons and 10 weapon silhouettes | V2-E, V4-U | - | SVG, 128x128; the 60 directive icons are not hand-authored (8 tag glyphs x 4 rarity frames plus a category corner mark) |
 | 60 new sound ids | V2-G (14 for the slice), V4-A (the rest) | - | `tools/audio_gen/voices.py` recipes, deterministic; `gen.py --check` stays byte-identical |
@@ -867,6 +867,25 @@ wins and losses.
 **Status (2026-11-12):** met on the desktop. The `balanced` bot wins 6 of 20 seeds (13 of the 14 defeats are in the boss wave),
 two seeds differ in packs, offers and outcomes, kill and resume works in process and through `Game`, and the debug APK exports.
 The phone, the emulator and a real OS-process kill and relaunch are NOT RUN; the owner playtest on the phone is the gate.
+
+**Status (2026-11-13), wave V4 done.** All eleven V4 tasks are merged (`main` c5092bb, `check.ps1` green with 3,042 tests). With
+the whole content in, the `balanced` bot won **19 of 20** seeds of the 5-wave slice (the scorecard of that build: WARN, 7
+pass, 12 warn, 0 fail; the run was 171 s long because it had five waves). The owner played that build on a phone and
+approved the 15-wave integration.
+
+**Status (2026-11-13), V5-A: the 15-wave game.** `data/run.json` holds the 15 waves of CONTENT 1.1 (three acts, bosses at 5, 10
+and 15 from the act pools), `data/unlocks.json` the whole Archive (24 unlocks), the sim counts the Recovered Data table of
+CONTENT 10, and the upgrade drawer is gone. Measured on the first-pass numbers (nothing tuned), after the structural fixes
+the measurements found (the greedy bots' salvage answer stalled at boss crates; a Floor Breach could pass the bodied cap of
+50; nothing aimed at the Aegis Array's pylons, which caused all five wave-10 defeats of the first measurement; a hot wave 2
+could carry the two elites of MARKED PAIR):
+`tools\sim_run.ps1 -Seed 1 -Policy balanced -Runs 20` gives **11 victories and 9 defeats** (the defeats: 1 in wave 5, 3 in
+wave 6, 1 each in waves 10, 11 and 14, 2 in wave 15); a win lasts 574 to 669 s in all (mean 621 s) and 0.35 ms per tick.
+`tools\scorecard_run.ps1 -Runs 30 -Pool base -Jobs 4`: **WARN, 6 pass, 13 warn, 0 fail** (balanced 53%; S16 median 569 s of
+combat against 780 to 1,020 s: the `window_s` of CONTENT 1.1 add up to 544 s and the bot clears a wave about as fast as it
+spawns, so the table itself cannot reach S16). `-Pool full`: **WARN, 6 pass, 13 warn, 0 fail** (balanced 23%).
+Tuning is V5-C's task (values only). The whole-run suites pin the structure with a debug build (every unlock, damage x4)
+for the victory and the `none` bot for the defeat, so they do not move when the numbers are tuned.
 
 **V3-I carry-overs.** V4-U: draft, route and corrupted hints on the choice screens; the empty band (about 140 px at 1080x2400)
 between the battlefield and the weapon bar; the combat HUD ghosting through the overlay header; a truncated weapon list on the

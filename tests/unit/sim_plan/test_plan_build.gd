@@ -29,7 +29,7 @@ func test_a_world_carries_the_plan_of_its_seed() -> void:
 	var w: SimWorld = VarietyAKit.world(7, c)
 	assert_str(_plan_hash(w.plan)).is_equal(_plan_hash(RunPlanSystem.build_for(c, 7)))
 	assert_int(w.plan.chosen.size()).is_equal(c.run.waves.size())
-	assert_int(w.plan.wave_count()).is_equal(5)
+	assert_int(w.plan.wave_count()).is_equal(15)
 
 
 func test_building_a_world_draws_nothing_from_the_world_streams() -> void:
@@ -97,7 +97,12 @@ func test_the_opener_is_the_fixed_pack_with_no_modifier_reward_elite_or_event() 
 func test_boss_waves_have_one_option_that_starts_with_the_boss() -> void:
 	var c: ContentSet = VarietyAKit.long_content()
 	var plan: RunPlan = RunPlanSystem.build_for(c, 4)
-	assert_array(Array(plan.boss_ids)).is_equal([Ids.EN_HULK, Ids.EN_AEGIS_ARRAY, Ids.EN_HULK])
+	assert_array(Array(plan.boss_ids)).is_equal([Ids.EN_BROOD_CARRIER, Ids.EN_TREMOR_RIG, Ids.EN_HULK])  # seed 4
+	for s: int in range(1, 41):  # CONTENT 5: the pools of the three acts
+		var ids: PackedInt32Array = RunPlanSystem.build_for(c, s).boss_ids
+		assert_bool(ids[0] == Ids.EN_BROOD_CARRIER or ids[0] == Ids.EN_LANCE_PLATFORM).is_true()
+		assert_bool(ids[1] == Ids.EN_AEGIS_ARRAY or ids[1] == Ids.EN_TREMOR_RIG).is_true()
+		assert_int(ids[2]).is_equal(Ids.EN_HULK)
 	for n: int in [5, 10, 15]:
 		var pw: PlannedWave = plan.wave(n)
 		assert_bool(pw.is_boss).is_true()

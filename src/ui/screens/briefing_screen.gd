@@ -7,6 +7,8 @@ extends Control
 signal deploy_pressed
 signal back_pressed
 
+const MAX_RANKS: int = 5  ## the widest chevron scale of a threat row
+
 var header_plate: UiHeaderPlate
 var mission_label: Label
 var assigned_label: Label
@@ -122,14 +124,18 @@ func _fill_objectives(content: ContentSet) -> void:
 		_objectives_col.add_child(row)
 
 
-## One row per enemy, weakest first. A machine's rank is its place when the roster is sorted by hit points.
+## One row per enemy, weakest first. A machine's rank is its place when the roster is sorted by hit points, on a scale of
+## at most MAX_RANKS chevrons (V5-A: the roster of the 15-wave game has 17 machines, and 17 chevrons were wider than a
+## phone).
 func _fill_threats(content: ContentSet) -> void:
 	_clear(_threats_col)
 	threat_rows.clear()
 	var ordered: Array[EnemyDef] = RunRoster.enemies(content)  # the legacy four, or what the generated run can field
 	ordered.sort_custom(func(a: EnemyDef, b: EnemyDef) -> bool: return a.hp < b.hp)
+	var ranks: int = mini(ordered.size(), MAX_RANKS)
 	for i: int in ordered.size():
-		var row: BriefingThreatRow = BriefingThreatRow.new(ordered[i], i + 1, ordered.size())
+		var rank: int = 1 + floori(float(i) * float(ranks) / float(ordered.size()))
+		var row: BriefingThreatRow = BriefingThreatRow.new(ordered[i], rank, ranks)
 		threat_rows.append(row)
 		_threats_col.add_child(row)
 

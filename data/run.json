@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "note": "Variety milestone (VARIETY_SPEC 15.2): act I only (4 generated waves and a boss wave) while the act II and III bosses are not in enemies.json. All three acts are defined so the act tiers are known. V4-C appended the packs (12 of CONTENT 1.3) and the modifiers (10 of CONTENT 1.4); waves 6 to 15 come with the 15-wave integration (V5-A) because a boss wave needs a boss of its act (validator). First-pass numbers from VARIETY_CONTENT 1, 3.7, 7 and 10.",
+  "note": "The 15-wave game (V5-A): three acts of five waves, boss waves 5, 10 and 15 (the act boss pools are `pool_act` in enemies.json bosses{}; act III is always the Siege Hulk with one of `hulk_variants`). Wave slots, act tiers, packs, modifiers, route rewards and the crate tier rows are the first-pass numbers of VARIETY_CONTENT 1, 2, 3.7, 7 and 10; V5-C tunes the values. `reward` is the Recovered Data table of CONTENT 10 (the sim counts it, RunStats.data).",
   "acts": [
     { "id": "act_yard", "name_key": "act.yard.name", "hp_mult": 1.0, "core_dmg_mult": 1.0,
       "rarity_weights": [70, 26, 4], "corrupted_chance": 0.12, "elites_min": 0, "elites_max": 1, "affixes_min": 1, "affixes_max": 1 },
@@ -14,7 +14,17 @@
     { "index": 2, "act": 1, "kind": "normal", "budget": 34, "window_s": 26, "peak_bodied": 16, "peak_minis": 8, "event_slots": 0 },
     { "index": 3, "act": 1, "kind": "normal", "budget": 46, "window_s": 28, "peak_bodied": 24, "peak_minis": 12, "event_slots": 1 },
     { "index": 4, "act": 1, "kind": "normal", "budget": 60, "window_s": 30, "peak_bodied": 30, "peak_minis": 16, "event_slots": 1 },
-    { "index": 5, "act": 1, "kind": "boss", "budget": 36, "window_s": 40, "peak_bodied": 26, "peak_minis": 16, "event_slots": 1 }
+    { "index": 5, "act": 1, "kind": "boss", "budget": 36, "window_s": 40, "peak_bodied": 26, "peak_minis": 16, "event_slots": 1 },
+    { "index": 6, "act": 2, "kind": "normal", "budget": 78, "window_s": 30, "peak_bodied": 34, "peak_minis": 16, "event_slots": 1 },
+    { "index": 7, "act": 2, "kind": "normal", "budget": 92, "window_s": 32, "peak_bodied": 38, "peak_minis": 20, "event_slots": 1 },
+    { "index": 8, "act": 2, "kind": "normal", "budget": 108, "window_s": 34, "peak_bodied": 42, "peak_minis": 24, "event_slots": 1 },
+    { "index": 9, "act": 2, "kind": "normal", "budget": 124, "window_s": 36, "peak_bodied": 46, "peak_minis": 28, "event_slots": 1 },
+    { "index": 10, "act": 2, "kind": "boss", "budget": 70, "window_s": 50, "peak_bodied": 36, "peak_minis": 24, "event_slots": 1 },
+    { "index": 11, "act": 3, "kind": "normal", "budget": 140, "window_s": 36, "peak_bodied": 46, "peak_minis": 30, "event_slots": 1 },
+    { "index": 12, "act": 3, "kind": "normal", "budget": 156, "window_s": 38, "peak_bodied": 48, "peak_minis": 34, "event_slots": 2 },
+    { "index": 13, "act": 3, "kind": "normal", "budget": 172, "window_s": 40, "peak_bodied": 50, "peak_minis": 36, "event_slots": 2 },
+    { "index": 14, "act": 3, "kind": "normal", "budget": 190, "window_s": 42, "peak_bodied": 50, "peak_minis": 40, "event_slots": 2 },
+    { "index": 15, "act": 3, "kind": "boss", "budget": 120, "window_s": 60, "peak_bodied": 44, "peak_minis": 30, "event_slots": 1 }
   ],
   "packs": [
     { "id": "pack_tide", "name_key": "pack.tide.name", "min_act": 1, "budget_mult": 1.0, "extra_elites": 0,
@@ -133,7 +143,7 @@
   "draft": { "offer_size": 3, "skip_scrap": 60, "reroll_base": 60, "reroll_step": 40, "buyout_base": 250, "buyout_step": 100,
              "patch_frac": 0.10, "patch_base": 180, "patch_step": 90, "tag_lean": 2.0, "weapon_lean": 1.5, "repeat_penalty": 0.5, "rare_pity": 3 },
   "salvage": { "secure_s": 12, "contest_radius_m": 2.0, "lifetime_s": 40, "bank_max": 2, "scrap_by_act": [80, 140, 200],
-               "tier_weights": [ [0, 0, 0, 100], [20, 45, 30, 5], [0, 25, 45, 30] ], "dupe_bias": 0.35 },
+               "tier_weights": [ [70, 30, 0, 0], [20, 45, 30, 5], [0, 25, 45, 30] ], "dupe_bias": 0.35 },
   "caps": { "swarm_cap": 40, "max_elites_alive": 4, "max_blasts_per_tick": 8 },
   "reward": { "per_wave": 6, "boss_by_act": [30, 45], "victory_base": 100, "victory_core_bonus": 50 },
   "mission": { "shop_enabled": false, "breather_seconds": 3 }

@@ -2,6 +2,9 @@ extends GdUnitTestSuite
 ## Enforces the signatures of ARCHITECTURE.md sections 4 to 10 (WORK_PLAN rule 2: never edit this file).
 ## Extended once by V1-S (VARIETY_SPEC 13.8: append only) with the contracts of the variety milestone: the VARIETY_*
 ## tables below, the appended enum values and the new autoload expectations.
+## Extended by V5-A (the 15-wave integration, which owned the frozen contracts for that wave): the V5A table (what was
+## appended to the event bus, the relay, the RunApi, the sim config and the stores) and the removal of the upgrade
+## drawer from the CombatHud row.
 ## Each row: path under res://src/ | methods | signals | variables | constants (comma separated).
 ## A contract is present when the script loads and lists every name. Static and instance methods both count.
 
@@ -120,7 +123,7 @@ const UI: Array[String] = [
 	"ui/screens/briefing_screen.gd|setup|deploy_pressed,back_pressed||",
 	"ui/screens/results_screen.gd|setup|retry_pressed,menu_pressed||",
 	"ui/screens/settings_screen.gd|setup|closed||",
-	"ui/combat/combat_hud.gd|setup,is_drawer_open,close_drawer,top_band_px,bottom_band_px|pause_requested||",
+	"ui/combat/combat_hud.gd|setup,top_band_px,bottom_band_px|pause_requested||",
 	"ui/combat/pause_overlay.gd|setup|resume_pressed,restart_pressed,settings_pressed,quit_pressed||",
 ]
 
@@ -280,6 +283,29 @@ const SCENES: Array[String] = [
 
 
 ## Names in the "name,name" column; "[]" and "" mean none.
+## V5-A, appended to the frozen contracts (ARCH 6.3, 6.4, 7.1, 7.2, 7.4).
+const V5A: Array[String] = [
+	"core/event_bus.gd||weapon_charging,turret_removed||",
+	"game/run_api.gd|has_unlock,act_boss,route_preview|||",
+	"game/sim_run_api.gd|has_unlock,act_boss,route_preview|||",
+	"game/sim_run_queries.gd|act_boss,boss_of_act,route_preview|||",
+	"game/back_policy.gd|decide|||",
+	"game/game_run_flow.gd|start_daily,start_same_seed,setup_results,close_screen_overlay|||",
+	"game/game_launch.gd|start_wave_of,boss_of|||SCENARIO_WAVE,SCENARIO_BOSS",
+	"game/run_file.gd|closing_reward,closing_cap|||",
+	"sim/sim_config.gd|has_unlock,is_debug||debug_start_wave,debug_boss|",
+	"sim/sim_world.gd|data_reward|||",
+	"sim/run_stats.gd|add_data||data|",
+	"sim/stores/arsenal_state.gd|||kill_chain_stacks,kill_chain_ticks|",
+	"sim/systems/debug_start.gd|apply,force_boss|||BUILD",
+	"sim/systems/events/turret_types.gd|id_of,special_of,fire_arc,step_mortar|||GUN,ARC,MORTAR",
+	"sim/systems/run_plan_system.gd|set_boss|||",
+	"sim/systems/arsenal_system.gd|open_slots|||",
+	"sim/systems/arsenal_fire.gd|free_ammo,surge,dump_magazine|||",
+	"sim/plan/phase_awaits.gd|bank_wave_data|||",
+]
+
+
 func _names(column: String) -> PackedStringArray:
 	if column == "" or column == "[]":
 		return PackedStringArray()
@@ -367,6 +393,21 @@ func test_variety_game_ui_and_debug_contracts() -> void:
 	assert_str(_check_rows(VARIETY_GAME)).is_empty()
 
 
+func test_v5a_contracts() -> void:
+	assert_str(_check_rows(V5A)).is_empty()
+	# appended at the end of the event kinds: every older kind keeps its index
+	assert_int(SimEventKind.Id.COMMAND_REJECTED).is_equal(59)
+	assert_int(SimEventKind.Id.WEAPON_CHARGING).is_equal(60)
+	assert_int(SimEventKind.Id.TURRET_REMOVED).is_equal(61)
+	# the drawer is gone: the HUD has no drawer members and the back policy no drawer action
+	var hud: Script = load("res://src/ui/combat/combat_hud.gd") as Script
+	for m: Dictionary in hud.get_script_method_list():
+		assert_bool(str(m["name"]).contains("drawer")).override_failure_message("CombatHud still has %s" % str(m["name"])).is_false()
+	assert_bool(BackPolicy.Action.keys().has("CLOSE_DRAWER")).is_false()
+	assert_bool(ResourceLoader.exists("res://src/ui/combat/hud_upgrade_drawer.gd")).is_false()
+	assert_bool(ResourceLoader.exists("res://src/ui/combat/hud_upgrade_card.gd")).is_false()
+
+
 ## Append-only enums: every value keeps its index forever (VARIETY_SPEC 13.2).
 func test_variety_enum_values_are_appended() -> void:
 	assert_int(Reason.Id.PAUSED).is_equal(9)
@@ -436,13 +477,13 @@ func test_enum_members_exist() -> void:
 	assert_int(Reason.Id.size()).is_equal(15)  # 10 + 5 (variety, append only)
 	assert_int(RunResult.Id.size()).is_equal(4)
 	assert_int(DamageSource.Id.size()).is_equal(7)  # 3 + 4
-	assert_int(SimEventKind.Id.size()).is_equal(60)  # 27 + 33
+	assert_int(SimEventKind.Id.size()).is_equal(62)  # 27 + 33 + the 2 of V5-A
 	assert_int(SimCommand.Kind.size()).is_equal(12)  # 3 + 9
 	assert_int(UpgradeDef.Kind.size()).is_equal(3)
 	assert_int(AbilityDef.CooldownStart.size()).is_equal(2)
 	assert_int(ObstacleDef.Shape.size()).is_equal(2)
 	assert_int(PolicyBot.Policy.size()).is_equal(8)  # 2 + 6
-	assert_int(BackPolicy.Action.size()).is_greater_equal(7)  # V2-D may append (back on a choice overlay, the Archive)
+	assert_int(BackPolicy.Action.size()).is_equal(6)  # V5-A removed CLOSE_DRAWER with the drawer
 	assert_int(VisualQuality.Tier.size()).is_equal(3)
 	assert_int(Save.LoadStatus.size()).is_greater_equal(5)  # V2-D / V4-M append MIGRATED_FROM_V1
 	assert_int(PhaseState.Await.size()).is_equal(5)

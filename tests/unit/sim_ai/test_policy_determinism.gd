@@ -126,7 +126,8 @@ func test_the_legacy_greedy_bot_still_wins_the_legacy_run_with_the_same_numbers(
 	assert_float(report.seconds()).is_between(244.85, 244.95)  # BALANCE: seconds=244.9
 	# Re-recorded after V4-V hashed more event state (EventState.FIELDS): the core, the purchases and the seconds above are the
 	# same, so is the run; the prefix before was 78351275ead6.
-	assert_str(report.state_hash.substr(0, 12)).is_equal("900ff669affc")
+	# and again after V5-A gave ArsenalState its kill_chain fields (900ff669affc before): same core, purchases and seconds
+	assert_str(report.state_hash.substr(0, 12)).is_equal("ac3f61b26a44")
 	assert_int(report.violations.size()).is_equal(0)
 	assert_int(report.death_wave).is_equal(0)
 
@@ -135,7 +136,7 @@ func test_the_legacy_none_bot_still_loses_in_wave_three_with_the_same_numbers() 
 	var report: HarnessReport = SimHarness.run(SimConfig.create(TestContent.baseline(), 1), PolicyBot.Policy.NONE)
 	assert_str(report.result_name()).is_equal("DEFEAT")
 	assert_float(report.seconds()).is_between(135.05, 135.15)  # BALANCE: seconds=135.1
-	assert_str(report.state_hash.substr(0, 12)).is_equal("63e521fa8d18")  # was ae885c696820 before the hashed event state of V4-V
+	assert_str(report.state_hash.substr(0, 12)).is_equal("9967f3cb43bb")  # ae885c696820 before V4-V's event state, 63e521fa8d18 before V5-A's kill_chain fields
 	assert_int(report.death_wave).is_equal(3)
 	assert_int(report.commands).is_equal(0)
 

@@ -37,10 +37,12 @@ func test_the_census_saw_every_card_the_bot_picked() -> void:
 
 func test_the_act_end_core_is_set_when_the_last_wave_of_an_act_is_cleared() -> void:
 	var r: HarnessReport = _report(PolicyBot.Policy.BALANCED, 2)
-	if r.is_victory():
-		assert_float(r.act_end_core[0]).is_between(0.0, 1.0)
-	else:
-		assert_float(r.act_end_core[0]).is_equal(-1.0)  # it fell before the boss wave that ends act I was cleared
+	var act_waves: int = 5  # CONTENT 1.1: the boss wave that ends an act is its fifth
+	for act: int in r.act_total:
+		if r.waves_completed >= act_waves * (act + 1):
+			assert_float(r.act_end_core[act]).is_between(0.0, 1.0)
+		else:
+			assert_float(r.act_end_core[act]).is_equal(-1.0)  # it fell before the boss wave that ends this act was cleared
 	var lost: HarnessReport = _report(PolicyBot.Policy.NONE, 2)
 	assert_float(lost.act_end_core[0]).is_equal(-1.0)
 

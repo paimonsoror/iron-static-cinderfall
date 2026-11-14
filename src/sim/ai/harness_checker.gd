@@ -25,7 +25,8 @@ var abilities_used: PackedInt32Array = PackedInt32Array([0, 0, 0])
 var spawned: int = 0
 var killed: int = 0
 var stuck_events: int = 0
-## Tick the boss entered and the tick it died (-1 = never).
+## Tick the boss entered and the tick it died (-1 = never). A run of three acts has three bosses: both are the latest
+## boss's (a new boss clears the kill tick of the one before), so sim_run's `boss_s` is never a kill before a spawn.
 var boss_spawn_tick: int = -1
 var boss_kill_tick: int = -1
 var finished_events: int = 0
@@ -133,6 +134,7 @@ func _event(world: SimWorld, e: SimEvent) -> void:
 			_wave_spawned = 0
 		SimEventKind.Id.BOSS_SPAWNED:
 			boss_spawn_tick = world.tick
+			boss_kill_tick = -1
 		SimEventKind.Id.ENEMY_SPAWNED:
 			spawned += 1
 			_wave_spawned += 1

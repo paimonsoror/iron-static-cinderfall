@@ -561,7 +561,7 @@ Optional follow-up, not on the critical path (task V4-X2): draw **all** enemies 
 | Blast flashes (BILLBOARD) | 0 / 8 / 12 | 1 | every blast (not on LOW) |
 | Arc segments (SEGMENT) | 18 / 30 / 45 | 1 | arc projector, shock rounds, pylons, core lash |
 | Beam segments | 2 / 2 / 3 | 1 | torch, lance charge and shot, Lance Platform beam |
-| Lobbed projectiles (BILLBOARD) | 12 / 18 / 24 | 1 | mortar shells, spitter bolts, hornets |
+| Lobbed projectiles, three pools with one colour each (V4-X): shells 4 + hornets up to 20, together 12 / 18 / 24; spitter bolts 12 on every tier (an enemy projectile is never tier-gated) | 12 / 18 / 24 + 12 | 3 | mortar shells (amber balls), hornets (cyan streaks, V5-B: a ribbon about 1 m long along the flight, not a ball), spitter bolts (red balls) |
 | Ground pools (FLAT) | 6 / 8 / 10 | 1 | slag, burn |
 | Telegraph decals (FLAT, hatched) | 8 / 8 / 8 | 1 | lanes, rings, cracks |
 | Ward and aura rings (FLAT) | 8 / 10 / 12 | 1 | shieldbearer, warded, overclocker, jammer |
@@ -569,10 +569,11 @@ Optional follow-up, not on the critical path (task V4-X2): draw **all** enemies 
 | Tether lines (SEGMENT) | 6 / 9 / 12 | 1 | reclaimer, magnetic |
 | Scorch marks (FLAT, persistent ring) | 0 / 8 / 16 | 1 | after blasts |
 | Ghost swarm (cosmetic) | 0 / 40 / 80 | 1 | outside the playable rectangle |
+| Brass (DEBRIS, V5-B) | 0 / 8 / 16 | 1 on MID and HIGH, none on LOW | the LMG's spent cases |
 | Crate, strike column, freight car, drums | 1 + 1 + 1 + 3 nodes | 6 to 8 | events |
-| Existing: tracers 48, sparks 64, bursts 24, texts 24, EMP rings 2 to 6 | unchanged except rings | - | - |
+| Existing: tracers 48, sparks 64, bursts 24, texts 24, EMP rings 2 to 6 | unchanged except rings | - | - (the scattergun fan and the rifle's through-line use the tracers) |
 
-Worst-case addition: about 22 draw calls on LOW and 28 on HIGH. With the brief's 137 on HIGH that is about 165: over the 150 target, under the 220 limit. That is the number task V2-P must measure first; if it does not hold on the phone, the cut order is: ghost swarm, scorch marks, flashes, tether lines, then V4-X2 (instanced bodies).
+Worst-case addition: about 22 draw calls on LOW and 28 on HIGH. With the brief's 137 on HIGH that is about 165: over the 150 target, under the 220 limit. As built, V5-B measured 118 / 118 / 124 draw calls (LOW / MID / HIGH) at `--scenario=hold50+40` on the desktop: inside the 150 target. That is the number task V2-P must measure first; if it does not hold on the phone, the cut order is: ghost swarm, scorch marks, flashes, tether lines, then V4-X2 (instanced bodies).
 
 Per-effect guesses to be measured on the phone (frame time added at the cap, HIGH): minis 0.3 ms; a 6-blast chain 0.4 ms for 0.3 s; 45 arc segments 0.2 ms; 10 pools 0.3 ms (alpha overdraw is the risk: pools are small and never stacked more than 2 deep by a view rule); ghost swarm 0.2 ms; bloom is unchanged.
 
@@ -717,13 +718,16 @@ A duplicate shows `LEVEL UP: SMG LV 2 -> 3` as the highlighted default. A boss c
 | ACT II  WAVE 8 OF 15      RUN TIME 9:42        |
 | WHAT BROKE THE LINE: SLAG BATTERY + RAIN SQUALL|
 |   spitter bolts 412   hollow wardens 260  ...  |
-| YOUR BUILD: [ARC x4] [TEMPO x2]  ARC PROJ LV2, SMG LV1 |
-|   directives: (12 icons, tap for the list)     |
 | RECOVERED DATA +72   MILESTONE: NODE 5 FIRST KILL +50 |
+| YOUR BUILD: [ARC x4] [TEMPO x2]  ARC PROJ, SMG |
+|   directives: (12 icons, tap for the list)     |
 | ARCHIVE: YOU CAN AFFORD  SLAG MORTAR (160)     |  the "one more run" hook
 | SEED 48211 [ SAME SEED ]                       |
 | [ RETRY ]   [ ARCHIVE ]   [ MENU ]             |
 ```
+
+As built (V4-U): the Recovered Data and the milestones stand **before** the build recap (the reward is what the eye looks for
+first), and the recap names the weapons without their levels (`RunSummary` carries the weapon of each slot, not its level).
 
 ### 11.6 Archive (meta unlock) screen
 
@@ -993,6 +997,8 @@ NEW `src/ui/run/`: `draft_overlay.*`, `directive_card.gd`, `route_overlay.*`, `r
 ### 14.2 The predictability scorecard
 
 Run by `tools/scorecard_run.ps1 -Runs 200` (200 seeds x 8 policies = 1,600 runs; at 60 to 180 times real time on the desktop this is roughly 2 to 6 hours of machine time for 15-minute runs, so the gate version is `-Runs 30` and the full card runs in the balance task). PASS, WARN and FAIL follow the `balance_run` convention: WARN prints the number, FAIL is a structural break.
+
+As built (V4-T): the card prints **19 rows** (`rows=19` in the verdict line): an `integrity` row in front of S1 to S18 ("did every run finish clean?": a run that did not finish or that broke an invariant of the harness checker is a FAIL, as in `balance_run`). `-Jobs k` plays the card in `k` Godot processes at once and joins the records; the result is the same as with one process. S8 is graded in two steps: a defeat before wave 3 of any policy but `none` (or more than 2% before wave 4) is a WARN that names the policy, and only a `balanced` defeat before wave 3 is a FAIL (`random` may play badly, but the reference player may not meet a wave 2 nobody could survive). Besides the 8 policies per seed the card plays 3 more `balanced` runs per seed (always standard, always hot, the other pool) for S14 and S15.
 
 | # | Question | Metric | Target |
 |---|---|---|---|

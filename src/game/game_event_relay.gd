@@ -152,6 +152,10 @@ func _relay_variety(e: SimEvent) -> bool:
 			Events.charges_changed.emit(_event(e.a), e.b)
 		SimEventKind.Id.COMMAND_REJECTED:
 			Events.command_rejected.emit(e.a, e.b)
+		SimEventKind.Id.WEAPON_CHARGING:
+			Events.weapon_charging.emit(e.a)
+		SimEventKind.Id.TURRET_REMOVED:
+			Events.turret_removed.emit(e.a)
 		_:
 			return false
 	return true

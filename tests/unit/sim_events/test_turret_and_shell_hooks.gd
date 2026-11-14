@@ -126,7 +126,7 @@ func test_the_pool_takes_the_level_of_the_mortar_in_the_slot_and_the_area_factor
 	assert_float(w.hazards.p_radius[0]).is_equal_approx(leveled.pool_radius_m * 1.35, 1e-6)
 
 
-func test_only_the_wardens_shells_leave_a_pool_and_the_old_scan_does_not_double_it() -> void:
+func test_only_the_wardens_shells_leave_a_pool_and_each_shell_leaves_one() -> void:
 	var enemy: SimWorld = VarietyVKit.world(1, 4)
 	_shell(enemy, 4.0, 2.0, DamageSource.Id.HAZARD)
 	VarietyVKit.run(enemy, 5)
@@ -135,15 +135,11 @@ func test_only_the_wardens_shells_leave_a_pool_and_the_old_scan_does_not_double_
 	_shell(offhand, 4.0, 2.0, DamageSource.Id.WARDEN_OFFHAND)
 	VarietyVKit.run(offhand, 5)
 	assert_int(offhand.hazards.pool_count()).is_equal(1)
-	# ArsenalFire.start_landing_pools (the stand-in this hook replaces) still runs inside ArsenalSystem.step: one pool only
-	var both: SimWorld = VarietyVKit.world(1, 4)
-	_shell(both, 4.0, 2.0)
-	VarietyVKit.run(both, 4)
-	both.tick += 1
-	both.events.current_tick = both.tick
-	ArsenalFire.start_landing_pools(both)
-	HazardSystem.step(both)
-	assert_int(both.hazards.pool_count()).is_equal(1)
+	# the landing hook is the only place a pool starts (the queue scan of ArsenalFire is gone): one shell, one pool
+	var own: SimWorld = VarietyVKit.world(1, 4)
+	_shell(own, 4.0, 2.0)
+	VarietyVKit.run(own, 5)
+	assert_int(own.hazards.pool_count()).is_equal(1)
 
 
 func test_a_shell_that_lands_on_a_drum_lights_it() -> void:

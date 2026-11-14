@@ -4,9 +4,25 @@ extends RefCounted
 ## for Game, unit-testable without a scene tree.
 
 
-## --autoplay or --scenario=hold<N>: skip the boot screen and the menus and deploy at once.
+const SCENARIO_WAVE: String = "wave:"  ## --scenario=wave:<n> (what --wave=<n> means): start at wave n, scripted build
+const SCENARIO_BOSS: String = "boss:"  ## --scenario=boss:<id>: start at the boss wave of that boss (or Node 9 variant)
+
+
+## --autoplay, --scenario=hold<N>, --scenario=wave:<n> or --scenario=boss:<id>: skip the boot screen and the menus and
+## deploy at once.
 static func wants_autostart(args: DebugArgs) -> bool:
-	return args.autoplay != "" or args.scenario_n > 0
+	return args.autoplay != "" or args.scenario_n > 0 or start_wave_of(args) > 1 or boss_of(args) != &""
+
+
+## The wave of `--scenario=wave:<n>`; 0 when the argument is not that.
+static func start_wave_of(args: DebugArgs) -> int:
+	var value: String = args.scenario.trim_prefix(SCENARIO_WAVE)
+	return value.to_int() if args.scenario.begins_with(SCENARIO_WAVE) and value.is_valid_int() else 0
+
+
+## The boss id of `--scenario=boss:<id>`; empty when the argument is not that.
+static func boss_of(args: DebugArgs) -> StringName:
+	return StringName(args.scenario.trim_prefix(SCENARIO_BOSS)) if args.scenario.begins_with(SCENARIO_BOSS) else &""
 
 
 ## The PolicyBot.Policy of `--autoplay=<name>`: a name of PolicyBot.NAMES (none, greedy, random, balanced, ...); an
@@ -17,11 +33,14 @@ static func autoplay_policy(policy_name: String) -> int:
 
 
 ## --scenario=hold<N> makes the core invulnerable and holds N enemies alive; --autoplay=<policy> attaches the bot
-## (`autoplay_policy`). Neither changes the content or the rules.
+## (`autoplay_policy`). Neither changes the content or the rules. --scenario=wave:<n> and --scenario=boss:<id> start the
+## run later (DebugStart: a scripted build, the chosen boss).
 static func configure(config: SimConfig, run: RunController, args: DebugArgs, seed_value: int) -> void:
 	if args.scenario_n > 0:
 		config.debug_invulnerable_core = true
 		run.scenario = GameHoldScenario.new(args.scenario_n, seed_value)
+	config.debug_start_wave = start_wave_of(args)
+	config.debug_boss = boss_of(args)
 	if args.autoplay != "":
 		run.bot = PolicyBot.new(autoplay_policy(args.autoplay))
 		run.bot.id_source = run.api.next_command_id  # one id counter for the bot and for the player's HUD taps

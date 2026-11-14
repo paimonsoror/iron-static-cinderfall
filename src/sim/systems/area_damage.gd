@@ -30,14 +30,33 @@ static func apply(
 	var store: EnemyStore = world.enemies
 	var victims: PackedInt32Array = PackedInt32Array()
 	var n: int = query(world, x, z, radius, victims)
+	var first_born: int = world.next_enemy_id
 	for i: int in victims:
-		if store.alive[i] == 0:
-			continue
-		var dx: float = store.x[i] - x
-		var dz: float = store.z[i] - z
-		var t: float = minf(1.0, sqrt(dx * dx + dz * dz) / radius)
-		DamageResolver.hit_ex(world, i, damage * (1.0 - (1.0 - edge_frac) * t), flags | DamageResolver.F_AREA, source)
+		_hit_one(world, i, x, z, radius, damage, edge_frac, flags, source)
+	if world.next_enemy_id != first_born:
+		# Bodies born of this blast's kills (the shards of a splitter) are inside the same blast (GDD 6.3: area damage
+		# kills the shards with their splitter). One more pass over those that stand in the radius; shards do not split.
+		var born: PackedInt32Array = PackedInt32Array()
+		var _m: int = query(world, x, z, radius, born)
+		for i: int in born:
+			if store.id[i] >= first_born:
+				_hit_one(world, i, x, z, radius, damage, edge_frac, flags, source)
+				n += 1
 	return n
+
+
+static func _hit_one(
+	world: SimWorld, i: int, x: float, z: float, radius: float, damage: float, edge_frac: float, flags: int, source: int
+) -> void:
+	var store: EnemyStore = world.enemies
+	if store.alive[i] == 0:
+		return
+	var dx: float = store.x[i] - x
+	var dz: float = store.z[i] - z
+	var t: float = minf(1.0, sqrt(dx * dx + dz * dz) / radius)
+	var _dealt: float = DamageResolver.hit_ex(
+		world, i, damage * (1.0 - (1.0 - edge_frac) * t), flags | DamageResolver.F_AREA, source
+	)
 
 
 ## Fills `out` with the store indices of the living enemies within `radius` of (x, z), sorted by enemy id.

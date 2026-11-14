@@ -4,6 +4,9 @@ extends GdUnitTestSuite
 ## answered only through SimCommands. The chain used to stop after a resolved crate (SimWorld.step returns while an
 ## await is held, so nothing noticed that the offer was empty); CommandSystem.apply_queued now moves it on.
 
+## What crate 1 holds on a new profile (act I crates hold tier 2 and 3 weapons; seeds 1 to 3 of these tests give the SMG).
+const CRATE_ONE: int = Ids.WP_SMG
+
 
 ## The `none` answer to the current await, one command and one step. Returns the await that was answered.
 func _answer(w: SimWorld, command_id: int, route: int = 0) -> int:
@@ -66,13 +69,13 @@ func test_resolving_the_guaranteed_crate_moves_on_to_the_draft_in_the_same_step(
 	_to_clear_of(w, 2)
 	assert_int(w.phase_state.awaiting).is_equal(PhaseState.Await.SALVAGE)  # the guaranteed crate after wave 2
 	assert_int(w.stats.crates_secured).is_equal(1)
-	assert_array(Array(w.salvage.offer)).is_equal([Ids.WP_ARC_PROJECTOR])  # act I crates hold the tier 5 weapon of the slice
+	assert_array(Array(w.salvage.offer)).is_equal([CRATE_ONE])  # act I crates hold tier 2 and 3 weapons
 	assert_bool(w.draft.open).is_false()
 	var tick: int = w.tick
 	w.submit(SimCommand.salvage(1, 0, SalvageSystem.ACTION_SLOT_1))
 	w.step()
 	assert_int(w.tick).is_equal(tick + 1)
-	assert_int(w.arsenal.slot_weapon[1]).is_equal(Ids.WP_ARC_PROJECTOR)
+	assert_int(w.arsenal.slot_weapon[1]).is_equal(CRATE_ONE)
 	assert_bool(w.salvage.offer.is_empty()).is_true()
 	assert_int(w.phase_state.awaiting).is_equal(PhaseState.Await.DRAFT)  # not stuck on an empty SALVAGE
 	assert_bool(w.draft.open).is_true()
@@ -93,7 +96,7 @@ func test_a_refused_salvage_command_leaves_the_crate_on_offer() -> void:
 	var refused: Array[SimEvent] = VarietyAKit.events_of(w, SimEventKind.Id.COMMAND_REJECTED)
 	assert_int(refused[refused.size() - 1].b).is_equal(Reason.Id.INVALID_CHOICE)
 	assert_int(w.phase_state.awaiting).is_equal(PhaseState.Await.SALVAGE)
-	assert_array(Array(w.salvage.offer)).is_equal([Ids.WP_ARC_PROJECTOR])
+	assert_array(Array(w.salvage.offer)).is_equal([CRATE_ONE])
 
 
 func test_two_banked_crates_are_offered_one_after_the_other_and_then_the_draft() -> void:
@@ -121,7 +124,7 @@ func test_two_banked_crates_are_offered_one_after_the_other_and_then_the_draft()
 
 
 func test_the_awaits_of_a_whole_slice_run_come_in_the_order_of_the_spec() -> void:
-	var w: SimWorld = VarietyAKit.world(2)
+	var w: SimWorld = VarietyAKit.world(2, VarietyAKit.act_one_content())
 	var order: Array[int] = []
 	var at_wave: Array[int] = []
 	var command_id: int = 0
@@ -138,6 +141,38 @@ func test_the_awaits_of_a_whole_slice_run_come_in_the_order_of_the_spec() -> voi
 	assert_int(w.waves_completed).is_equal(5)
 	assert_int(w.phase_state.awaiting).is_equal(PhaseState.Await.NONE)
 	assert_int(VarietyAKit.events_of(w, SimEventKind.Id.RUN_FINISHED).size()).is_equal(1)
+
+
+func test_the_awaits_of_the_fifteen_wave_run_cross_two_act_boundaries() -> void:
+	# The whole game (V5-A): act I as above; a boss kill of act I and II banks a boss crate, so the intermission after
+	# waves 5 and 10 starts with a SALVAGE; then draft and route up to the briefing of the next boss; wave 15 ends the run.
+	var w: SimWorld = VarietyAKit.world(2)
+	var order: Array[int] = []
+	var at_wave: Array[int] = []
+	var acts: Array[int] = []
+	var command_id: int = 0
+	for _n: int in 80:
+		if not VarietyAKit.run_to_await(w):
+			break
+		command_id += 1
+		at_wave.append(w.waves_completed)
+		acts.append(w.phase_state.act)
+		order.append(_answer(w, command_id))
+	var s: int = PhaseState.Await.SALVAGE
+	var d: int = PhaseState.Await.DRAFT
+	var r: int = PhaseState.Await.ROUTE
+	var b: int = PhaseState.Await.BOSS_BRIEF
+	var later_act: Array[int] = [s, d, r, d, r, d, r, d, r, d, b]
+	assert_array(order).is_equal([d, r, s, d, r, d, r, d, b] + later_act + later_act)
+	assert_array(at_wave).is_equal([1, 1, 2, 2, 2, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14])
+	assert_array(acts.slice(0, 12)).is_equal([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])  # the act changes when wave 6 starts
+	assert_int(acts[acts.size() - 1]).is_equal(3)
+	assert_int(w.phase).is_equal(GameState.Id.VICTORY)
+	assert_int(w.waves_completed).is_equal(15)
+	assert_int(w.stats.act_reached).is_equal(3)
+	assert_int(w.phase_state.awaiting).is_equal(PhaseState.Await.NONE)
+	assert_int(VarietyAKit.events_of(w, SimEventKind.Id.RUN_FINISHED).size()).is_equal(1)
+	assert_array(Array(w.stats.boss_ids)).is_equal(Array(w.plan.boss_ids))  # one boss per act spawned, the plan's
 
 
 func test_the_route_reward_is_paid_at_the_wave_clear_before_the_first_await() -> void:

@@ -10,6 +10,9 @@ var debug_start_scrap: int = 0
 var kit_index: int = 0  ## ContentSet.kits index
 var unlocked: PackedStringArray = PackedStringArray()  ## the profile's unlock ids, sorted; ignored when `daily`
 var daily: bool = false  ## the Daily Run: the full pool regardless of `unlocked`
+# --- 15-wave integration (V5-A): the debug starts of ARCH 11, applied by DebugStart at tick 0 ---
+var debug_start_wave: int = 0  ## > 1: the run begins at this wave with a scripted build (`--wave=<n>`)
+var debug_boss: StringName = &""  ## a BossDef or Node 9 variant id: start at its boss wave (`--scenario=boss:<id>`)
 
 
 static func create(content_set: ContentSet, seed_value: int) -> SimConfig:
@@ -17,6 +20,14 @@ static func create(content_set: ContentSet, seed_value: int) -> SimConfig:
 	c.content = content_set
 	c.run_seed = seed_value
 	return c
+
+
+## True when a debug switch is on: such a run is paid its Data but leaves no trace in the Archive (GameRewards).
+func is_debug() -> bool:
+	return (
+		debug_invulnerable_core or debug_damage_mult != 1.0 or debug_start_scrap != 0 or debug_start_wave > 1
+		or debug_boss != &""
+	)
 
 
 ## True when the unlock `unlock_id` counts for this run.

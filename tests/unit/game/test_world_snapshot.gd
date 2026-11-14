@@ -4,7 +4,7 @@ extends GdUnitTestSuite
 ## seeds, on the legacy fixture and on the variety fixture.
 
 const SEEDS: Array[int] = [1, 2, 3]
-const MAX_TICKS: int = 40000
+const MAX_TICKS: int = 120000  ## enough for the 15 waves of the variety fixture with the boosted Warden
 const SHADOW_TICKS: int = 150  ## how far a restored world is played next to the original after each boundary
 
 
@@ -23,7 +23,10 @@ func _step(w: SimWorld) -> void:
 				PhaseState.Await.SALVAGE:
 					w.submit(SimCommand.salvage(command_id, 0, 1 if w.arsenal.slot_weapon[1] < 0 else SalvageSystem.ACTION_SCRAP))
 				PhaseState.Await.DRAFT:
-					w.submit(SimCommand.pick_directive(command_id, 0))
+					var slot: int = 0  # the first card still on offer (a double-pick draft, rw_double_pick, takes two)
+					while slot < w.draft.offer.size() - 1 and w.draft.offer[slot] < 0:
+						slot += 1
+					w.submit(SimCommand.pick_directive(command_id, slot))
 				PhaseState.Await.ROUTE:
 					w.submit(SimCommand.pick_route(command_id, w.wave % 2))
 				_:

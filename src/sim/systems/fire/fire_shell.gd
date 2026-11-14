@@ -7,9 +7,8 @@ extends RefCounted
 ## minimum range and the maximum range the weapon holds fire (false: no shot is paid for).
 ## The damage is that of a direct hit on the enemy at the cluster centre, evaluated at launch (weapon level, the damage
 ## level and the conditional multipliers of DamageResolver.warden_amount). A shell is the Warden's: kills count for it.
-## Pool: not started here. When a shell lands, ArsenalFire.start_landing_pools (called every tick by ArsenalSystem, a tick
-## before HazardSystem lands the hit) starts the pool at the point of the shell for `pool_ticks`; HazardSystem has no
-## landing hook of its own yet (see the V4-W report, "needs owner").
+## Pool: not started here. When the shell lands, HazardSystem calls HazardShells.landed, which starts the pool at the
+## point of the shell for `pool_ticks`.
 ## ModState.area_mul (overpressure) widens the blast and the pool.
 
 

@@ -9,9 +9,7 @@ var _legacy: ContentSet
 
 func before_test() -> void:
 	ScreensTestKit.fresh_save()
-	_variety = TestContent.variety()
-	_variety.run.packs.resize(3)  # these screens are pinned to the slice packs: five machines
-	_variety.run.modifiers.resize(1)
+	_variety = VarietyAKit.slice_content()  # these screens are pinned to the slice: act I, three packs, five machines, the Hulk in wave 5
 	_legacy = TestContent.baseline()
 
 

@@ -2,8 +2,8 @@ extends GdUnitTestSuite
 ## A bot plays a whole run through the real Game (RunController, view, HUD, overlays) and the game it plays is, hash for
 ## hash, the one the headless harness plays for that seed: what `tools\sim_run.ps1` measures is what the app runs.
 ##  - the legacy game: the greedy bot (PolicyBot GREEDY, task W2-D) on the frozen legacy fixture, five scripted waves;
-##  - the shipped game: the balanced bot on the slice data, a generated run with every intermission choice answered
-##    (V3-I; the old "greedy wins with 30% to 80% of the core" corridor was a target of the scripted 5-wave game).
+##  - the shipped game: the balanced bot on the 15-wave data, a generated run with every intermission choice answered.
+##    Whether seed 1 is won is the balance task's business (V5-C); the pin here is that both players play the same run.
 
 var _h: GameHarness
 
@@ -28,18 +28,21 @@ func test_a_greedy_bot_run_of_the_legacy_game_is_the_run_of_the_headless_harness
 	assert_int(Save.profile.data).is_equal(_h.summary().data_reward)
 
 
-func test_a_balanced_bot_run_of_the_shipped_game_wins_and_is_the_run_of_the_headless_harness() -> void:
+func test_a_balanced_bot_run_of_the_shipped_game_is_the_run_of_the_headless_harness() -> void:
 	_h = GameHarness.create(self, PackedStringArray(["--autoplay=balanced", "--seed=1"]), Callable(), HarnessKit.shipped())
 	_h.boot()
 	assert_int(_h.rc().bot.policy).is_equal(PolicyBot.Policy.BALANCED)
 	assert_object(_h.rc().sim.plan).is_not_null()
 	assert_int(_h.frames_until_over(SimHarness.VARIETY_MAX_TICKS)).is_greater(0)
-	assert_int(_h.state()).is_equal(GameState.Id.VICTORY)
+	assert_bool(GameState.is_terminal(_h.state())).is_true()
 	var headless: HarnessReport = SimHarness.run(SimHarness.config_for(HarnessKit.shipped(), 1), PolicyBot.Policy.BALANCED, 0)
-	assert_int(headless.result).is_equal(RunResult.Id.VICTORY)
+	assert_bool(headless.timed_out).is_false()
+	assert_int(_h.rc().sim.result()).is_equal(headless.result)
 	assert_int(_h.rc().sim.tick).is_equal(headless.ticks)
 	assert_str(_h.rc().sim.state_hash()).is_equal(headless.state_hash)
 	assert_int(_h.rc().sim.events.event_hash).is_equal(headless.event_hash)
-	assert_int(_h.rc().sim.waves_completed).is_equal(5)
-	assert_int(Save.profile.data).is_equal(_h.summary().data_reward)
+	assert_int(_h.rc().sim.waves_completed).is_equal(headless.waves_completed)
+	assert_int(_h.rc().api.wave_count()).is_equal(15)
+	assert_int(_h.summary().data_reward).is_equal(headless.data)
+	assert_int(Save.profile.data).is_greater_equal(_h.summary().data_reward)  # a real run: a first boss kill pays its milestone too
 	assert_object(_h.find_in("ScreenRoot", &"ResultsScreen")).is_not_null()

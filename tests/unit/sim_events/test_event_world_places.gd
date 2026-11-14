@@ -151,6 +151,35 @@ func test_a_breach_in_act_two_opens_two_points_with_three_borers_each() -> void:
 	assert_int(w.events_state.breach_mask).is_equal(0)
 
 
+func _bodied(w: SimWorld) -> int:
+	var n: int = 0
+	for i: int in w.enemies.high_water:
+		n += 1 if w.enemies.alive[i] == 1 and not w.ext.has_flag(i, EnemyExtState.F_MINI) else 0
+	return n
+
+
+## V5-A (scorecard S17): a breach into a full field keeps the bodied cap of SPEC 5.5; its borers wait in the spawn queue.
+func test_a_breach_into_a_full_field_queues_its_borers_and_keeps_the_cap() -> void:
+	var w: SimWorld = _planned(VarietyVKit.BREACH, 2)
+	VarietyVKit.run(w, 150)  # tick 150, one before the borers
+	var cap: int = w.content.mission.enemy_cap
+	for type_index: int in [Ids.EN_SKITTER, Ids.EN_HOLLOW, Ids.EN_RUSHER, Ids.EN_BURSTER]:
+		var n: int = 0
+		while _bodied(w) < cap and w.spawn_enemy(type_index, 9.0, -6.0 + float(n % 12)) >= 0:
+			n += 1
+	assert_int(_bodied(w)).is_equal(cap)
+	VarietyVKit.tick(w)  # tick 151: the breach opens
+	assert_int(_bodied(w)).is_less_equal(cap)
+	var borers_alive: int = 0
+	for i: int in w.enemies.high_water:
+		borers_alive += 1 if w.enemies.alive[i] == 1 and w.enemies.type[i] == Ids.EN_BORER else 0
+	var borers_queued: int = 0
+	for k: int in range(w.nav.pending_head, w.nav.pending.size()):
+		borers_queued += 1 if w.nav.sched_type[w.nav.pending[k]] == Ids.EN_BORER else 0
+	assert_int(borers_alive + borers_queued).is_equal(6)  # nothing is dropped
+	assert_int(borers_queued).is_greater(0)
+
+
 func test_a_breach_in_act_three_opens_three_points_with_four_borers_each() -> void:
 	var w: SimWorld = _planned(VarietyVKit.BREACH, 3)
 	VarietyVKit.run(w, 151)

@@ -3,12 +3,14 @@ extends GdUnitTestSuite
 ## with Scrap that has no other use (PolicySpend: buy a second card, patch the core) and that a hook directive's counter is
 ## never read as stacks. Hand-made states on TestContent.variety().
 
+const LAST_DRAFT_WAVE: int = 14  ## the fixture is the 15-wave game
+
 var w: SimWorld
 var bot: PolicyBot
 
 
 func before_test() -> void:
-	w = VarietyHKit.awaiting(PhaseState.Await.DRAFT, 4)  # the draft before wave 5, the last of the slice run
+	w = VarietyHKit.awaiting(PhaseState.Await.DRAFT, LAST_DRAFT_WAVE)  # the draft before wave 15, the last of the run
 	bot = PolicyBot.new(PolicyBot.Policy.BALANCED)
 
 
@@ -112,7 +114,10 @@ func test_the_last_draft_before_the_final_wave_is_known() -> void:
 	w.wave = 2
 	assert_bool(PolicySpend.is_last_draft(w)).is_false()
 	assert_int(PolicySpend.reserve(w)).is_equal(PolicySpend.MID_RESERVE)
-	w.wave = 4
+	w.wave = 4  # the draft before the act I boss is not the last one any more
+	assert_bool(PolicySpend.is_last_draft(w)).is_false()
+	w.wave = LAST_DRAFT_WAVE
+	assert_int(PhaseSystem.wave_count(w)).is_equal(LAST_DRAFT_WAVE + 1)
 	assert_int(PolicySpend.spare(w)).is_equal(w.scrap)
 
 
@@ -124,7 +129,7 @@ func test_a_second_card_is_bought_with_scrap_that_has_no_other_use() -> void:
 	bot.act(w)
 	var cmd: SimCommand = _only()
 	assert_int(cmd.kind).is_equal(SimCommand.Kind.BUY_OUT)
-	assert_int(cmd.arg).is_equal(0)  # the best card, hot_loads
+	assert_int(cmd.arg).is_equal(2)  # the best card: penetrator_cores fills the armor gap of the late waves (CONTENT 13)
 
 
 func test_before_the_last_draft_a_reserve_of_150_is_kept() -> void:
@@ -168,7 +173,7 @@ func test_the_draft_buys_then_patches_then_picks() -> void:
 	assert_int(_only().kind).is_equal(SimCommand.Kind.BUY_OUT)
 	w.command_queue.clear()
 	w.draft.bought_out = true  # the sim has taken the card
-	w.draft.offer[0] = -1
+	w.draft.offer[2] = -1  # penetrator_cores, the best card before the last wave
 	bot.act(w)
 	assert_int(_only().kind).is_equal(SimCommand.Kind.PATCH_CORE)
 	w.command_queue.clear()
@@ -176,4 +181,4 @@ func test_the_draft_buys_then_patches_then_picks() -> void:
 	bot.act(w)
 	var cmd: SimCommand = _only()
 	assert_int(cmd.kind).is_equal(SimCommand.Kind.PICK_DIRECTIVE)
-	assert_int(cmd.arg).is_equal(1)
+	assert_int(cmd.arg).is_equal(0)

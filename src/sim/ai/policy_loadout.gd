@@ -84,14 +84,18 @@ static func emptiest_slot(world: SimWorld) -> int:
 	return best
 
 
-## `greedy`: the first weapon of the crate, levelled up when it is a duplicate, else into the emptiest slot.
+## `greedy`: the first weapon of the crate, levelled up when it is a duplicate, else into the emptiest slot. A duplicate
+## at the top level can do neither (SalvageSystem.resolve refuses a carried weapon in a slot), so the next weapon of the
+## crate is taken the same way, and a crate of nothing but such duplicates is scrapped (V5-A: before, the bot repeated
+## the refused answer and the run stalled at a boss crate of the 15-wave game).
 static func greedy_salvage_arg(world: SimWorld) -> int:
 	var offer: PackedInt32Array = world.salvage.offer
-	if offer.is_empty():
-		return SCRAP_ARG
-	if can_level_up(world, offer[0]):
-		return LEVEL_UP_ACTION
-	return emptiest_slot(world)
+	for choice: int in offer.size():
+		if can_level_up(world, offer[choice]):
+			return choice * 16 + LEVEL_UP_ACTION
+		if carried_slot(world, offer[choice]) < 0:
+			return choice * 16 + emptiest_slot(world)
+	return SCRAP_ARG
 
 
 ## Every legal answer to the crate, as SALVAGE arguments in a fixed order (choice, then slots, level up, scrap).

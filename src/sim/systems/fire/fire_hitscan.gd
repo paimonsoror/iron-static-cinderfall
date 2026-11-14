@@ -3,7 +3,7 @@ extends RefCounted
 ## Firing kind H (VARIETY_SPEC 3.3): as today; optional `pierce` hits the next enemy within 2 m behind the last one
 ## hit on the shooter-target line (each x `pierce_falloff`; -1 = every enemy on the line). An enemy is on the line
 ## when the line passes through its body circle; the nearest along the line is taken, the lower id on a tie.
-# TODO(V4-W): LMG strays (the `aim` stream) and armor shred.
+## The LMG's strays and armor shred are ArsenalFire's (`_suppressor`).
 
 const PIERCE_REACH_M: float = 2.0
 

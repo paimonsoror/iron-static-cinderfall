@@ -22,7 +22,10 @@ var core_damage_by_type: PackedFloat64Array = PackedFloat64Array()  ## core hp r
 var damage_by_source: PackedFloat64Array = PackedFloat64Array()  ## enemy hp removed, by DamageSource.Id
 var events_seen: PackedInt32Array = PackedInt32Array()  ## starts, by event index
 var crates_secured: int = 0
-var boss_ids: PackedInt32Array = PackedInt32Array()  ## enemy index of every boss that spawned
+var boss_ids: PackedInt32Array = PackedInt32Array()  ## enemy index of every boss type that spawned, in order (SimWorld.spawn_enemy)
+## Recovered Data banked so far (CONTENT 10): the waves cleared, the act bosses killed, `rw_data` and data_siphon. The
+## victory part is added by SimWorld.summary. Not hashed (it changes no outcome); the boundary snapshot carries it.
+var data: int = 0
 
 
 ## Sizes the per-type and per-wave arrays from the content (never smaller than the legacy sizes).
@@ -39,6 +42,11 @@ func setup(content: ContentSet) -> void:
 	core_damage_by_type.resize(types)
 	damage_by_source.resize(DamageSource.COUNT)
 	events_seen.resize(content.events.size())
+
+
+## Banks Recovered Data (never negative in total).
+func add_data(amount: int) -> void:
+	data = maxi(0, data + amount)
 
 
 ## Called at the end of every tick: peak alive per wave, combat time, the act reached.

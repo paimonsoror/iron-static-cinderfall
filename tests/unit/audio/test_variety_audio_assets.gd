@@ -202,10 +202,10 @@ func test_every_sound_the_router_tables_name_is_in_the_catalog() -> void:
 	assert_int(AudioVarietyRoutes.ACT_INTENSITY.size()).is_equal(3)
 
 
-func test_every_one_of_the_60_sounds_has_a_route_except_the_two_that_wait_for_a_caller() -> void:
+func test_every_one_of_the_60_sounds_has_a_route_except_the_one_the_game_layer_plays() -> void:
 	# Each new id is played by a table of the router or by a handler of the routes (the handlers are listed here by hand).
-	# Two sounds have no trigger yet: the rail wind-up (no Events signal announces a charge; `on_weapon_charging` is ready)
-	# and the resume link (the RESUME RUN button plays it with Sfx.play). Wiring either one means taking it off WAITING.
+	# The rail wind-up is routed since V5-A (`Events.weapon_charging` -> `on_weapon_charging`). One sound has no route on
+	# purpose: the resume link (GameRunFlow.resume_from_disk plays it with Sfx.play). Routing it means taking it off WAITING.
 	var routed: Dictionary[StringName, bool] = {}
 	for table: Dictionary in [AudioEventRouter.SHOT_SOUNDS, AudioEventRouter.HELD_BY_WEAPON, AudioEventRouter.CORE_HIT_EXTRA_SOUNDS,
 			AudioEventRouter.DEATH_SOUNDS, AudioVarietyRoutes.AREA_BLAST_SOUNDS, AudioVarietyRoutes.DELAYED_HIT_SOUNDS,
@@ -219,11 +219,12 @@ func test_every_one_of_the_60_sounds_has_a_route_except_the_two_that_wait_for_a_
 		AudioThreatRoutes.WARN_HARM, AudioThreatRoutes.WARN_HELP, &"weapon_swap", &"arc_chain", &"burster_arm", &"mote_burn",
 		&"crate_land", &"crate_secured", &"crate_lost", &"weapon_vent", &"draft_open", &"draft_pick", &"draft_pick_corrupted",
 		&"route_pick", &"salvage_open", &"unlock_buy", &"act_start", &"elite_spawn", &"ward_hum", &"ward_break",
-		&"borer_emerge", &"aegis_exposed", &"boss_phase",
+		&"borer_emerge", &"aegis_exposed", &"boss_phase", &"rail_charge",
 	]
 	for sound: StringName in by_handler:
 		routed[sound] = true
-	var waiting: Array[StringName] = [&"rail_charge", &"resume_link"]
+	var waiting: Array[StringName] = [&"resume_link"]
+	assert_bool(AudioVarietyRoutes.new().wiring().has(&"weapon_charging")).is_true()
 	for id: StringName in AudioCatalog.VARIETY_IDS:
 		if waiting.has(id):
 			assert_bool(routed.has(id)).override_failure_message("%s is routed now: take it off WAITING" % String(id)).is_false()

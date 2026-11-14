@@ -22,6 +22,18 @@ static func config(content: ContentSet, run_seed: int = 1, damage_mult: float = 
 	return SimHarness.config_for(content, run_seed, damage_mult)
 
 
+## The debug build of the full-run tests (WORK_PLAN card V5-A): every Archive unlock (the `--unlock=all` of the game) and
+## `debug_damage_mult`, so a bot wins the 15 waves fast and for certain whatever the balance of the day is.
+static func debug_config(content: ContentSet, run_seed: int = 1, damage_mult: float = 4.0) -> SimConfig:
+	var cfg: SimConfig = SimHarness.config_for(content, run_seed, damage_mult)
+	var ids: PackedStringArray = PackedStringArray()
+	for u: UnlockDef in content.unlocks:
+		ids.append(String(u.id))
+	ids.sort()
+	cfg.unlocked = ids
+	return cfg
+
+
 ## A world on the frozen baseline whose five waves never spawn anything, stepped into wave 1 (SPAWNING). Enemies
 ## in a lab are placed by the test.
 static func lab_world(run_seed: int = 1) -> SimWorld:

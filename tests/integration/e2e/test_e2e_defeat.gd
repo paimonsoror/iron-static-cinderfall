@@ -1,8 +1,8 @@
 extends GdUnitTestSuite
-## The DEFEAT path through Game on the shipped game data (a generated run): `--autoplay=none` drafts nothing, scraps
-## every crate and takes route A, the core falls before the boss dies, the results show DEFEAT, the reward is the defeat
-## formula (Data per cleared wave), written to the profile exactly once, and a relaunch shows the same totals (A14,
-## A15). The run is played once in before().
+## The DEFEAT path through Game on the shipped game data (the 15-wave game): `--autoplay=none` drafts nothing, scraps
+## every crate and takes route A, the core falls in act I, the results show DEFEAT, the reward is what the run banked
+## (CONTENT 10: 6 Data per cleared wave; route A pays none), written to the profile exactly once, and a relaunch shows
+## the same totals (A14, A15). The run is played once in before().
 
 const NONE_KINDS: Array[int] = [
 	SimCommand.Kind.SKIP_DRAFT, SimCommand.Kind.PICK_ROUTE, SimCommand.Kind.SALVAGE, SimCommand.Kind.SKIP_INTERMISSION,
@@ -31,8 +31,9 @@ func test_a_run_that_drafts_nothing_is_lost_before_the_boss_dies() -> void:
 	assert_int(_h.state()).is_equal(GameState.Id.DEFEAT)
 	assert_int(_h.rc().sim.result()).is_equal(RunResult.Id.DEFEAT)
 	assert_float(_h.rc().sim.core_hp).is_equal(0.0)
-	assert_int(_h.rc().sim.wave).is_between(2, 5)
+	assert_int(_h.rc().sim.wave).is_between(2, 5)  # scorecard S6: `none` falls in act I
 	assert_int(_h.rc().sim.waves_completed).is_less(5)
+	assert_int(_h.rc().api.wave_count()).is_equal(15)
 	for cmd: SimCommand in _h.rc().sim.command_log.entries:
 		assert_bool(NONE_KINDS.has(cmd.kind)).override_failure_message("command kind %d" % cmd.kind).is_true()
 	for stacks: int in _h.rc().sim.draft.stacks:
@@ -42,9 +43,11 @@ func test_a_run_that_drafts_nothing_is_lost_before_the_boss_dies() -> void:
 	assert_int(_h.child_count("UI/HudRoot")).is_equal(0)  # no choice overlay outlives the run's HUD
 
 
-func test_the_defeat_pays_the_defeat_formula_once_and_nothing_else() -> void:
+func test_the_defeat_pays_the_waves_it_cleared_once_and_nothing_else() -> void:
 	var waves: int = _h.summary().waves_completed
-	var expected: int = Formulas.data_reward(RunResult.Id.DEFEAT, waves, 0.0, _h.content.mission)
+	var expected: int = _h.content.run.reward_per_wave * waves
+	assert_int(_h.content.run.reward_per_wave).is_equal(6)
+	assert_int(_h.rc().sim.stats.data).is_equal(expected)  # the sim banked it wave by wave
 	assert_int(waves).is_greater(0)
 	assert_int(_h.summary().result).is_equal(RunResult.Id.DEFEAT)
 	assert_int(_h.summary().data_reward).is_equal(expected)

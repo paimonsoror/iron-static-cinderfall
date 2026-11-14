@@ -59,10 +59,12 @@ static func kit_ready(p: Profile, content: ContentSet, kit_id: StringName) -> bo
 	return def.cost == 0 or p.unlocks.has(String(kit_id))
 
 
-## The Daily Run opens after the first kill of an act I boss (CONTENT 12: it is not an unlock).
+## The Daily Run opens after the first kill of an act I boss (CONTENT 12: it is not an unlock). A kill of a boss of a
+## later act counts as well: nobody reaches it without an act I boss kill, and a profile of the 5-wave slice build, where
+## the Siege Hulk stood in as the act I boss, keeps its Daily Run.
 static func daily_open(p: Profile, content: ContentSet) -> bool:
 	for b: BossDef in content.bosses:
 		var kills: int = p.boss_kills.get(String(b.id), 0)
-		if b.pool_act == 1 and kills > 0:
+		if b.pool_act >= 1 and kills > 0:
 			return true
 	return false

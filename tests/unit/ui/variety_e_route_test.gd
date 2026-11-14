@@ -151,6 +151,7 @@ func test_a_node_9_variant_shows_its_name_and_its_own_lines() -> void:
 
 
 func test_every_boss_has_a_name_an_attack_line_and_an_answer_line() -> void:
+	Save.profile.unlocks.append("u_w_arc")  # the Hulk's approved line names the Arc Projector (an unlock since V5-A)
 	for id: String in ["brood_carrier", "lance_platform", "aegis_array", "tremor_rig", "siege_hulk"]:
 		var api: FakeRunApi = VarietyEKit.api_for("boss_brief")
 		api.fake_boss_brief = {"id": StringName(id), "name_key": "boss.%s.name" % id, "variant": &"", "banner_key": "boss.%s.banner" % id,
@@ -161,6 +162,7 @@ func test_every_boss_has_a_name_an_attack_line_and_an_answer_line() -> void:
 		assert_str(b.answer_label.text).is_equal(Strings.t("boss.%s.answer" % id))
 		assert_bool(b.attack_head.visible).is_true()
 		assert_str(b.banner_label.text).is_equal(Strings.t("boss.%s.banner" % id))
+	ScreensTestKit.fresh_save()
 
 
 func test_a_line_with_no_text_is_left_out_instead_of_showing_a_marker() -> void:

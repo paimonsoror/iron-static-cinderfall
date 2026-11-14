@@ -1,11 +1,14 @@
 extends GdUnitTestSuite
-## The generated slice run end to end through the real Game on the shipped data (VARIETY_SPEC 15.2 exit; V3-I): the
-## real sim, RunController, BattleView, CombatHud and the choice overlays.
-##  - `--autoplay=balanced` plays two seeds to the end, answering every await (salvage, draft, route, boss briefing):
-##    each await shows exactly one overlay (the right one, above the HUD) and the old upgrade drawer never opens; the
-##    run ends on the results screen, is paid once and leaves no run file; the two seeds are different runs (plan,
-##    offers, outcome). Both runs are played once in before().
-##  - a run driven by hand is killed in the background mid-wave and again mid-draft and comes back from the menu's
+## The 15-wave game end to end through the real Game on the shipped data (WORK_PLAN card V5-A): the real sim,
+## RunController, BattleView, CombatHud and the choice overlays.
+##  - a victory: `--autoplay=balanced --seed=1 --unlock=all` with debug_damage_mult x4 (the debug build of the card: fast
+##    and certain, whatever the balance of the day is) plays the three acts to the end, answering every await (salvage,
+##    draft, route, boss briefing);
+##  - a defeat: `--autoplay=none --seed=2` falls in act I.
+##    For both: each await shows exactly one overlay (the right one, above the HUD), the run ends on the results screen,
+##    is paid once and leaves no run file; the two runs are visibly different games. Both are played once in before().
+##  - a run driven by hand is killed in the background at every kind of boundary (mid-wave, mid-draft, at the act
+##    boundary after a boss wave, in the first wave of the next act, during a boss wave) and comes back from the menu's
 ##    RESUME RUN button, paused, at the same tick with the same state and the same choice on screen; the back gesture
 ##    pauses on a choice and never dismisses it; the run then ends once and is paid once.
 
@@ -13,8 +16,10 @@ const OVERLAYS: Dictionary[int, StringName] = {
 	RunApi.AWAIT_SALVAGE: &"SalvageOverlay", RunApi.AWAIT_DRAFT: &"DraftOverlay",
 	RunApi.AWAIT_ROUTE: &"RouteOverlay", RunApi.AWAIT_BOSS_BRIEF: &"BossBriefOverlay",
 }
-const WIN_SEED: int = 1  ## a victory of the balanced bot (tools\sim_run.ps1 -Seed 1 -Policy balanced -Runs 20)
-const LOSS_SEED: int = 4  ## a defeat of the balanced bot in the same sweep (the only one of seeds 1 to 20 after wave V4)
+const WAVES: int = 15
+const BOSS_WAVES: Array[int] = [5, 10, 15]
+const WIN_ARGS: PackedStringArray = ["--autoplay=balanced", "--seed=1", "--unlock=all"]
+const LOSS_ARGS: PackedStringArray = ["--autoplay=none", "--seed=2"]
 
 var _h: GameHarness
 var _win: Facts
@@ -30,6 +35,7 @@ class Facts:
 	var state: int = 0
 	var result: int = 0
 	var waves: int = 0
+	var act: int = 0
 	var state_hash: String = ""
 	var plan: String = ""
 	var packs: String = ""
@@ -42,6 +48,7 @@ class Facts:
 	var hud_gone: bool = false
 	var hud_children: int = -1
 	var reward: int = 0
+	var banked: int = 0
 	var profile_data: int = 0
 	var runs_played: int = 0
 	var awarded: int = 0
@@ -52,14 +59,16 @@ class Facts:
 	var routes: int = 0
 	var picks: int = 0
 	var salvage: int = 0
+	var acts_started: int = 0
+	var bosses_spawned: int = 0
 	var slot_two: int = -1
 	var armed: int = 0
 	var bursters: int = 0  ## bursters that spawned
 
 
 func before() -> void:
-	_win = _play_autoplay(WIN_SEED)
-	_loss = _play_autoplay(LOSS_SEED)
+	_win = _play_autoplay(WIN_ARGS, IntegrationKit.boost_x4)
+	_loss = _play_autoplay(LOSS_ARGS, Callable())
 
 
 func after_test() -> void:
@@ -69,11 +78,13 @@ func after_test() -> void:
 # --- the bot runs ---
 
 
-## Plays one whole `--autoplay=balanced` run through Game and returns what a player could see of it.
-func _play_autoplay(run_seed: int) -> Facts:
+## Plays one whole `--autoplay` run through Game and returns what a player could see of it.
+func _play_autoplay(args: PackedStringArray, hook: Callable) -> Facts:
 	_awaits = {}
 	_problems = PackedStringArray()
-	_h = GameHarness.create(self, PackedStringArray(["--autoplay=balanced", "--seed=%d" % run_seed]), Callable(), HarnessKit.shipped())
+	_h = GameHarness.create(self, args, Callable(), HarnessKit.shipped())
+	if hook.is_valid():
+		_h.game.set(&"sim_config_hook", hook)
 	_h.boot()
 	Events.await_changed.connect(_on_await)
 	var f: Facts = Facts.new()
@@ -90,6 +101,7 @@ func _play_autoplay(run_seed: int) -> Facts:
 	f.state = _h.state()
 	f.result = sim.result()
 	f.waves = sim.waves_completed
+	f.act = sim.stats.act_reached
 	f.state_hash = sim.state_hash()
 	f.plan = plan_hash.finish()
 	f.packs = "/".join(packs)
@@ -103,6 +115,7 @@ func _play_autoplay(run_seed: int) -> Facts:
 	f.hud_gone = _h.hud() == null
 	f.hud_children = _h.child_count("UI/HudRoot")
 	f.reward = _h.summary().data_reward
+	f.banked = sim.stats.data
 	f.profile_data = Save.profile.data
 	f.runs_played = Save.profile.runs_played
 	f.awarded = Save.profile.awarded_run_ids.size()
@@ -113,6 +126,8 @@ func _play_autoplay(run_seed: int) -> Facts:
 	f.routes = _h.events_log.count(&"route_picked")
 	f.picks = _h.events_log.count(&"directive_picked")
 	f.salvage = _h.events_log.count(&"salvage_offered")
+	f.acts_started = _h.events_log.count(&"act_started")
+	f.bosses_spawned = _h.events_log.count(&"boss_spawned")
 	f.slot_two = sim.arsenal.slot_weapon[1]
 	f.armed = _h.events_log.count(&"burster_armed")
 	for row: Dictionary in _h.events_log.rows:
@@ -124,7 +139,7 @@ func _play_autoplay(run_seed: int) -> Facts:
 
 
 ## Every change of the await: exactly the overlay of that choice is in the HUD layer (none when the wait ended), above
-## the HUD, and the HUD has not opened the legacy upgrade drawer.
+## the HUD.
 func _on_await(kind: int) -> void:
 	var seen: int = _awaits.get(kind, 0)
 	_awaits[kind] = seen + 1
@@ -137,8 +152,6 @@ func _on_await(kind: int) -> void:
 	var hud: CombatHud = _h.hud()
 	if hud == null:
 		_problems.append("await %d without a HUD" % kind)
-	elif hud.is_drawer_open() or hud.drawer.visible:
-		_problems.append("await %d opened the upgrade drawer" % kind)
 	elif hud.get_index() != 0:
 		_problems.append("the HUD is not the lowest node of its layer")
 
@@ -154,26 +167,39 @@ func _overlays_on_screen() -> Array[StringName]:
 	return out
 
 
-func test_the_balanced_bot_finishes_a_winning_slice_run_on_the_results_screen() -> void:
+## Waves 2 to `last` that have a route choice (normal waves) or a boss briefing.
+func _count_waves(last: int, boss: bool) -> int:
+	var n: int = 0
+	for wave_number: int in range(2, mini(last, WAVES) + 1):
+		n += 1 if BOSS_WAVES.has(wave_number) == boss else 0
+	return n
+
+
+func test_the_debug_build_finishes_a_winning_fifteen_wave_run_on_the_results_screen() -> void:
 	assert_int(_win.frames).is_greater(0)
 	assert_int(_win.state).is_equal(GameState.Id.VICTORY)
 	assert_int(_win.result).is_equal(RunResult.Id.VICTORY)
-	assert_int(_win.waves).is_equal(5)
+	assert_int(_win.waves).is_equal(WAVES)
+	assert_int(_win.act).is_equal(3)
+	assert_int(_win.acts_started).is_equal(3)
+	assert_int(_win.bosses_spawned).is_greater_equal(3)
 	assert_str(_win.results_title).is_equal(Strings.t("results.victory"))
-	assert_str(_win.waves_text).is_equal("5/5")
+	assert_str(_win.waves_text).is_equal("%d/%d" % [WAVES, WAVES])
 	assert_bool(_win.hud_gone).is_true()
 	assert_int(_win.hud_children).is_equal(0)
-	assert_int(_win.slot_two).is_equal(Ids.WP_ARC_PROJECTOR)  # the guaranteed crate after wave 2
+	assert_int(_win.slot_two).is_greater(0)  # the crates brought a second weapon
 
 
-func test_a_losing_seed_ends_on_the_defeat_screen() -> void:
+func test_the_bot_that_does_nothing_ends_on_the_defeat_screen_in_act_one() -> void:
 	assert_int(_loss.state).is_equal(GameState.Id.DEFEAT)
 	assert_int(_loss.result).is_equal(RunResult.Id.DEFEAT)
 	assert_int(_loss.waves).is_less(5)
+	assert_int(_loss.act).is_equal(1)
 	assert_str(_loss.results_title).is_equal(Strings.t("results.defeat"))
-	assert_str(_loss.waves_text).is_equal("%d/5" % _loss.waves)
+	assert_str(_loss.waves_text).is_equal("%d/%d" % [_loss.waves, WAVES])
 	assert_bool(_loss.hud_gone).is_true()
 	assert_int(_loss.hud_children).is_equal(0)
+	assert_int(_loss.slot_two).is_equal(-1)  # it scrapped every crate
 
 
 func test_every_await_was_answered_and_showed_exactly_its_own_overlay() -> void:
@@ -184,34 +210,41 @@ func test_every_await_was_answered_and_showed_exactly_its_own_overlay() -> void:
 		var crates: int = f.awaits.get(RunApi.AWAIT_SALVAGE, 0)
 		var briefs: int = f.awaits.get(RunApi.AWAIT_BOSS_BRIEF, 0)
 		var ended: int = f.awaits.get(RunApi.AWAIT_NONE, 0)
-		assert_int(drafts).is_equal(f.waves if f.waves < 5 else 4)  # one draft after every cleared wave but the last
-		assert_int(routes).is_equal(mini(f.waves, 3))  # before waves 2, 3 and 4
+		assert_int(drafts).is_equal(mini(f.waves, WAVES - 1))  # one draft after every cleared wave but the last
+		assert_int(routes).is_equal(_count_waves(f.waves + 1, false))  # before every normal wave that was reached
+		assert_int(briefs).is_equal(_count_waves(f.waves + 1, true))  # before every boss wave that was reached
 		assert_int(crates).is_greater_equal(1 if f.waves >= 2 else 0)  # the guaranteed crate after wave 2
-		assert_int(briefs).is_equal(1 if f.waves >= 4 else 0)
-		assert_int(ended).is_greater_equal(mini(f.waves, 4))  # every wait ended
+		assert_int(ended).is_greater_equal(mini(f.waves, WAVES - 1))  # every wait ended
 		assert_int(f.routes).is_equal(routes)
-		assert_int(f.picks).is_greater_equal(drafts)
+		assert_int(f.picks).is_greater_equal(drafts if f == _win else 0)
 		assert_int(f.salvage).is_equal(crates)
+	assert_int(_win.awaits.get(RunApi.AWAIT_ROUTE, 0)).is_equal(11)  # waves 2 to 4, 6 to 9, 11 to 14
+	assert_int(_win.awaits.get(RunApi.AWAIT_BOSS_BRIEF, 0)).is_equal(3)
+	assert_int(_win.awaits.get(RunApi.AWAIT_SALVAGE, 0)).is_greater_equal(3)  # and the boss crates of acts I and II
 
 
 func test_the_reward_is_granted_once_and_the_run_file_is_gone() -> void:
 	for f: Facts in [_win, _loss]:
 		assert_int(f.finished).is_equal(1)
 		assert_int(f.reward).is_greater(0)
-		assert_int(f.profile_data).is_equal(f.reward)
+		assert_int(f.profile_data).is_equal(f.reward)  # the debug win records no milestone, the loss earned none
 		assert_int(f.runs_played).is_equal(1)
 		assert_int(f.awarded).is_equal(1)
 		assert_bool(f.regrant).is_false()  # a second finish of the same run pays nothing
 		assert_int(f.data_after_regrant).is_equal(f.reward)
 		assert_bool(f.run_file).is_false()
+	assert_int(_loss.reward).is_equal(6 * _loss.waves)  # CONTENT 10: 6 Data per cleared wave
+	assert_int(_loss.banked).is_equal(_loss.reward)
+	assert_int(_win.banked).is_greater_equal(WAVES * 6 + 30 + 45)  # the waves and the two act bosses
+	assert_int(_win.reward - _win.banked).is_between(100, 150)  # the victory: 100 + up to 50 for the core
 
 
-func test_two_seeds_are_visibly_different_runs() -> void:
+func test_the_two_runs_are_visibly_different_games() -> void:
 	assert_str(_win.plan).is_not_equal(_loss.plan)  # other spawn lists
 	assert_str(_win.state_hash).is_not_equal(_loss.state_hash)
 	assert_int(_win.result).is_not_equal(_loss.result)  # another outcome
 	var differences: int = 0
-	differences += 1 if _win.packs != _loss.packs else 0  # other packs on the routes that were taken
+	differences += 1 if _win.packs != _loss.packs else 0  # other packs on the routes
 	differences += 1 if _win.first_offer != _loss.first_offer else 0  # another first draft
 	differences += 1 if _win.stacks != _loss.stacks else 0  # another build
 	assert_int(differences).is_greater_equal(2)
@@ -275,7 +308,62 @@ func _frames_until_await(kind: int, limit: int) -> bool:
 	return _h.rc().api.awaiting() == kind
 
 
-func test_a_run_killed_mid_wave_and_mid_draft_resumes_from_the_menu_and_is_paid_once() -> void:
+## Plays on (answering every choice the way a player with no plan does) until the run is `ticks_in` ticks into wave
+## `wave_number` (`in_combat`), or waits for the first choice after wave `wave_number` was cleared.
+func _play_to(wave_number: int, in_combat: bool, ticks_in: int = 240) -> bool:
+	var rc: RunController = _h.rc()
+	for i: int in 40000:
+		var sim: SimWorld = rc.sim
+		if sim.is_over():
+			return false
+		if in_combat:
+			if sim.wave == wave_number and GameState.is_combat(sim.phase) and sim.tick - sim.stats.wave_start_tick[wave_number] >= ticks_in:
+				return true
+		elif sim.waves_completed == wave_number and rc.api.awaiting() != RunApi.AWAIT_NONE:
+			return true
+		GameHarness.play_intermission(rc)
+		rc.step_frame(GameHarness.DT)
+	return false
+
+
+## Kills the process in the background and resumes from the menu: the run is back, paused, at the same tick with the
+## same state, the same act and the same choice on screen. Leaves the run going again.
+func _kill_and_resume(where: String) -> void:
+	var sim: SimWorld = _h.rc().sim
+	var run_id: String = _h.rc().run_id
+	var tick: int = sim.tick
+	var state_hash: String = sim.state_hash()
+	var awaiting: int = _h.rc().api.awaiting()
+	var act: int = sim.phase_state.act
+	var wave: int = sim.wave
+	var cleared: int = sim.waves_completed
+	var banked: int = sim.stats.data
+	var files: Dictionary = _background_and_kill()
+	_launch(files)
+	assert_bool(_menu().resume_button.visible).override_failure_message(where + ": no RESUME RUN").is_true()
+	assert_str(_menu().resume_button.text).is_equal(Strings.tf("menu.resume", [cleared + 1]))
+	_menu().resume_button.pressed.emit()
+	_h.freeze()
+	assert_int(_h.state()).override_failure_message(where + ": not paused after the resume").is_equal(GameState.Id.PAUSED)
+	assert_object(_pause_overlay()).is_not_null()
+	var back: SimWorld = _h.rc().sim
+	assert_str(_h.rc().run_id).is_equal(run_id)
+	assert_int(back.tick).override_failure_message(where + ": tick").is_equal(tick)
+	assert_str(back.state_hash()).override_failure_message(where + ": state hash").is_equal(state_hash)
+	assert_int(_h.rc().api.awaiting()).is_equal(awaiting)
+	assert_int(back.phase_state.act).is_equal(act)
+	assert_int(back.wave).is_equal(wave)
+	assert_int(back.stats.data).override_failure_message(where + ": the banked Data").is_equal(banked)
+	var expected: Array[StringName] = []
+	if OVERLAYS.has(awaiting):
+		expected.append(OVERLAYS[awaiting])
+	assert_array(_overlays_on_screen()).override_failure_message(where + ": overlays").is_equal(expected)
+	assert_int(_h.frames(10)).is_equal(0)  # paused: nothing moves
+	_pause_overlay().resume_pressed.emit()
+	assert_bool(GameState.is_run_phase(_h.state())).is_true()
+
+
+func test_a_run_killed_at_every_kind_of_boundary_resumes_from_the_menu_and_is_paid_once() -> void:
 	_launch()
 	assert_bool(_menu().resume_button.visible).is_false()  # nothing to resume on a fresh profile
 	_menu().start_pressed.emit()
@@ -283,25 +371,9 @@ func test_a_run_killed_mid_wave_and_mid_draft_resumes_from_the_menu_and_is_paid_
 	_h.freeze()
 	_h.frames(_h.content.mission.prepare_ticks + 400)
 	var run_id: String = _h.rc().run_id
-	var tick: int = _h.rc().sim.tick
-	var state_hash: String = _h.rc().sim.state_hash()
 	assert_bool(GameState.is_combat(_h.rc().sim.phase)).is_true()
 	assert_int(_h.rc().sim.wave).is_equal(1)
-	var files: Dictionary = _background_and_kill()  # killed mid-wave
-
-	_launch(files)
-	assert_int(_h.state()).is_equal(GameState.Id.MENU)
-	assert_bool(_menu().resume_button.visible).is_true()
-	assert_str(_menu().resume_button.text).is_equal(Strings.tf("menu.resume", [1]))
-	_menu().resume_button.pressed.emit()
-	_h.freeze()
-	assert_int(_h.state()).is_equal(GameState.Id.PAUSED)
-	assert_object(_pause_overlay()).is_not_null()
-	assert_str(_h.rc().run_id).is_equal(run_id)
-	assert_int(_h.rc().sim.tick).is_equal(tick)
-	assert_str(_h.rc().sim.state_hash()).is_equal(state_hash)
-	assert_int(_h.frames(30)).is_equal(0)  # paused: nothing moves
-	_pause_overlay().resume_pressed.emit()
+	_kill_and_resume("mid-wave 1")
 	assert_bool(GameState.is_combat(_h.state())).is_true()
 
 	# on to the first draft: the sim waits, the draft overlay is up, the back gesture pauses and does not dismiss it
@@ -311,7 +383,6 @@ func test_a_run_killed_mid_wave_and_mid_draft_resumes_from_the_menu_and_is_paid_
 	assert_int(offer.size()).is_equal(3)
 	_h.hud().refresh()  # the HUD re-reads the run 10 times a second; the test steps the run by hand
 	assert_bool(_h.hud().intermission.visible).is_false()  # the breather panel is not under the choice
-	assert_bool(_h.hud().is_drawer_open()).is_false()
 	_h.game.call(&"request_back")
 	assert_int(_h.state()).is_equal(GameState.Id.PAUSED)
 	assert_array(_overlays_on_screen()).is_equal([&"DraftOverlay"])
@@ -321,22 +392,9 @@ func test_a_run_killed_mid_wave_and_mid_draft_resumes_from_the_menu_and_is_paid_
 	_h.game.call(&"request_back")
 	assert_int(_h.state()).is_equal(GameState.Id.INTERMISSION)
 	assert_array(_overlays_on_screen()).is_equal([&"DraftOverlay"])
-	tick = _h.rc().sim.tick
-	state_hash = _h.rc().sim.state_hash()
-	files = _background_and_kill()  # killed mid-draft
-
-	_launch(files)
-	assert_str(_menu().resume_button.text).is_equal(Strings.tf("menu.resume", [2]))
-	assert_bool(_h.game.call(&"resume_run_from_disk")).is_true()
-	_h.freeze()
-	assert_int(_h.state()).is_equal(GameState.Id.PAUSED)
-	assert_int(_h.rc().api.awaiting()).is_equal(RunApi.AWAIT_DRAFT)
-	assert_array(_overlays_on_screen()).is_equal([&"DraftOverlay"])  # shown once, with no signal to announce it
-	assert_array(Array(_h.rc().api.draft_offer())).is_equal(offer)  # the same three directives
-	assert_int(_h.rc().sim.tick).is_equal(tick)
-	assert_str(_h.rc().sim.state_hash()).is_equal(state_hash)
-	_pause_overlay().resume_pressed.emit()
+	_kill_and_resume("mid-draft after wave 1")
 	assert_int(_h.state()).is_equal(GameState.Id.INTERMISSION)
+	assert_array(Array(_h.rc().api.draft_offer())).is_equal(offer)  # the same three directives
 	_h.rc().api.pick_directive(_h.rc().api.next_command_id(), 0)
 	_h.frames(2)
 	assert_int(_h.rc().api.awaiting()).is_equal(RunApi.AWAIT_ROUTE)
@@ -349,18 +407,42 @@ func test_a_run_killed_mid_wave_and_mid_draft_resumes_from_the_menu_and_is_paid_
 	_h.hud().refresh()
 	assert_bool(_h.hud().intermission.visible).is_true()  # the breather countdown
 
+	# across the acts: during the act I boss wave, at the act boundary behind it (the boss crate is on offer), in the
+	# first wave of act II, during the act II boss wave, at the second act boundary, in act III and during the last boss wave
+	assert_bool(_play_to(5, true)).is_true()
+	assert_bool(_h.rc().sim.boss_store_index() >= 0 or _h.rc().sim.stats.boss_ids.size() >= 1).is_true()
+	_kill_and_resume("during the boss wave 5")
+	assert_bool(_play_to(5, false)).is_true()
+	assert_int(_h.rc().api.awaiting()).is_equal(RunApi.AWAIT_SALVAGE)  # the boss crate of act I
+	assert_int(_h.rc().sim.phase_state.act).is_equal(1)
+	_kill_and_resume("at the act boundary after wave 5")
+	assert_bool(_play_to(6, true)).is_true()
+	assert_int(_h.rc().sim.phase_state.act).is_equal(2)
+	_kill_and_resume("mid-wave 6, the first of act II")
+	assert_bool(_play_to(10, true)).is_true()
+	_kill_and_resume("during the boss wave 10")
+	assert_bool(_play_to(10, false)).is_true()
+	_kill_and_resume("at the act boundary after wave 10")
+	assert_bool(_play_to(11, true)).is_true()
+	assert_int(_h.rc().sim.phase_state.act).is_equal(3)
+	_kill_and_resume("mid-wave 11, the first of act III")
+	assert_bool(_play_to(15, true)).is_true()
+	_kill_and_resume("during the boss wave 15")
+
 	# to the end: one finish, one payment, nothing left to resume
 	assert_int(_h.frames_until_over(SimHarness.VARIETY_MAX_TICKS)).is_greater(0)
 	assert_int(_h.state()).is_equal(GameState.Id.VICTORY)
+	assert_int(_h.rc().sim.waves_completed).is_equal(WAVES)
 	assert_object(_h.find_in("ScreenRoot", &"ResultsScreen")).is_not_null()
 	assert_str(_h.summary().run_id).is_equal(run_id)
 	assert_int(Save.profile.data).is_equal(_h.summary().data_reward)
+	assert_int(_h.summary().data_reward).is_greater_equal(WAVES * 6 + 30 + 45 + 100)
 	assert_int(Save.profile.runs_played).is_equal(1)
 	assert_int(Save.profile.awarded_run_ids.size()).is_equal(1)
 	assert_int(_h.events_log.count(&"run_finished")).is_equal(1)
 	assert_bool(RunStore.exists(_h.fs)).is_false()
 	assert_bool(_h.game.call(&"resume_run_from_disk")).is_false()
-	files = _h.fs.files.duplicate()
+	var files: Dictionary = _h.fs.files.duplicate()
 	_end_process()
 	_launch(files)
 	assert_bool(_menu().resume_button.visible).is_false()
