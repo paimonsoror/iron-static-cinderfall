@@ -10,7 +10,7 @@
       "rarity_weights": [40, 42, 18], "corrupted_chance": 0.25, "elites_min": 2, "elites_max": 3, "affixes_min": 2, "affixes_max": 2 }
   ],
   "waves": [
-    { "index": 1, "act": 1, "kind": "opener", "budget": 24, "window_s": 33, "peak_bodied": 10, "peak_minis": 0, "event_slots": 0, "fixed_pack": "pack_tide" },
+    { "index": 1, "act": 1, "kind": "opener", "budget": 24, "window_s": 33, "peak_bodied": 10, "peak_minis": 6, "event_slots": 0, "fixed_pack": "pack_tide" },
     { "index": 2, "act": 1, "kind": "normal", "budget": 34, "window_s": 39, "peak_bodied": 16, "peak_minis": 8, "event_slots": 0 },
     { "index": 3, "act": 1, "kind": "normal", "budget": 42, "window_s": 42, "peak_bodied": 24, "peak_minis": 12, "event_slots": 1 },
     { "index": 4, "act": 1, "kind": "normal", "budget": 66, "window_s": 45, "peak_bodied": 30, "peak_minis": 16, "event_slots": 1 },
