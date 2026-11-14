@@ -64,7 +64,9 @@ Each route option carries one reward. "Hot" options (budget x1.25 and a modifier
 
 Option generation per normal wave: option A is "standard" (budget x1.0, 25% chance of a modifier from the mild list), option B
 is "hot" (budget x1.25, always one modifier, +1 elite from act II). The two options never share a pack. From act II, 15% of
-choices are "both hot" (the banner reads `NO QUIET ROUTE`).
+choices are "both hot" (the banner reads `NO QUIET ROUTE`). Elites appear from wave 3, also those of a pack or a modifier:
+wave 2 never draws `mod_elite_pair` (the next modifier of its list is taken instead; V5-A, after a hot wave 2 of MARKED PAIR
+killed the reference player of the scorecard before wave 3).
 
 ### 1.3 Threat packs (composition templates)
 
@@ -541,7 +543,7 @@ The Daily Run is not an unlock: it appears on the menu after the first act I bos
 | id | Draft | Route | Salvage and weapons | Abilities and calls |
 |---|---|---|---|---|
 | `none` | always SKIP | option A | scraps every crate | never |
-| `greedy` | lowest rarity, ties leftmost (the old "cheapest first" habit); never rerolls | option A | takes every crate into the emptiest slot; never swaps | EMP at 12 attackers, Shield when hit, Overdrive when a boss is in range (as today) |
+| `greedy` | lowest rarity, ties leftmost (the old "cheapest first" habit); never rerolls | option A | takes every crate into the emptiest slot (a duplicate is levelled up; a duplicate at the top level passes to the next weapon of the crate, and a crate of nothing else is scrapped: V5-A); never swaps | EMP at 12 attackers, Shield when hit, Overdrive when a boss is in range (as today) |
 | `random` | uniform slot from its own RNG (`hash(seed, "bot")`, never a sim stream) | uniform | uniform | each ready ability with 2% chance per second |
 | `hoarder` | weapon directives first; rerolls when no weapon directive is offered and Scrap is 200 or more | the option with `rw_crate`, else hot | keeps the two highest tiers; swaps to the higher tier when its magazine is ready | as `greedy` |
 | `spammer` | ability directives first | option A | as `greedy` | every ability the tick it is ready; Deadfall and Vent the tick they are legal |
@@ -552,5 +554,6 @@ The Daily Run is not an unlock: it appears on the menu after the first act I bos
 As built (V4-T): the `balanced` row above is what `PolicyScoring`, `PolicyLoadout` and `PolicyAbilities` do. The two bold
 clauses are the changes the first measurements forced: a bot that counted only the enemies within 10 m of the **core** met 12
 of them in about 3% of the combat ticks, so its second weapon never left the holster; and a boss at the cage is answered with
-EMP and Shield. On the 5-wave slice this bot won 19 of 20 seeds; the numbers of the 15-wave game are in the V5-A report and
-V5-C tunes the data, not the bot, until the scorecard passes.
+EMP and Shield. On the 5-wave slice this bot won 19 of 20 seeds. On the 15-wave game with the first-pass numbers (V5-A) it
+wins 11 of seeds 1 to 20 (`sim_run`) and 16 of 30 in the base scorecard (WARN, 6 pass, 13 warn, 0 fail); V5-C tunes the data,
+not the bot, until the scorecard passes.

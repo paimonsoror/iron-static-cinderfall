@@ -791,7 +791,11 @@ combat; AbilitySystem runs in every non-terminal phase). Each new system documen
 **(V) Awaiting.** `step()` returns before `tick += 1` when `phase_state.awaiting != NONE` and the command queue is empty. When a
 command is queued it advances one tick, applies it, and stops again if still awaiting. Bots therefore answer on the next tick
 and the tick count never depends on thinking time. `state_hash` adds the new states in a fixed order after the existing ones.
-Store capacity is `enemy_cap + swarm_cap + 8` (98 with the shipped values 50, 40).
+Store capacity is `enemy_cap + swarm_cap + 8` (98 with the shipped values 50, 40). **(V5-A)** The 8 spare rows are only
+headroom of the store: `spawn_enemy` on variety content refuses a bodied enemy at `enemy_cap` alive and a mini at `swarm_cap`
+(SPEC 5.5), for every caller; a Floor Breach's borers and a splitter's children then join the spawn queue, a boss's
+`BossEffects.send` queues and `send_now` keeps the body owed (before V5-A a direct spawn could use the spare rows: a
+breach into a full field gave 56 bodied, a broken cap of scorecard S17).
 
 ### 6.3 Config, commands, events, hashing, RNG
 
@@ -1332,6 +1336,9 @@ class_name BossSystem             # sim/systems/boss_system.gd + bosses/boss_<id
 class_name SalvageSystem          # crates on the field, the bank, crate contents; step(world)
 
 # Targeting: the signatures of 6.6 "Combat" are FROZEN. is_valid and compare read world.ext for MAGNETIC, SHROUDED and the mini rule.
+# (V5-A) compare ranks a ward_pylon by the urgency of its living boss (rules 1 and 2 read the boss), so its priority_class
+# puts it ahead of the Aegis Array (CONTENT 5 "pylons are priority targets"); on its own a pylon (speed 0) had the last ETA
+# bucket and nothing aimed at it while the Array lived.
 class_name Targeting
 static func pick_cluster(world: SimWorld, x: float, z: float, min_range: float, max_range: float, radius: float) -> Vector2
 static func pick_many(world: SimWorld, x: float, z: float, range_m: float, n: int, out: PackedInt32Array) -> int
@@ -1928,7 +1935,10 @@ cosmetic extras, and **a telegraph, a danger zone or an enemy projectile is neve
   health bar. New modules: `actors/enemy_meshes_2.gd`, `boss_meshes.gd`, `weapon_meshes.gd` (the 8 new weapons),
   `crate_view.gd`; `arena/rail_lines.gd`, `freight_view.gd`, `drum_view.gd`; `vfx/fx_blasts.gd`, `fx_arcs.gd`, `fx_beams.gd`,
   `fx_lobs.gd`, `fx_zones.gd` (pools, wards, telegraphs, elite rings, tethers), `fx_strike.gd`, `fx_cosmetic.gd` (scorch, ghost
-  swarm, embers). `VfxLayer` gets one `setup` call per new module and stays under 400 lines by delegating.
+  swarm, embers), `fx_weapon_shots.gd` (V5-B, `FxWeaponShots`: the look of each gun's shot on top of the tracer and the
+  muzzle star: the scattergun's fan of 8 streaks and muzzle dust, the assault rifle's line through the first target, the LMG's
+  two extra sparks per hit and its Brass pool; it draws into the layer's tracer, spark and dust pools and owns only the
+  brass). `VfxLayer` gets one `setup` call per new module and stays under 400 lines by delegating.
   `BattleView` signatures stay FROZEN. The ground material gains two faint rail lines, kept low-contrast (GDD 12.3).
 - **Materials.** All new enemy materials are the existing `ceramic`, `dark_frame`, `gunmetal`, `hazard`, `emit_red`: no new
   material variant, so no new pipeline to warm. New effect materials reuse `add_cyan`, `add_amber`, `add_red`, `add_white`; the one
@@ -2047,7 +2057,10 @@ lists the one-shot files that a held voice loops (`AudioDirector.hold` through `
 stream of the game is one of the two beds or one of these, and a test pins that each is padded. The combat drone follows
 the **threat budget**: `AudioVarietyRoutes.intensity_for_act` places the wave inside its act by its budget
 (`WAVE_BUDGETS`, a mirror of `data/run.json` `waves[].budget` that a test pins; the boss wave is the top of its act), so
-the drone rises through an act instead of by the wave number.
+the drone rises through an act instead of by the wave number. **Wards** (`AudioThreatRoutes.on_ward_changed`): a ward that
+comes back hums (`ward_hum`), a ward that goes down breaks (`ward_break`), a hit that only drains it is silent, and since V5-B
+the **first** `ward_changed` of an enemy is silent too (a shieldbearer reports its full pool on its first tick, so a hum there
+would sound at every spawn).
 
 **Looping beds on a phone (`AudioLoopPad`, `src/audio/audio_loop_pad.gd`).** When a looping WAV wraps, the mixer's interpolation
 reads a few frames past `loop_end`. With the loop end at the very end of the data that read leaves the buffer: on a phone (the
@@ -2093,7 +2106,7 @@ User arguments come after `--`. On Android they are baked through the preset opt
 | **(V)** `--scenario=chain` | A burster line and a strike, for perf and the legibility capture |
 | **(V)** `--scenario=event:<id>` | One event on its own, for the view tasks and captures (not built: the puppet scenarios of the sandboxes cover it) |
 | **(V5-A)** `--scenario=boss:<id>` | The real game starts at the boss wave of that boss with a scripted build: a `BossDef` id (`brood_carrier`, `lance_platform`, `aegis_array`, `tremor_rig`, `siege_hulk`) or a Node 9 variant (`hulk_plated`, `hulk_fed`, `hulk_overclocked`). `SimConfig.debug_boss`, applied by `DebugStart` |
-| **(V5-A)** `--scenario=wave:<n>` (the meaning of `--wave=<n>`; `DebugArgs` does not parse `--wave` yet) | Start at wave n with a scripted build (`DebugStart.BUILD`: one base directive per skipped wave, a second weapon from wave 3). `SimConfig.debug_start_wave`. Skips the menus like `--autoplay` |
+| **(V5-A)** `--wave=<n>`, or its long form `--scenario=wave:<n>` (`DebugArgs` stores `--wave=<n>` as that scenario) | Start at wave n with a scripted build (`DebugStart.BUILD`: one base directive per skipped wave, a second weapon from wave 3). `SimConfig.debug_start_wave`. Skips the menus like `--autoplay` |
 | **(V)** `--kit=<id>` | Start with that kit |
 | **(V)** `--unlock=all\|none\|<ids>` | The unlocked pool of the run (`all` for a debug victory path) |
 | **(V)** `--daily` | Start the Daily Run |
@@ -2224,7 +2237,7 @@ New pools, allocated once at `setup`; exhaustion drops the oldest visual and nev
 | Blast flashes (BILLBOARD) | 0 / 8 / 12 | 1 | every blast (not on LOW) |
 | Arc segments (SEGMENT) | 18 / 30 / 45 | 1 | arc projector, shock rounds, pylons, core lash |
 | Beam segments | 2 / 2 / 3 | 1 | torch, lance charge and shot, Lance Platform beam |
-| Lobbed projectiles (BILLBOARD), three pools with one colour each (V4-X): shells 4 + hornets up to 20, together 12 / 18 / 24; spitter bolts 12 on every tier (an enemy projectile is never tier-gated) | 12 / 18 / 24 + 12 | 3 | mortar shells (amber), hornets (cyan), spitter bolts (red) |
+| Lobbed projectiles (LOB), three pools with one colour each (V4-X): shells 4 + hornets up to 20, together 12 / 18 / 24; spitter bolts 12 on every tier (an enemy projectile is never tier-gated) | 12 / 18 / 24 + 12 | 3 | mortar shells (amber balls), hornets (cyan streaks: since V5-B a ribbon 0.95 m long along the flight, `VfxPool.streak_len`, not a ball), spitter bolts (red balls) |
 | Ground pools (FLAT) | 6 / 8 / 10 | 1 | slag, burn |
 | Telegraph decals (FLAT, hatched) | 8 / 8 / 8 | 1 | lanes, rings, cracks |
 | Ward and aura rings (FLAT) | 8 / 10 / 12 | 1 | shieldbearer, warded, overclocker, jammer |
@@ -2232,12 +2245,14 @@ New pools, allocated once at `setup`; exhaustion drops the oldest visual and nev
 | Tether lines (SEGMENT) | 6 / 9 / 12 | 1 | reclaimer, magnetic |
 | Scorch marks (FLAT, persistent ring) | 0 / 8 / 16 | 1 | after blasts |
 | Ghost swarm (cosmetic) | 0 / 40 / 80 | 1 | outside the playable rectangle |
+| Brass (DEBRIS, V5-B `FxWeaponShots.BRASS_BY_TIER`) | 0 / 8 / 16 | 1 on MID and HIGH, none on LOW | the LMG's spent cases |
 | Crate, strike column, freight car, drums | 1 + 1 + 1 + 3 nodes | 6 to 8 | events |
-| Existing: tracers 48, sparks 64, bursts 24, texts 24 | unchanged | - | - |
+| Existing: tracers 48, sparks 64, bursts 24, texts 24 | unchanged | - | - (the scattergun fan and the rifle's through-line draw into the tracers, the LMG's extra sparks into the sparks) |
 
 The existing EMP ring pool is 2 (SPEC 10.3 lists "2 to 6" for it; V2-F fixes the final number together with the blast rings).
 Worst-case addition: about 22 draw calls on LOW and 28 on HIGH. With the measured 137 on HIGH that is about 165: over the 150
-target, under the 220 limit. That is the number task V2-P measures first on the phone (including `--scenario=hold50+40` and
+target, under the 220 limit. **Measured by V5-B on the desktop** at `--scenario=hold50+40`: 118 / 118 / 124 draw calls on LOW /
+MID / HIGH, inside the 150 target. That is the number task V2-P measures first on the phone (including `--scenario=hold50+40` and
 `--scenario=chain`); if it does not hold, the cut order is: ghost swarm, scorch marks, flashes, tether lines, then the optional
 task V4-X2 (draw **all** enemies of a type as one transform-only MultiMesh, which would cut about 50 to 100 draw calls but
 replaces the material-swap hit flash with a transform pop and needs the hard-surface look ported). Per-effect guesses to be

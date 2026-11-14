@@ -207,7 +207,7 @@ Source of truth: `docs/design/VARIETY_SPEC.md` (contracts: section 13; tasks and
   one of them); the other six weapons, 29 directives, five kits and the six field options are Archive unlocks
   (`data/unlocks.json`, 24 rows). The sim asks `world.config.has_unlock(id)`, the UI `RunApi.has_unlock(id)`; a Daily Run
   has every unlock.
-- **Debug starts of the real game:** `--scenario=wave:<n>` (start at wave n with a scripted build) and
+- **Debug starts of the real game:** `--wave=<n>` or `--scenario=wave:<n>` (start at wave n with a scripted build) and
   `--scenario=boss:<id>` (a boss id or `hulk_plated|hulk_fed|hulk_overclocked`); with `--autoplay=balanced --unlock=all`
   they are the fast way to a late wave. A run with any debug switch (`SimConfig.is_debug()`) records nothing in the Archive.
 - **UI width checks.** `UiOverflowKit` (`tests/unit/ui/overflow_kit.gd`) lays a screen out at phone sizes and names every
