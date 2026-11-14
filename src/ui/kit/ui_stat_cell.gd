@@ -17,6 +17,8 @@ func _init(caption_text: String = "", value_text: String = "", variant: StringNa
 	caption.custom_minimum_size.x = 8.0
 	col.add_child(caption)
 	value = UiKit.label_text(value_text, variant)
+	value.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # "1,000 / 1,000 (100%)" wraps on a narrow window instead of widening the screen
+	value.custom_minimum_size.x = 8.0
 	col.add_child(value)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 

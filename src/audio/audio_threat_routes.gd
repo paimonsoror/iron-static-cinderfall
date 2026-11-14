@@ -13,7 +13,7 @@ extends RefCounted
 ##    blow lands later (the Tremor Rig) the blow itself `ticks` later; the Lance Platform's beam plays when it hits the
 ##    core (the router), so an EMP that cancels the charge also cancels the shot;
 ##  - boss_phase: a hit of its own; the last pylon of the Aegis Array falling opens the array (`aegis_exposed`);
-##  - elite_spawned, ward_changed (a ward coming up hums, a ward going down breaks), a borer spawning.
+##  - elite_spawned, ward_changed (a ward that comes back hums, a ward going down breaks, a ward at its spawn is silent), a borer spawning.
 
 const TICKS_PER_SECOND: float = 60.0  ## the fixed sim rate (ARCH 6.1)
 
@@ -173,9 +173,13 @@ func on_elite_spawned(_id: int, _kind: StringName, _affixes: int) -> void:
 	_play(&"elite_spawn")
 
 
-## A ward that comes up (or flares again) hums, a ward that goes down breaks; a hit that only drains it is silent.
+## A ward that comes back hums, a ward that goes down breaks; a hit that only drains it is silent. The first report of an enemy's ward is
+## silent too: a shieldbearer pushes WARD_CHANGED with its full pool on its first tick, so a hum there would sound at every spawn.
 func on_ward_changed(id: int, fraction: float) -> void:
-	var up: bool = _ward_up.get(id, false)
+	if not _ward_up.has(id):
+		_ward_up[id] = fraction > 0.0
+		return
+	var up: bool = _ward_up[id]
 	if fraction > 0.0 and not up:
 		_ward_up[id] = true
 		_play(&"ward_hum")

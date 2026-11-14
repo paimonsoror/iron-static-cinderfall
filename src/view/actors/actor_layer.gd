@@ -203,6 +203,8 @@ func quality() -> int:
 ## High-contrast setting (GDD 10.3): brighter enemy optics and rim lit plates (ActorContrast). Safe before `setup`.
 func set_high_contrast(on: bool) -> void:
 	_high_contrast = on
+	if _decals != null:
+		_decals.set_high_contrast(on)
 	if on:
 		ActorContrast.rebuild()
 	if _pool != null:

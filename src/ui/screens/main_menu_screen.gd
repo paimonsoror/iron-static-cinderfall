@@ -13,6 +13,7 @@ signal resume_pressed  ## RESUME RUN: continue the run the run file holds (V3-I)
 signal archive_pressed
 signal daily_pressed
 
+const NARROW_ROW_W: float = 900.0  ## below this much room the three footer buttons stack
 const ARCHIVE_SCENE: String = "res://src/ui/screens/archive_screen.tscn"
 
 var open_archive_overlay: bool = true  ## false when the game layer opens the Archive itself on `archive_pressed`
@@ -31,6 +32,8 @@ var archive_button: Button
 var settings_button: Button
 var quit_button: Button
 var archive_screen: ArchiveScreen  ## the open Archive overlay, or null
+var _frame: UiScreenFrame
+var _footer_row: GridContainer
 var _profile: Profile
 var _today: String = ""
 var _built: bool = false
@@ -104,6 +107,18 @@ func _on_archive_closed(screen: ArchiveScreen) -> void:
 		setup(_profile)  # the Archive may have spent Data
 
 
+## The ARCHIVE / SETTINGS / QUIT row drops to one column on a window narrower than the phone.
+func _stack_footer() -> void:
+	if _footer_row != null:
+		_footer_row.columns = UiKit.columns_for(_frame, 3, NARROW_ROW_W)
+
+
+## The tagline wraps in two equal lines, never one line and a lone word.
+func _balance_tagline() -> void:
+	if _frame != null and tagline_label != null and _frame.size.x > 1.0:
+		UiKit.balance(tagline_label, _frame.available_width())
+
+
 func _refresh_daily() -> void:
 	if daily_button == null:
 		return
@@ -133,6 +148,7 @@ func _ensure_built() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var frame: UiScreenFrame = UiScreenFrame.new(UiBackdrop.Mode.HERO)
 	add_child(frame)
+	_frame = frame
 	var col: VBoxContainer = frame.content
 	col.add_child(UiKit.spacer(60.0))
 	title_block = UiTitleBlock.new(true)
@@ -141,6 +157,8 @@ func _ensure_built() -> void:
 	tagline_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tagline_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(tagline_label)
+	frame.resized.connect(_balance_tagline)
+	_balance_tagline.call_deferred()
 	col.add_child(UiKit.spacer(0.0, 0.0, true))
 	var stats: HBoxContainer = HBoxContainer.new()
 	stats.add_theme_constant_override("separation", 16)
@@ -171,9 +189,14 @@ func _build_footer(footer: VBoxContainer) -> void:
 	daily_button.pressed.connect(func() -> void: daily_pressed.emit())
 	daily_button.visible = false
 	footer.add_child(daily_button)
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 20)
+	var row: GridContainer = GridContainer.new()
+	row.columns = 3
+	row.add_theme_constant_override("h_separation", 20)
 	footer.add_child(row)
+	row.add_theme_constant_override("v_separation", 20)
+	_footer_row = row
+	_frame.resized.connect(_stack_footer)
+	_stack_footer.call_deferred()
 	archive_button = _row_button("menu.archive", row, false)
 	archive_button.pressed.connect(_on_archive)
 	settings_button = _row_button("menu.settings", row, false)
@@ -183,7 +206,7 @@ func _build_footer(footer: VBoxContainer) -> void:
 
 
 ## A button of the three-in-a-row footer line: it shares the width (the usual minimum would need more than the screen).
-func _row_button(text_key: String, row: HBoxContainer, quiet: bool) -> Button:
+func _row_button(text_key: String, row: GridContainer, quiet: bool) -> Button:
 	var b: Button = UiKit.button_quiet(text_key) if quiet else UiKit.button(text_key)
 	b.custom_minimum_size = Vector2(UiTheme.TOUCH_MIN, UiTheme.BTN_PRIMARY_H)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL

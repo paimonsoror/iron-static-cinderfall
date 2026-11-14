@@ -60,6 +60,8 @@ func _ensure_built() -> void:
 	tagline_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tagline_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(tagline_label)
+	_frame.resized.connect(_balance_tagline)
+	_balance_tagline.call_deferred()
 	col.add_child(UiKit.spacer(0.0, 0.0, true))
 	col.add_child(_status_panel())
 	progress = UiKit.bar()
@@ -83,6 +85,12 @@ func _status_panel() -> PanelContainer:
 	version_label = UiKit.label_text("", &"Mono", 34)
 	col.add_child(version_label)
 	return panel
+
+
+## The tagline wraps in two equal lines, never one line and a lone word.
+func _balance_tagline() -> void:
+	if _frame != null and tagline_label != null and _frame.size.x > 1.0:
+		UiKit.balance(tagline_label, _frame.available_width())
 
 
 ## Emits `finished` the first time only, whichever of the timer and the button comes first.

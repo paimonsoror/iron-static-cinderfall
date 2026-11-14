@@ -14,6 +14,7 @@ signal archive_pressed
 
 const ARCHIVE_SCENE: String = "res://src/ui/screens/archive_screen.tscn"
 
+const STATS_TWO_COLUMNS_FROM: float = 900.0
 const COUNT_SECONDS: float = 1.2
 const COUNT_STEP: float = 0.05  ## the count-up redraws its number at 20 Hz, not every frame
 
@@ -41,6 +42,8 @@ var archive_screen: ArchiveScreen  ## the open Archive overlay, or null
 var open_archive_overlay: bool = true  ## false when the game layer opens the Archive itself on `archive_pressed`
 var _seed: int = 0
 var _frame: UiScreenFrame
+var _stats: GridContainer
+var _footer_row: GridContainer
 var _kills_col: VBoxContainer
 var _built: bool = false
 var _target: int = 0
@@ -51,6 +54,17 @@ var _counting: bool = false
 
 func _ready() -> void:
 	_ensure_built()
+
+
+## SAME SEED / ARCHIVE / MENU drop to one column on a window narrower than the phone.
+func _stack_footer() -> void:
+	if _footer_row != null:
+		_footer_row.columns = UiKit.columns_for(_frame, 3, STATS_TWO_COLUMNS_FROM)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED and _stats != null:
+		_stats.columns = 2 if size.x >= STATS_TWO_COLUMNS_FROM else 1  # a window narrower than the phone stacks the four figures
 
 
 func setup(summary: RunSummary, content: ContentSet, profile: Profile, reward_granted: bool) -> void:
@@ -145,6 +159,7 @@ func _ensure_built() -> void:
 	_frame.header.add_child(subtitle_label)
 	act_label = UiKit.label_text("", UiTheme.LABEL_ACCENT)
 	act_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	act_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	act_label.visible = false
 	_frame.header.add_child(act_label)
 	seed_label = UiKit.label_text("", UiTheme.LABEL_NUMBER, UiTheme.FONT_SMALL)
@@ -166,9 +181,14 @@ func _build_footer() -> void:
 	retry_button = UiKit.button_primary("results.retry")
 	retry_button.pressed.connect(func() -> void: retry_pressed.emit())
 	_frame.footer.add_child(retry_button)
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 20)
+	var row: GridContainer = GridContainer.new()
+	row.columns = 3
+	row.add_theme_constant_override("h_separation", 20)
 	_frame.footer.add_child(row)
+	row.add_theme_constant_override("v_separation", 20)
+	_footer_row = row
+	_frame.resized.connect(_stack_footer)
+	_stack_footer.call_deferred()
 	same_seed_button = UiKit.button("results.same_seed")
 	same_seed_button.custom_minimum_size = Vector2(UiTheme.TOUCH_MIN, UiTheme.BTN_PRIMARY_H)
 	same_seed_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -215,6 +235,7 @@ func _stats_grid() -> GridContainer:
 	kills_cell = UiStatCell.new(Strings.t("results.kills_total"), "")
 	for cell: UiStatCell in [waves_cell, time_cell, core_cell, kills_cell]:
 		grid.add_child(cell)
+	_stats = grid
 	return grid
 
 
