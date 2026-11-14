@@ -11,7 +11,8 @@ extends RefCounted
 ## V4-X modes:
 ##   STRIP     a flat rectangle for lanes and edge bands: half-length `vel_or_end.x`, half-width s0 -> s1, yaw = spin
 ##   BEAM      a ribbon from p to v over its WHOLE length (a beam, unlike the SEGMENT tracer that runs out), width s0 -> s1
-##   LOB       a billboard flying from p to v on an arc `spin` meters high, size s0 -> s1 (mortar shells, hornets, spitter bolts)
+##   LOB       a billboard flying from p to v on an arc `spin` meters high, size s0 -> s1 (mortar shells, spitter bolts); with
+##             `streak_len` > 0 it is a ribbon of that length along the flight, size s0 -> s1 wide (the hornets of the rack)
 ##   DRIFT     a billboard that moves from p with velocity v and no gravity (embers), size s0 -> s1
 
 enum Mode { FLAT, BILLBOARD, SEGMENT, DEBRIS, STREAK, STRIP, BEAM, LOB, DRIFT }
@@ -24,6 +25,7 @@ var limit: int = 0  ## slots in use: `capacity` unless a tier limits the pool (`
 var mode: int = Mode.FLAT
 var facing: Basis = Basis.IDENTITY  ## BILLBOARD orientation (camera basis turned to face it)
 var streak_width: float = 0.08
+var streak_len: float = 0.0  ## LOB only: 0 draws a billboard ball, more draws a ribbon this long, pointing along the flight
 
 var _mm: MultiMesh
 var _live: PackedByteArray = PackedByteArray()
@@ -212,12 +214,21 @@ func _transform(i: int) -> Transform3D:
 		Mode.BEAM:
 			return along(_p[i], _v[i], s)
 		Mode.LOB:
-			var fly: Vector3 = _p[i].lerp(_v[i], t01) + Vector3(0.0, _spin[i] * 4.0 * t01 * (1.0 - t01), 0.0)
+			var fly: Vector3 = _lob_at(i, t01)
+			if streak_len > 0.0:
+				var dir: Vector3 = _lob_at(i, minf(t01 + 0.05, 1.0)) - _lob_at(i, maxf(t01 - 0.05, 0.0))
+				dir = dir.normalized() if dir.length() > 0.001 else (_v[i] - _p[i]).normalized()
+				return along(fly - dir * streak_len * 0.5, fly + dir * streak_len * 0.5, s)
 			return Transform3D(facing * Basis.from_scale(Vector3(s, 1.0, s)), fly)
 		Mode.DRIFT:
 			return Transform3D(facing * Basis.from_scale(Vector3(s, 1.0, s)), _p[i] + _v[i] * _age[i])
 		_:
 			return _streak(i, s)
+
+
+## Where a lob is at `t01` of its flight: the straight line from p to v plus the arc.
+func _lob_at(i: int, t01: float) -> Vector3:
+	return _p[i].lerp(_v[i], t01) + Vector3(0.0, _spin[i] * 4.0 * t01 * (1.0 - t01), 0.0)
 
 
 func _segment(i: int, t01: float, width: float) -> Transform3D:

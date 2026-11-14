@@ -10,6 +10,10 @@ extends Node
 ## low core). The puppet changes sim state only through public sim calls, commands and the few debug writes marked below.
 ## Variety scenarios (VARIETY_SPEC 13.8, scripted by PuppetChaos): `hold<N>+<M>` adds M minis to the crowd of N, `chain`
 ## is a crowd of CHAIN_HOLD with a burster line, a Deadfall Strike, a chain of blasts, arcs and a pool on a loop.
+## V5-B lab scenarios on the real boss and event systems (the sim steps them like a run would): `boss:<id>` holds a crowd around the
+## named boss (siege_hulk, brood_carrier, lance_platform, aegis_array, tremor_rig, or the Node 9 variants hulk_plated, hulk_fed,
+## hulk_overclocked) and lets BossSystem run its script; `event:<id>` opens the named chaos event (any id of events.json) once the
+## crowd is walking and lets EventSystem run its warning and its effect.
 
 const TICK_DT: float = 1.0 / 60.0
 const PREROLL_TICKS: int = 180
@@ -17,6 +21,11 @@ const SPAWN_EVERY_TICKS: int = 5
 const DAMAGE_MULT: float = 0.3  ## the crowd must survive long enough to be looked at
 const BOSS_ESCORT: int = 14
 const MIX: Array[int] = [0, 0, 0, 1, 0, 2, 0, 0, 1, 2]  ## six skitters, two hollow wardens, two rushers
+## `mixed<N>+<M>` (V5-B legibility pass): every bodied enemy type of the roster in rotation, so a crowd shows each of them once in ten.
+const MIX_ALL: Array[int] = [
+	Ids.EN_SKITTER, Ids.EN_SKITTER, Ids.EN_HOLLOW, Ids.EN_RUSHER, Ids.EN_BURSTER, Ids.EN_SPITTER, Ids.EN_SPLITTER, Ids.EN_SHIELDBEARER,
+	Ids.EN_RECLAIMER, Ids.EN_JAMMER,
+]
 ## Seconds after the start: when each action first happens (abilities repeat whenever they are ready again).
 const T_TURRET_0: float = 0.5
 const T_TURRET_1: float = 1.0
@@ -25,12 +34,24 @@ const T_STUCK: float = 1.2
 const T_ABILITY: Array[float] = [8.0, 2.0, 3.0]  ## EMP, shield, overdrive (Ids.AB_*)
 const RETRY_TICKS: int = 180
 const CHAIN_HOLD: int = 24
+const LAB_HOLD: int = 30  ## the crowd around an event
+const T_EVENT: float = 0.5  ## seconds after the start: the event of an `event:<id>` scenario opens (and again once it is over)
+const BOSS_TYPES: Dictionary[StringName, int] = {
+	&"siege_hulk": Ids.EN_HULK, &"hulk_plated": Ids.EN_HULK, &"hulk_fed": Ids.EN_HULK, &"hulk_overclocked": Ids.EN_HULK,
+	&"brood_carrier": Ids.EN_BROOD_CARRIER, &"lance_platform": Ids.EN_LANCE_PLATFORM, &"aegis_array": Ids.EN_AEGIS_ARRAY,
+	&"tremor_rig": Ids.EN_TREMOR_RIG,
+}
 
 var world: SimWorld
 var events: PuppetEvents
 var scenario: String = "hold50"
 var hold: int = 50
 var boss_mode: bool = false
+var boss_kind: StringName = &""  ## `boss:<id>`: which boss (empty = the Siege Hulk of the plain `boss` scenario)
+var mixed: bool = false  ## `mixed<N>+<M>`: the crowd is drawn from MIX_ALL
+var event_id: StringName = &""  ## `event:<id>`: which chaos event to open
+var second_active: bool = false  ## set before `setup`: ... and holds it in hand
+var second_weapon: StringName = &""  ## set before `setup`: the Warden also carries this weapon in slot 2 (a HUD capture shows two cards)
 var tick_usec_avg: float = 0.0  ## moving average of one puppet tick (the sim systems), for the perf line
 var tick_sink: Callable = Callable()  ## called with the microseconds of every tick (PerfHud.record_tick_usec)
 var chaos: PuppetChaos = PuppetChaos.new()  ## the variety script (minis, chain, arcs, telegraphs)
@@ -44,22 +65,43 @@ var _spawned_n: int = 0
 var _next_try: PackedInt32Array = PackedInt32Array([0, 0, 0])
 var _stuck_done: bool = false
 var _scripting: bool = false
+var _lab: bool = false  ## the real boss, event, status and hazard systems run too (a `boss:<id>` or `event:<id>` scenario)
+var _event_index: int = -1
+var _next_event_tick: int = 0
 var _core_floor: float = 0.25
 var _core_refill: float = 1.0
 
 
 ## `scenario_name`: `hold<N>` (N clamped to the enemy cap), `hold<N>+<M>` (M minis, clamped to `swarm_cap`), `chain`
-## or `boss`; anything else is hold50. Returns {hold, boss, minis, chain}.
+## `chain<N>+<M>`, `boss`, `boss:<id>` or `event:<id>`; anything else is hold50. Returns {hold, boss, minis, chain, boss_kind, event}.
 static func parse(scenario_name: String, enemy_cap: int, swarm_cap: int = 0) -> Dictionary[String, Variant]:
-	var out: Dictionary[String, Variant] = {"hold": 50, "boss": false, "minis": 0, "chain": false}
+	var out: Dictionary[String, Variant] = {"hold": 50, "boss": false, "minis": 0, "chain": false, "boss_kind": &"", "event": &"", "mixed": false}
 	var crowd: String = scenario_name.substr(4) if scenario_name.begins_with("hold") else ""
 	var plus: int = crowd.find("+")
 	if scenario_name == "boss":
 		out["hold"] = BOSS_ESCORT + 1
 		out["boss"] = true
-	elif scenario_name == "chain":
+	elif scenario_name.begins_with("boss:"):
+		out["hold"] = BOSS_ESCORT + 1
+		out["boss"] = true
+		out["boss_kind"] = StringName(scenario_name.substr(5))
+	elif scenario_name.begins_with("event:"):
+		out["hold"] = mini(LAB_HOLD, enemy_cap)
+		out["event"] = StringName(scenario_name.substr(6))
+	elif scenario_name.begins_with("mixed") and scenario_name.substr(5).find("+") > 0:  # `mixed<N>+<M>`
+		var tail_mixed: String = scenario_name.substr(5)
+		var cut: int = tail_mixed.find("+")
+		out["mixed"] = true
+		out["hold"] = clampi(tail_mixed.substr(0, cut).to_int(), 1, enemy_cap)
+		out["minis"] = clampi(tail_mixed.substr(cut + 1).to_int(), 0, swarm_cap)
+	elif scenario_name.begins_with("chain"):  # `chain` (CHAIN_HOLD bodies) or `chain<N>+<M>` (N bodies and M minis around the line)
+		var tail: String = scenario_name.substr(5)
+		var split: int = tail.find("+")
 		out["hold"] = mini(CHAIN_HOLD, enemy_cap)
 		out["chain"] = true
+		if split > 0 and tail.substr(0, split).is_valid_int() and tail.substr(split + 1).is_valid_int():
+			out["hold"] = clampi(tail.substr(0, split).to_int(), 1, enemy_cap)
+			out["minis"] = clampi(tail.substr(split + 1).to_int(), 0, swarm_cap)
 	elif plus > 0 and crowd.substr(0, plus).is_valid_int() and crowd.substr(plus + 1).is_valid_int():
 		out["hold"] = clampi(crowd.substr(0, plus).to_int(), 1, enemy_cap)
 		out["minis"] = clampi(crowd.substr(plus + 1).to_int(), 0, swarm_cap)
@@ -76,6 +118,10 @@ func setup(content: ContentSet, scenario_name: String = "hold50", puppet_seed: i
 	var spec: Dictionary[String, Variant] = parse(scenario_name, content.mission.enemy_cap, content.mission.swarm_cap)
 	hold = spec["hold"]
 	boss_mode = spec["boss"]
+	boss_kind = spec["boss_kind"]
+	event_id = spec["event"]
+	mixed = spec["mixed"]
+	_lab = boss_kind != &"" or event_id != &""
 	chaos.minis = spec["minis"]
 	chaos.chain = spec["chain"]
 	chaos.boss = boss_mode
@@ -89,16 +135,24 @@ func setup(content: ContentSet, scenario_name: String = "hold50", puppet_seed: i
 	world.wave = 5 if (boss_mode or hold >= 40) else 3  # debug write: unlocks the SMG (min_wave 2)
 	events = PuppetEvents.new(content)
 	chaos.setup(world, content, _rng)
+	if second_weapon != &"" and content.weapon(second_weapon) != null and world.arsenal.slot_count > 1:
+		ArsenalSystem.give_weapon(world, 1, Ids.WEAPONS.find(second_weapon))
+		if second_active:
+			var _swap: int = ArsenalSystem.swap(world, 0, 1)
 	if boss_mode:
-		_core_floor = 0.08
-		_core_refill = 0.3
-		world.set_core_hp(world.core_max_hp * 0.3)
+		var named: bool = boss_kind != &""  # a named boss is looked at, not survived: the core stays healthy
+		_core_floor = 0.4 if named else 0.08
+		_core_refill = 0.7 if named else 0.3
+		world.set_core_hp(world.core_max_hp * _core_refill)
 	if boss_mode or hold >= 40:
-		var boss: int = _spawn_along_path(Ids.EN_HULK, 0.55)
+		var boss_type: int = BOSS_TYPES.get(boss_kind, Ids.EN_HULK)
+		var boss: int = _spawn_along_path(boss_type, 0.55)
 		if boss >= 0:
 			_spawned_n += 1
+			_pick_variant()
+	_event_index = content.event_index(event_id) if event_id != &"" else -1
 	while world.alive_count() < hold:
-		var _i: int = _spawn_along_path(MIX[_spawned_n % MIX.size()], _rng.randf_range(0.05, 1.0))
+		var _i: int = _spawn_along_path(_mix_at(_spawned_n), _rng.randf_range(0.05, 1.0))
 		_spawned_n += 1
 	for _t: int in PREROLL_TICKS:
 		_tick()
@@ -134,11 +188,19 @@ func _tick() -> void:
 	world.tick += 1
 	world.events.current_tick = world.tick
 	CommandSystem.apply_queued(world)
+	if _lab:
+		EventSystem.step(world)
 	AbilitySystem.step(world)
+	if _lab:
+		StatusSystem.step(world)
 	MovementSystem.step(world)
 	WeaponSystem.step(world)
 	TurretSystem.step(world)
+	if _lab:
+		HazardSystem.step(world)
 	CoreAttackSystem.step(world)
+	if _lab:
+		BossSystem.step(world)
 	if _scripting and chaos.active():
 		chaos.tick(_clock)
 	_guard_boss()
@@ -166,6 +228,10 @@ func _script() -> void:
 		_command(SimCommand.purchase(_cmd_id(), Ids.UP_AUTO_TURRET))
 	if _clock == roundi(T_SMG / TICK_DT):
 		_command(SimCommand.purchase(_cmd_id(), Ids.UP_SMG))
+	if second_active and second_weapon == &"hornet_rack" and _clock >= 60 and (_clock - 60) % 100 == 0:
+		_hornet_salvo()
+	if _event_index >= 0 and _event_open_due(seconds):
+		var _slot: int = EventSlots.open(world, _event_index)
 	if not _stuck_done and seconds >= T_STUCK:
 		_stuck_done = true
 		_mark_stuck(2)
@@ -173,6 +239,40 @@ func _script() -> void:
 		if seconds >= T_ABILITY[a] and _clock >= _next_try[a] and world.abilities.is_ready(a):
 			_next_try[a] = _clock + RETRY_TICKS
 			_command(SimCommand.ability(_cmd_id(), a))
+
+
+## What the rack sends on its own shot: six hornets in the air toward the nearest bodies (the puppet's guns do not launch missiles; the
+## sim's `FireMissiles` pushes exactly these events, so the view draws the same streaks).
+func _hornet_salvo() -> void:
+	var st: EnemyStore = world.enemies
+	var sent: int = 0
+	for i: int in st.high_water:
+		if st.alive[i] == 1 and sent < 6:
+			world.events.push(SimEventKind.Id.DELAYED_HIT_LAUNCHED, HazardState.K_MISSILE, 30, st.x[i], st.z[i])
+			sent += 1
+
+
+## The named event opens at T_EVENT, and again (after a pause of one second) whenever it has run its course.
+func _event_open_due(seconds: float) -> bool:
+	if seconds < T_EVENT:
+		return false
+	for e: int in world.events_state.a_event.size():
+		if world.events_state.a_event[e] == _event_index:
+			return false
+	if _clock < _next_event_tick:
+		return false
+	_next_event_tick = _clock + roundi(1.0 / TICK_DT)
+	return true
+
+
+## A Node 9 variant is the plan's pick in a run; here the scenario names it (debug write on the boss state the script just filled).
+func _pick_variant() -> void:
+	var index: int = _content.run.hulk_variants.find(boss_kind) if _content.run != null else -1
+	if index < 0 or world.boss.boss_type != Ids.EN_HULK:
+		return
+	world.boss.variant = index
+	if boss_kind == &"hulk_plated":
+		world.boss.phase_count = BossSiegeHulk.PLATED_PHASES
 
 
 func _command(cmd: SimCommand) -> void:
@@ -218,12 +318,16 @@ func _repair_core() -> void:
 		world.set_core_hp(world.core_max_hp * _core_refill)
 
 
+func _mix_at(n: int) -> int:
+	return MIX_ALL[n % MIX_ALL.size()] if mixed else MIX[n % MIX.size()]
+
+
 ## Keeps `hold` enemies alive: a replacement walks in from a spawn region every few ticks.
 func _top_up() -> void:
 	var bodied: int = world.alive_count() - (chaos.minis_alive() if chaos.minis > 0 else 0)
 	if bodied >= hold or _clock % SPAWN_EVERY_TICKS != 0:
 		return
-	var kind: int = MIX[_spawned_n % MIX.size()]
+	var kind: int = _mix_at(_spawned_n)
 	_spawned_n += 1
 	var _i: int = _spawn_along_path(kind, 0.0)
 

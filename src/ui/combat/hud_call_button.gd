@@ -8,7 +8,7 @@ extends Button
 signal called(event_id: StringName)
 
 const SIZE: float = 150.0
-const SMALL: float = 132.0
+const SMALL: float = 140.0  ## FREIGHT: wide enough for its name at 30 px (124 px) inside the margins
 
 var event_id: StringName = &""
 var ready_now: bool = false
@@ -27,7 +27,7 @@ func _init(id: StringName = &"", icon_id: StringName = &"call_strike", label_key
 	var body: MarginContainer = MarginContainer.new()
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for side: String in ["left", "right", "top", "bottom"]:
-		body.add_theme_constant_override("margin_" + side, 8)
+		body.add_theme_constant_override("margin_" + side, 6)
 	add_child(body)
 	body.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var col: VBoxContainer = VBoxContainer.new()

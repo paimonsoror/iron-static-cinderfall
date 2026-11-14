@@ -13,7 +13,11 @@ var banner_title: Label
 var banner_whisper: Label
 var hint_panel: PanelContainer
 var hint_label: Label
+const TITLE_MIN: int = 48  ## the banner title never shrinks below this (body text is 38)
+const WHISPER_MIN: int = 30  ## ... nor the whisper line (small text is never under 30)
+
 var _stack: VBoxContainer
+var _inner_w: float = 1032.0
 var _bottom_reserved: float = 0.0
 var _banner_tween: Tween
 var _hint_tween: Tween
@@ -27,6 +31,7 @@ func _init() -> void:
 	_stack = VBoxContainer.new()
 	_stack.add_theme_constant_override(&"separation", 8)
 	_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stack.minimum_size_changed.connect(fit_arrows)  # a boss bar or a ticker line appearing moves the arrows' zone
 	add_child(_stack)
 	boss_bar = HudBossBar.new()
 	_stack.add_child(boss_bar)
@@ -68,6 +73,7 @@ func _build_banner() -> void:
 	HudStyle.center(banner_title)
 	HudStyle.bold(banner_title)
 	HudStyle.outline(banner_title, 8)
+	banner_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS  # never wider than the box (see _fit_banner)
 	col.add_child(banner_title)
 	banner_whisper = HudStyle.make_label("-", 34, HudStyle.color(&"warden_cyan"))
 	HudStyle.center(banner_whisper)
@@ -98,6 +104,8 @@ func place(zone: Rect2, margins: Vector4, bottom_reserved: float) -> void:
 	size = zone.size
 	_bottom_reserved = bottom_reserved
 	var inner_w: float = zone.size.x - 2.0 * HudStyle.EDGE - margins.x - margins.z
+	_inner_w = inner_w
+	_fit_banner()
 	var left: float = HudStyle.EDGE + margins.x
 	_stack.position = Vector2(left, 10.0)
 	_stack.size = Vector2(inner_w, 0.0)
@@ -116,6 +124,11 @@ func fit_arrows() -> void:
 	var top: float = minf(_stack.position.y + _stack.get_combined_minimum_size().y + 8.0, size.y)
 	edge_arrows.position = Vector2(0.0, top)
 	edge_arrows.size = Vector2(size.x, maxf(size.y - top, 0.0))
+	edge_arrows.avoid = Rect2()
+	if banner_box.visible:
+		var need: Vector2 = banner_box.get_combined_minimum_size()
+		edge_arrows.avoid = Rect2(banner_box.position - edge_arrows.position, Vector2(maxf(banner_box.size.x, need.x), need.y))
+	edge_arrows.replace(position + edge_arrows.position)
 
 
 func set_boss(kind: StringName, hp: float, max_hp: float) -> void:
@@ -136,7 +149,9 @@ func show_boss_banner(kind: StringName) -> void:
 func show_text(title: String, whisper: String, hold: float) -> void:
 	banner_title.text = title
 	banner_whisper.text = whisper
+	_fit_banner()
 	banner_box.visible = true
+	fit_arrows()
 	_kill(_banner_tween)
 	banner_box.modulate.a = 1.0
 	if hold <= 0.0 or not is_inside_tree():
@@ -149,9 +164,26 @@ func show_text(title: String, whisper: String, hold: float) -> void:
 	_banner_tween.tween_callback(hide_banner)
 
 
+## A long title ("NODE 5 // LANCE PLATFORM") or whisper would make the banner wider than the screen: the type steps down until the
+## line fits the width (never below TITLE_MIN / WHISPER_MIN), and a line that still does not fit is trimmed with an ellipsis.
+func _fit_banner() -> void:
+	_fit(banner_title, HudStyle.FONT_TITLE, TITLE_MIN, 4)
+	_fit(banner_whisper, 34, WHISPER_MIN, 2)
+
+
+func _fit(label: Label, base_px: int, min_px: int, step: int) -> void:
+	var font: Font = label.get_theme_font(&"font")
+	var room: float = _inner_w - 56.0  # the panel margins and the outline
+	var px: int = base_px
+	while px > min_px and font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x > room:
+		px -= step
+	label.add_theme_font_size_override(&"font_size", maxi(px, min_px))
+
+
 func hide_banner() -> void:
 	_kill(_banner_tween)
 	banner_box.visible = false
+	fit_arrows()
 
 
 ## One line above the drawer for a few seconds (Events.hint_requested).

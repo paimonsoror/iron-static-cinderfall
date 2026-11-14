@@ -16,6 +16,7 @@ var name_label: Label
 var stack_label: Label
 var rarity_label: Label
 var tag_labels: Array[Label] = []
+var icon_block: Control  ## the rarity frame with its tag glyph; a near-square window leaves it out (room for the BUY-OUT row)
 var _buyout_on: bool = false
 
 
@@ -40,7 +41,8 @@ func build(card_slot: int, directive: DirectiveDef, held: int, narrow: bool) -> 
 	rim_color = RunUi.rarity_rim(def.rarity)
 	var corrupted: bool = def.rarity == DirectiveDef.Rarity.CORRUPTED
 	col.add_child(_top_row())
-	col.add_child(_icon_block())
+	icon_block = _icon_block()
+	col.add_child(icon_block)
 	name_label = RunUi.label(Strings.t(def.name_key), 32 if narrow else UiTheme.FONT_BODY, &"body", true)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(RunUi.wrap(name_label, 3))
@@ -75,6 +77,12 @@ func set_buyout(available: bool, cost: int, on: bool, affordable: bool) -> void:
 	buyout_button.toggle_mode = true
 	buyout_button.set_pressed_no_signal(on)
 	buyout_button.modulate = Color(1.0, 1.0, 1.0, 1.0 if affordable or on else 0.6)
+
+
+## A near-square window drops the icon block, so the card with its BUY-OUT row still fits the height.
+func set_compact(compact: bool) -> void:
+	if icon_block != null:
+		icon_block.visible = not compact
 
 
 func is_corrupted() -> bool:

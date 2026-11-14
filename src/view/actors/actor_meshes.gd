@@ -48,6 +48,7 @@ const TRI_BUDGET: Dictionary[StringName, int] = {
 }
 const WARDEN_LOADOUT_BUDGET: int = 2650
 const MAX_SURFACES: int = 3
+const ELITE_RING_HC_INNER: float = 0.66  ## where the High Contrast elite ring's band starts (the normal one starts at 0.84)
 ## The body parts of the Warden (one MeshInstance3D each) and the weapons.
 const WARDEN_BODY_PARTS: Array[StringName] = [
 	&"legs", &"torso", &"arm_ru", &"arm_rf", &"arm_lu", &"arm_lf", &"pack", &"antenna", &"cable"
@@ -210,8 +211,10 @@ static func new_weapon(part: StringName) -> ArrayMesh:
 	return null
 
 
-## The red ring under an elite (a band and four chevrons, radius 1, in the additive red).
-static func elite_ring() -> ArrayMesh:
+## The red ring under an elite (a band and four chevrons, radius 1, in the additive red); `thick` is the High Contrast ring (GDD 10.3).
+static func elite_ring(thick: bool = false) -> ArrayMesh:
+	if thick:
+		return _cached(&"elite_ring_hc", VfxMeshes.elite_ring.bind(&"add_red", ELITE_RING_HC_INNER))
 	return _cached(&"elite_ring", VfxMeshes.elite_ring.bind(&"add_red"))
 
 

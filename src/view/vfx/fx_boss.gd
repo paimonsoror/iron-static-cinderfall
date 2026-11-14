@@ -11,6 +11,9 @@ extends RefCounted
 ## All of it hurts the player's side (the core, the turrets, the magazine), so it is red and hatched where it covers ground, and it is NEVER
 ## tier-gated and never removed by Reduced Flash (a telegraph is information, not a flash). The strips are the telegraph pools of `FxTelegraph`
 ## (`lanes_red`, `bands`) plus one hatched strip pool for the long thin lance (the hatch stripes keep square at its aspect of 14).
+## V5-B: two states of a living boss that no event announces are read from the store each frame (`step`): the breach cracks of a Tremor Rig
+## (`BossTremorRig.breach_points`: the red hatched cracked disc of a floor breach, kept up while the breach lasts) and the open window of an
+## Aegis Array (`BossState.F_EXPOSED` / `exposed_left`: a CYAN ring round the boss that contracts as the window closes, a friendly cue, no hatch).
 
 const LANCE_HALF_WIDTH_M: float = 0.55
 const LANCE_ASPECT: float = 14.0
@@ -21,6 +24,10 @@ const STOMP_START_M: float = 1.0
 const PULSE_RADIUS_M: float = 2.2
 const Y: float = 0.052
 const FIRE_Y: float = 1.2
+const CRACK_LIFE_S: float = 0.9  ## a crack decal lives this long and is renewed while its breach point is up
+const CRACK_EVERY_S: float = 0.4
+const EXPOSED_RING_M: float = 2.4  ## radius of the open-window ring when the window opens; it contracts to the boss's own size
+const EXPOSED_EVERY_S: float = 0.1
 
 var lance_hatch: VfxPool
 var fire: VfxPool
@@ -32,6 +39,8 @@ var _tele: FxTelegraph
 var _fire_in: float = -1.0
 var _fire_from: Vector3 = Vector3.ZERO
 var _fire_to: Vector3 = Vector3.ZERO
+var _crack_in: float = 0.0
+var _ring_in: float = 0.0
 
 
 func setup(parent: Node3D, bounds: AABB, ctx: FxContext, decals: FxTelegraph) -> void:
@@ -90,12 +99,43 @@ func telegraph(_attack: int, ticks: int) -> void:
 
 ## Once per rendered frame: the shot of a Lance Platform leaves when its charge ends.
 func step(delta: float) -> void:
+	_state_cues(delta)
 	if _fire_in < 0.0:
 		return
 	_fire_in -= delta
 	if _fire_in <= 0.0:
 		_fire_in = -1.0
 		var _slot: int = fire.spawn(_fire_from, _fire_to, FIRE_WIDTH_M, FIRE_WIDTH_M * 0.3, FIRE_LIFE_S)
+
+
+## The breach cracks of a Tremor Rig and the open window of an Aegis Array, read from the boss state.
+func _state_cues(delta: float) -> void:
+	var sim: SimWorld = _ctx.sim
+	if sim == null or sim.boss.boss_id == 0 or not sim.content.is_variety():
+		return
+	match sim.boss.boss_type:
+		Ids.EN_TREMOR_RIG:
+			_crack_in -= delta
+			if _crack_in > 0.0:
+				return
+			_crack_in = CRACK_EVERY_S
+			var r: float = FxTelegraph.BREACH_RADIUS_M
+			for p: Vector2 in BossTremorRig.breach_points(sim):
+				var _disc: int = _tele.hatches.spawn(Vector3(p.x, FxTelegraph.HATCH_Y, p.y), Vector3.ZERO, r, r, CRACK_LIFE_S)
+				var _crack: int = _tele.cracks.spawn(Vector3(p.x, FxTelegraph.RING_Y, p.y), Vector3.ZERO, r * 1.15, r * 1.15, CRACK_LIFE_S, 0.0)
+		Ids.EN_AEGIS_ARRAY:
+			_ring_in -= delta
+			if _ring_in > 0.0 or not sim.boss.has_flag(BossState.F_EXPOSED):
+				return
+			_ring_in = EXPOSED_EVERY_S
+			var at: Vector3 = _ctx.enemy_at(sim.boss.boss_id)
+			if not at.is_finite():
+				return
+			var total: float = float(maxi(BossKit.ticks(sim, &"exposed_s", 10.0), 1))
+			var now: float = clampf(float(sim.boss.exposed_left) / total, 0.0, 1.0)
+			var before: float = clampf(now + EXPOSED_EVERY_S / SimWorld.DT / total, 0.0, 1.0)
+			var _ring: int = _tele.rings_cyan.spawn(
+				Vector3(at.x, Y, at.z), Vector3.ZERO, lerpf(1.0, EXPOSED_RING_M, before), lerpf(1.0, EXPOSED_RING_M, now), EXPOSED_EVERY_S * 1.2)
 
 
 func live_count() -> int:

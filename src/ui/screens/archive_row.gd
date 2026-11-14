@@ -40,7 +40,7 @@ func build(unlock: UnlockDef, content: ContentSet) -> void:
 	set_state(ArchiveModel.State.POOR, 0)
 
 
-## The icon id of a row: the weapon silhouette of an armory row, the tag glyph of a directive pack, a core mark for a kit.
+## The icon id of a row: the weapon silhouette of an armory row, the tag glyph of a directive pack, one of the six kit marks (assets/icons/kit_*.svg) for a kit, the core ring for a kit that has none.
 static func mark_icon(unlock: UnlockDef, content: ContentSet) -> String:
 	match unlock.branch:
 		UnlockDef.Branch.ARMORY:
@@ -52,6 +52,10 @@ static func mark_icon(unlock: UnlockDef, content: ContentSet) -> String:
 				if directive != null and not directive.tags.is_empty():
 					return "tag_%s" % String(directive.tags[0])
 		UnlockDef.Branch.KITS:
+			if not unlock.grants.is_empty():
+				var kit_mark: String = "kit_%s" % String(unlock.grants[0]).trim_prefix("k_")
+				if ResourceLoader.exists("res://assets/icons/%s.svg" % kit_mark):
+					return kit_mark
 			return "cat_core"
 	return "ticker_help"
 

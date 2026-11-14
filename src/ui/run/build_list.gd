@@ -23,7 +23,7 @@ func setup(api: RunApi, content: ContentSet) -> void:
 	_content = content
 	theme = UiTheme.shared(RunUi.hc())
 	var dim: ColorRect = ColorRect.new()
-	dim.color = Color(0.0, 0.0, 0.0, 0.7)
+	dim.color = Color(0.0, 0.0, 0.0, 0.94)  # nearly opaque: the screen below (the pause panel, the draft cards) must not show through the list
 	UiKit.fill(dim)
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(dim)

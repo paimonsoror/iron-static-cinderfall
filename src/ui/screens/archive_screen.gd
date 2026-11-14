@@ -11,7 +11,7 @@ signal closed
 
 const UNDO_SECONDS: float = 5.0
 const COLUMNS: int = 2  ## columns of rows and of tabs on a wide enough screen
-const WIDE_MIN: float = 850.0  ## below this viewport width the rows go one per line and the tabs two per line
+const WIDE_MIN: float = 1000.0  ## below this viewport width the rows go one per line and the tabs two per line
 
 var model: ArchiveModel
 var branch: int = UnlockDef.Branch.ARMORY
@@ -147,7 +147,7 @@ func _tabs() -> GridContainer:
 		b.button_group = group
 		b.custom_minimum_size = Vector2(0.0, UiTheme.TOUCH_MIN)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.add_theme_font_size_override(&"font_size", UiTheme.FONT_BODY - 4)
+		b.add_theme_font_size_override(&"font_size", UiTheme.FONT_SMALL)  # "DIRECTIVES" at 34 px split into "DIRECTIV" and "ES" on the phone
 		b.pressed.connect(select_branch.bind(ArchiveModel.BRANCHES[i]))
 		row.add_child(b)
 		tab_buttons.append(b)

@@ -72,6 +72,11 @@ func safe_margins() -> Vector4:
 	return _safe
 
 
+## The width the content column has: the frame minus its edge gaps and the safe area.
+func available_width() -> float:
+	return size.x - 2.0 * EDGE - _safe.x - _safe.z
+
+
 ## Rebuilds the look from the current High Contrast setting and redraws the drawn controls.
 func apply_style() -> void:
 	theme = UiTheme.shared(UiTheme.high_contrast_on())
