@@ -66,6 +66,27 @@ func test_a_big_step_beats_a_level_up() -> void:
 	assert_int(_arg([&"smg", &"rail_lance"])).is_equal(1 * 16 + 0)  # T5 for the pistol: +3 tiers against +1
 
 
+## V5-A: the `greedy` family (greedy, spammer, turret_rush) answers with a move the sim takes, also when the first weapon
+## of the crate is a duplicate at the top level (it stalled the run at a boss crate before).
+func test_the_greedy_answer_is_always_one_the_sim_accepts() -> void:
+	VarietyHKit.carry(w, 1, &"smg", 3)
+	VarietyHKit.crate(w, [&"smg", &"rail_lance"])
+	assert_int(PolicyLoadout.greedy_salvage_arg(w)).is_equal(1 * 16 + 0)  # the rail lance, for the weaker pistol slot
+	VarietyHKit.crate(w, [&"smg"])
+	assert_int(PolicyLoadout.greedy_salvage_arg(w)).is_equal(SalvageSystem.ACTION_SCRAP)
+	VarietyHKit.carry(w, 1, &"smg", 2)
+	VarietyHKit.crate(w, [&"smg", &"rail_lance"])
+	assert_int(PolicyLoadout.greedy_salvage_arg(w)).is_equal(SalvageSystem.ACTION_LEVEL_UP)  # as before: the first weapon
+	var crates: Array[Array] = [[&"smg", &"rail_lance"], [&"smg"], [&"scattergun"]]
+	for raw: Array in crates:
+		var ids: Array[StringName] = []
+		ids.assign(raw)
+		VarietyHKit.carry(w, 1, &"smg", 3)
+		VarietyHKit.crate(w, ids)
+		var arg: int = PolicyLoadout.greedy_salvage_arg(w)
+		assert_int(SalvageSystem.resolve(w, 900, arg)).override_failure_message("%s -> %d" % [str(ids), arg]).is_equal(Reason.Id.OK)
+
+
 func test_an_empty_or_unknown_crate_is_scrapped() -> void:
 	VarietyHKit.crate(w, [])
 	assert_int(PolicyLoadout.balanced_salvage_arg(w)).is_equal(SalvageSystem.ACTION_SCRAP)
