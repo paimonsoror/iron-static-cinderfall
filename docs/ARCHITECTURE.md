@@ -1322,6 +1322,9 @@ class_name AreaDamage
 static func blast(world: SimWorld, x: float, z: float, radius: float, damage: float, edge_frac: float, flags: int, source: int) -> void
 class_name HazardSystem           # the delayed-effect queue, pools, mines, drums; step(world)
 class_name StatusSystem           # slow, burn, ward regeneration, auras, reclaimer tethers; step(world)
+# (V5-A) The jammer's two rates reach the game ONCE, through EventRates (ability cooldown tick: AbilitySystem; turret cadence:
+# EventRates.turret_rate_milli, which TurretSystem reads). StatusSystem.cooldown_rate / turret_rate_mult are the same numbers as
+# plain queries (only unit tests call them): no system multiplies by them, so nothing is applied twice.
 class_name DeathHooks / CoreHooks / ShotHooks    # one function per HOOK directive of CONTENT 3 (e.g. DeathHooks.on_killed)
 class_name EliteSystem            # applies affixes at spawn; aura and leech rules
 class_name EventSystem            # sim/systems/event_system.gd + events/event_<id>.gd (10 files); step(world)
