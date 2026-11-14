@@ -221,8 +221,8 @@ func test_the_drone_follows_the_act_and_the_place_of_the_wave_in_it() -> void:
 	_events.act_started.emit(2)
 	_events.wave_started.emit(6)
 	assert_float(_dir.intensity()).is_equal_approx(0.45, 0.0001)
-	_events.wave_started.emit(8)  # the third normal wave of act II: budget 108 of 78 to 124
-	assert_float(_dir.intensity()).is_equal_approx(0.45 + 0.20 * (30.0 / 46.0), 0.0001)
+	_events.wave_started.emit(8)  # the third normal wave of act II: budget 118 of 80 to 138
+	assert_float(_dir.intensity()).is_equal_approx(0.45 + 0.20 * (38.0 / 58.0), 0.0001)
 	_events.act_started.emit(3)
 	_events.wave_started.emit(15)
 	assert_float(_dir.intensity()).is_equal_approx(0.90, 0.0001)

@@ -5,6 +5,11 @@ This file is a **proposal that lives in `docs/design/`**. Nothing here is loaded
 tables into the data files named in VARIETY_SPEC section 13.1. Every number is a first-pass value to be tuned by the balance
 task (V5-C) with deterministic runs; none of them has been simulated.
 
+**After the balance pass (V5-C).** The shipped data files are the truth for every number: V5-C tuned 93 values (wave windows and
+budgets, boss and reclaimer numbers, weapon and turret numbers, route weights, prices) so that the scorecard moves toward its
+targets. The table of every changed value, with before, after and the reason, is part 3 of `docs/reports/BALANCE_REPORT.md`; the
+numbers in the tables below are the first-pass values and differ from the data where that table says so.
+
 Conventions: seconds are converted with `ticks = roundi(seconds * 60)`; rates are shots per second; distances are meters;
 "core dmg" is damage to Relay Core B-4; "Scrap" is the in-run currency; "Data" is Recovered Data. Ids are final unless the
 owner renames them. Player-facing names are in VARIETY_SPEC section 16 (story text pending approval).

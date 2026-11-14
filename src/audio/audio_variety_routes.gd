@@ -51,7 +51,7 @@ const CORRUPTED_DIRECTIVES: Array[StringName] = [
 ## the "from" level, the strongest the "to" level, and the boss wave is the top of its act.
 const WAVES_PER_ACT: int = 5
 const ACT_INTENSITY: Array[Vector2] = [Vector2(0.20, 0.40), Vector2(0.45, 0.65), Vector2(0.70, 0.90)]
-const WAVE_BUDGETS: PackedInt32Array = [24, 34, 46, 60, 36, 78, 92, 108, 124, 70, 140, 156, 172, 190, 120]
+const WAVE_BUDGETS: PackedInt32Array = [24, 34, 42, 66, 50, 80, 98, 118, 138, 100, 185, 210, 235, 265, 175]
 
 var act: int = 0  ## 1..3 once `act_started` arrived in this run; 0 = a run without acts (the legacy five waves)
 var draft_open: bool = false  ## a draft is on screen: the next offer is a reroll

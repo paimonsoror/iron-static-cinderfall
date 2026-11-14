@@ -64,10 +64,10 @@ func test_the_mirrored_wave_budgets_are_the_budgets_of_the_data() -> void:
 
 
 func test_the_drone_follows_the_budget_of_the_wave_inside_its_act() -> void:
-	# act I: normal waves 24, 34, 46, 60 and the boss wave
+	# act I: normal waves 24, 34, 42, 66 and the boss wave
 	assert_float(AudioVarietyRoutes.budget_position(1, 1)).is_equal_approx(0.0, 0.0001)
-	assert_float(AudioVarietyRoutes.budget_position(1, 2)).is_equal_approx(10.0 / 36.0, 0.0001)
-	assert_float(AudioVarietyRoutes.budget_position(1, 3)).is_equal_approx(22.0 / 36.0, 0.0001)
+	assert_float(AudioVarietyRoutes.budget_position(1, 2)).is_equal_approx(10.0 / 42.0, 0.0001)
+	assert_float(AudioVarietyRoutes.budget_position(1, 3)).is_equal_approx(18.0 / 42.0, 0.0001)
 	assert_float(AudioVarietyRoutes.budget_position(1, 4)).is_equal_approx(1.0, 0.0001)
 	assert_float(AudioVarietyRoutes.budget_position(1, 5)).is_equal_approx(1.0, 0.0001)  # the boss wave: its budget is lower, it is the top
 	assert_float(AudioVarietyRoutes.budget_position(3, 15)).is_equal_approx(1.0, 0.0001)
